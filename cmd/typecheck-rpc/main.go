@@ -63,6 +63,9 @@ func main() {
 		case "SetReturnValuesLoadConfig", "Disconnect", "SetEventsFn":
 			// support functions
 			continue
+		case "GetVersion":
+			// rpccommon.go method
+			continue
 		}
 
 		if fndecl.Name.Name == "Continue" || fndecl.Name.Name == "Rewind" || fndecl.Name.Name == "DirectionCongruentContinue" {
