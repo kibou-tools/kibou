@@ -9,20 +9,33 @@ import (
 	"github.com/typesanitizer/happygo/common/logx"
 )
 
+// RunOutput contains output captured from a command invocation.
+type RunOutput struct {
+	Stdout string
+	Stderr string
+}
+
 // RunOptions configures BaseRunner.Run behavior.
 type RunOptions struct {
 	CaptureStdout bool
+	CaptureStderr bool
 	TransformEnv  func(envx.Env) envx.Env
 }
 
 // RunOptionsDefault returns default options for BaseRunner.Run.
 func RunOptionsDefault() RunOptions {
-	return RunOptions{CaptureStdout: false, TransformEnv: nil}
+	return RunOptions{CaptureStdout: false, CaptureStderr: false, TransformEnv: nil}
 }
 
 // WithCaptureStdout returns a copy with CaptureStdout set.
 func (o RunOptions) WithCaptureStdout() RunOptions {
 	o.CaptureStdout = true
+	return o
+}
+
+// WithCaptureStderr returns a copy with CaptureStderr set.
+func (o RunOptions) WithCaptureStderr() RunOptions {
+	o.CaptureStderr = true
 	return o
 }
 
@@ -33,10 +46,10 @@ func (o RunOptions) WithCaptureStdout() RunOptions {
 type BaseRunner interface {
 	// Run runs a command.
 	//
-	// The first return value is the captured stdout. There may be stdout
-	// even in the presence of errors. Stdout is only captured if
-	// options.CaptureStdout is true.
-	Run(_ logx.LogCtx, _ Cmd, options RunOptions) (string, error)
+	// The first return value contains captured output from enabled streams.
+	// There may be captured output even in the presence of errors. Stdout and
+	// stderr are only populated when their corresponding capture option is true.
+	Run(_ logx.LogCtx, _ Cmd, options RunOptions) (RunOutput, error)
 }
 
 // Runner executes single commands and sequential command lists.

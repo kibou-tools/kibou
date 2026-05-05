@@ -27,6 +27,11 @@ func panicWith[R any](msg string, args []any) R {
 	panic(AssertionError{Fmt: msg, Args: args})
 }
 
+//go:noinline
+func panicWithMessage[R any](format string, msg string) R {
+	panic(AssertionError{Fmt: format, Args: []any{msg}})
+}
+
 // Always panics with a formatted message if b is false.
 func Always(b bool, msg string, args ...any) {
 	if !b {
@@ -37,7 +42,9 @@ func Always(b bool, msg string, args ...any) {
 // Precondition panics if b is false, prefixing the message with
 // "precondition violation: ".
 func Precondition(b bool, msg string) {
-	Preconditionf(b, "%s", msg)
+	if !b {
+		panicWithMessage[int]("precondition violation: %s", msg)
+	}
 }
 
 // Preconditionf is like Precondition but with a formatted message.
@@ -48,7 +55,9 @@ func Preconditionf(b bool, msg string, args ...any) {
 // Invariant panics if b is false, prefixing the message with
 // "invariant violation: ".
 func Invariant(b bool, msg string) {
-	Invariantf(b, "%s", msg)
+	if !b {
+		panicWithMessage[int]("invariant violation: %s", msg)
+	}
 }
 
 // Invariantf is like Invariant, but with a formatted message.
@@ -59,7 +68,9 @@ func Invariantf(b bool, msg string, args ...any) {
 // Postcondition panics if b is false, prefixing the message with
 // "postcondition violation: ".
 func Postcondition(b bool, msg string) {
-	Postconditionf(b, "%s", msg)
+	if !b {
+		panicWithMessage[int]("postcondition violation: %s", msg)
+	}
 }
 
 // Postconditionf is like Postcondition but with a formatted message.
@@ -69,12 +80,16 @@ func Postconditionf(b bool, msg string, args ...any) {
 
 // PanicInvariantViolation panics indicating an invariant was violated.
 // The return type R allows using it in a return statement.
+//
+//go:noinline
 func PanicInvariantViolation[R any](msg string, args ...any) R {
 	return panicWith[R]("invariant violation: "+msg, args)
 }
 
 // PanicUnknownCase panics with a message indicating an unhandled enum value.
 // The return type R allows using it in a return statement.
+//
+//go:noinline
 func PanicUnknownCase[R any, T any](t T) R {
 	return panicWith[R]("unknown value for type %T: %v", []any{t, t})
 }

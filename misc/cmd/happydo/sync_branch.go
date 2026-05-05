@@ -114,11 +114,11 @@ func deleteLocalBranchIfPresent(
 	ctx logx.LogCtx, runner cmdx.BaseRunner, worktreeDir AbsPath, branch string,
 ) error {
 	listCmd := cmdx.New("git", "branch", "--list", branch).In(worktreeDir)
-	out, err := runner.Run(ctx, listCmd, cmdx.RunOptionsDefault().WithCaptureStdout())
+	output, err := runner.Run(ctx, listCmd, cmdx.RunOptionsDefault().WithCaptureStdout())
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(out) == "" {
+	if strings.TrimSpace(output.Stdout) == "" {
 		return nil
 	}
 	deleteCmd := cmdx.New("git", "branch", "-D", branch).In(worktreeDir)
@@ -133,11 +133,11 @@ func findRemoteBranchHeadRef(
 
 	branchRef := "refs/heads/" + branch
 	lsRemoteCmd := cmdx.New("git", "ls-remote", "--heads", "origin", branchRef).In(worktreeDir)
-	out, err := runner.Run(ctx, lsRemoteCmd, cmdx.RunOptionsDefault().WithCaptureStdout())
+	output, err := runner.Run(ctx, lsRemoteCmd, cmdx.RunOptionsDefault().WithCaptureStdout())
 	if err != nil {
 		return None[remoteRef](), err
 	}
-	return parseSingleRemoteRef(branchRef, out)
+	return parseSingleRemoteRef(branchRef, output.Stdout)
 }
 
 func parseSingleRemoteRef(wantRef string, lsRemoteOutput string) (Option[remoteRef], error) {
