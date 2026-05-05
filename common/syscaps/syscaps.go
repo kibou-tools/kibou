@@ -60,7 +60,7 @@ type CmdRunner struct {
 	Env envx.Env
 }
 
-func (runner CmdRunner) Run(ctx logx.LogCtx, cmd cmdx.Cmd, options cmdx.RunOptions) (string, error) {
+func (runner CmdRunner) Run(ctx logx.LogCtx, cmd cmdx.Cmd, options cmdx.RunOptions) (cmdx.RunOutput, error) {
 	dir, hasDir := cmd.Dir().Get()
 	if hasDir {
 		ctx.Debug("running command", "cmd", cmd, "dir", dir.String())
@@ -83,18 +83,26 @@ func (runner CmdRunner) Run(ctx logx.LogCtx, cmd cmdx.Cmd, options cmdx.RunOptio
 		execCmd.Env = runner.Env.Entries()
 	}
 
-	var capturedOutput bytes.Buffer
+	var capturedStdout bytes.Buffer
+	var capturedStderr bytes.Buffer
 	if options.CaptureStdout {
-		execCmd.Stdout = io.MultiWriter(stdout, &capturedOutput)
+		execCmd.Stdout = io.MultiWriter(stdout, &capturedStdout)
 	} else {
 		execCmd.Stdout = stdout
 	}
-	execCmd.Stderr = stderr
-
-	if err := execCmd.Run(); err != nil {
-		return capturedOutput.String(), errorx.Wrapf("+stacks", err, "%s", cmd)
+	if options.CaptureStderr {
+		execCmd.Stderr = io.MultiWriter(stderr, &capturedStderr)
+	} else {
+		execCmd.Stderr = stderr
 	}
-	return capturedOutput.String(), nil
+
+	capturedOutput := func() cmdx.RunOutput {
+		return cmdx.RunOutput{Stdout: capturedStdout.String(), Stderr: capturedStderr.String()}
+	}
+	if err := execCmd.Run(); err != nil {
+		return capturedOutput(), errorx.Wrapf("+stacks", err, "%s", cmd)
+	}
+	return capturedOutput(), nil
 }
 
 func (runner CmdRunner) ExecAll(ctx logx.LogCtx, cmds ...cmdx.Cmd) error {

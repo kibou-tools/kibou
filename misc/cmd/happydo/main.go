@@ -37,11 +37,11 @@ type Workspace struct {
 func newWorkspaceFromGit(runner cmdx.Runner) (Workspace, error) {
 	repoRootCmd := cmdx.New("git", "rev-parse", "--show-toplevel")
 	ctx := logx.NewLogCtx(context.Background(), logx.NewLogger(io.Discard, logx.ColorSupport_Disable))
-	out, err := runner.Run(ctx, repoRootCmd, cmdx.RunOptionsDefault().WithCaptureStdout())
+	output, err := runner.Run(ctx, repoRootCmd, cmdx.RunOptionsDefault().WithCaptureStdout())
 	if err != nil {
 		return Workspace{}, errorx.Wrapf("nostack", err, "determine git repository root")
 	}
-	repoRoot := NewAbsPath(strings.TrimSpace(out))
+	repoRoot := NewAbsPath(strings.TrimSpace(output.Stdout))
 	repoFS, err := syscaps.FS(repoRoot)
 	if err != nil {
 		return Workspace{}, errorx.Wrapf("+stacks", err, "open repo filesystem at %s", repoRoot)

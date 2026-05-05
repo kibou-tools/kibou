@@ -97,11 +97,11 @@ func runSyncPRProject(
 		return nil
 	}
 	headSHACmd := cmdx.New("git", "rev-parse", "origin/"+syncBranch).In(repoRoot)
-	headSHA, err := runner.Run(ctx, headSHACmd, cmdx.RunOptionsDefault().WithCaptureStdout())
+	headSHAOutput, err := runner.Run(ctx, headSHACmd, cmdx.RunOptionsDefault().WithCaptureStdout())
 	if err != nil {
 		return err
 	}
-	headSHA = strings.TrimSpace(headSHA)
+	headSHA := strings.TrimSpace(headSHAOutput.Stdout)
 	metadata, err := subtreeMetadataForSyncHead(ctx, runner, repoRoot, project, headSHA)
 	if err != nil {
 		return err
@@ -203,11 +203,11 @@ func subtreeMetadataForSyncHead(
 
 	var emptyMetadata subtreeMetadata
 	parentsCmd := cmdx.New("git", "show", "--no-patch", "--format=%P", headSHA).In(repoRoot)
-	parentsOut, err := runner.Run(ctx, parentsCmd, cmdx.RunOptionsDefault().WithCaptureStdout())
+	parentsOutput, err := runner.Run(ctx, parentsCmd, cmdx.RunOptionsDefault().WithCaptureStdout())
 	if err != nil {
 		return emptyMetadata, err
 	}
-	parentSHAs := strings.Fields(strings.TrimSpace(parentsOut))
+	parentSHAs := strings.Fields(strings.TrimSpace(parentsOutput.Stdout))
 	if len(parentSHAs) != 2 {
 		return emptyMetadata, errorx.Newf("nostack",
 			"expected sync head %q for %q to be a 2-parent merge commit, got %d parent(s)",
@@ -228,13 +228,13 @@ func listOpenPRs(
 		"--state", "open", "--base", base, "--head", head,
 		"--json", "number,url",
 	).In(repoRoot)
-	out, err := runner.Run(ctx, listPRsCmd, cmdx.RunOptionsDefault().WithCaptureStdout())
+	output, err := runner.Run(ctx, listPRsCmd, cmdx.RunOptionsDefault().WithCaptureStdout())
 	if err != nil {
 		return nil, err
 	}
 	var prs []ListOpenPRsData
-	if err := json.Unmarshal([]byte(out), &prs); err != nil {
-		return nil, errorx.Wrapf("+stacks", err, "parse gh pr list output: %s", out)
+	if err := json.Unmarshal([]byte(output.Stdout), &prs); err != nil {
+		return nil, errorx.Wrapf("+stacks", err, "parse gh pr list output: %s", output.Stdout)
 	}
 	return prs, nil
 }
@@ -251,7 +251,7 @@ func ensureLabelExists(
 		"gh", "label", "list",
 		"--search", name, "--json", "name", "--limit", "100",
 	).In(repoRoot)
-	out, err := runner.Run(ctx, listLabelsCmd, cmdx.RunOptionsDefault().WithCaptureStdout())
+	output, err := runner.Run(ctx, listLabelsCmd, cmdx.RunOptionsDefault().WithCaptureStdout())
 	if err != nil {
 		return err
 	}
@@ -259,7 +259,8 @@ func ensureLabelExists(
 		Name string `json:"name"`
 	}
 	// gh label list --search returns empty output (not "[]") when no labels match.
-	if out = strings.TrimSpace(out); out != "" {
+	out := strings.TrimSpace(output.Stdout)
+	if out != "" {
 		if err := json.Unmarshal([]byte(out), &labels); err != nil {
 			return errorx.Wrapf("+stacks", err, "parse gh label list output: %s", out)
 		}
