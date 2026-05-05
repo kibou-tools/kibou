@@ -6,11 +6,8 @@
 .
 ├─ common/
 │  Meant for shared internal-use libraries for delve/,
-│  tools/ and misc/. Ideally, we'd be able to figure
-│  out a way to provide a minimal version that can also
-│  be used inside go/, especially for the compiler
-│  implementation and writing tests (not to be exposed
-│  via stdlib APIs).
+│  tools/ and misc/. A proving ground for capability-based
+│  standard library (for enhanced testability). 
 │
 ├─ docs/
 │  Project-wide docs. Docs specific to go/ live alongside
@@ -30,6 +27,25 @@
    Our own internal tools etc. The top-level tools/ is already
    taken so. :/
 ```
+
+## Testing
+
+Outside of the `go/` subdirectory:
+
+```bash
+go -C <subdir> test ./...
+```
+
+## Linting
+
+```bash
+go tool golangci-lint run ./common/... ./misc/...
+```
+
+See `.golangci.yml` at the repo root.
+
+There are a fairly strict set of rules, so it's good
+to familiarize yourself with them.
 
 ## Dos and Don'ts
 
