@@ -6,8 +6,6 @@ package errorx
 
 import (
 	"fmt"
-	"slices"
-	"sync"
 
 	"github.com/typesanitizer/happygo/common/assert"
 )
@@ -20,12 +18,13 @@ const (
 	Code_AccessDenied    Code = "access denied"
 )
 
-var allCodes = sync.OnceValue(func() []Code {
-	return []Code{Code_InvalidArgument, Code_AccessDenied}
-})
-
 func isValidCode(code Code) bool {
-	return slices.Contains(allCodes(), code)
+	switch code {
+	case Code_InvalidArgument, Code_AccessDenied:
+		return true
+	default:
+		return false
+	}
 }
 
 // Problem is a structured error with a stable code and message.
