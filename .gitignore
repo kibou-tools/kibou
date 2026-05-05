@@ -1,14 +1,28 @@
-.idea/
+# Temporary files for agents
 .cache/
-**/testdata/rapid/**/*.fail
+
 # Individual go.sum files already provide integrity checking per module,
 # so go.work.sum is unnecessary.
 go.work.sum
+
+# Property-based tests, verifiers etc.
+## Rapid PBT library (Go)
+**/testdata/rapid/**/*.fail
+
+# Editors
+## Snapshots from Vim etc.
+**/*.swp
+## IntelliJ/GoLand
+.idea/
+
+# Dependencies
 node_modules/
 
-# Snapshots from Vim etc.
-**/*.swp
+# Build outputs
 
-# Accidentally built binaries at the root
+## Accidentally built binaries
+## Related: TODO(issue: https://github.com/typesanitizer/happygo/issues/162)
+## The linter should probably also check that this .gitignore
+## is in sync based on where 'go build' command outputs generally go.
 /happydo
 /misc/happydo
