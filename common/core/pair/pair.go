@@ -12,3 +12,16 @@ type KeyValue[K, V any] struct {
 func NewKeyValue[K, V any](k K, v V) KeyValue[K, V] {
 	return KeyValue[K, V]{k, v}
 }
+
+type Pair[A, B any] struct {
+	First  A
+	Second B
+}
+
+func NewPair[A, B any](first A, second B) Pair[A, B] {
+	return Pair[A, B]{first, second}
+}
+
+func (p Pair[A, B]) Unpack() (A, B) {
+	return p.First, p.Second
+}
