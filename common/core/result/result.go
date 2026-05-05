@@ -17,6 +17,16 @@ type Result[T any] struct {
 	err   error
 }
 
+// NewResult converts a (value, error) return into a Result.
+//
+// The value is discarded if err != nil.
+func New[T any](value T, err error) Result[T] {
+	if err != nil {
+		return Failure[T](err)
+	}
+	return Success(value)
+}
+
 // Success returns a Result containing value.
 func Success[T any](value T) Result[T] {
 	return Result[T]{value: value, err: nil}

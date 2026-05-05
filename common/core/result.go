@@ -12,6 +12,21 @@ import "github.com/typesanitizer/happygo/common/core/result"
 // non-nil error; a Success has a nil error.
 type Result[T any] = result.Result[T]
 
+// NewResult converts a (value, error) return into a Result.
+//
+// The value is discarded if err != nil.
+//
+// NOTE: Due to special forwarding rules (https://go.dev/ref/spec#Calls),
+// you can use this directly to wrap a function which returns (T, err):
+//
+//	data, err := someOperation(...)
+//	result := NewResult(data, err)
+//	// => simplify to
+//	result := NewResult(someOperation(...))
+func NewResult[T any](value T, err error) Result[T] {
+	return result.New(value, err)
+}
+
 // Success returns a Result containing value.
 func Success[T any](value T) Result[T] {
 	return result.Success(value)
