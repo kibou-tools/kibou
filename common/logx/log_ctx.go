@@ -5,22 +5,21 @@
 package logx
 
 import (
-	"context"
-
 	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/cancel"
 )
 
-// LogCtx carries a logger and context together.
+// LogCtx carries a logger and cancellation token together.
 type LogCtx struct {
-	context.Context
+	cancel.Token
 	// Always non-nil.
 	Logger
 }
 
-// NewLogCtx constructs a LogCtx from context and logger.
-func NewLogCtx(ctx context.Context, logger Logger) LogCtx {
+// NewLogCtx constructs a LogCtx from a token and logger.
+func NewLogCtx(tok cancel.Token, logger Logger) LogCtx {
 	assert.Precondition(logger != nil, "logger must be non-nil")
-	return LogCtx{Context: ctx, Logger: logger}
+	return LogCtx{Token: tok, Logger: logger}
 }
 
 // IsDebugEnabled reports whether debug-level logs are enabled.

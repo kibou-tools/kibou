@@ -60,7 +60,7 @@ type CmdRunner struct {
 	Env envx.Env
 }
 
-func (runner CmdRunner) Run(ctx logx.LogCtx, cmd cmdx.Cmd, options cmdx.RunOptions) (cmdx.RunOutput, error) {
+func (runner CmdRunner) Run(ctx cmdx.RunCtx, cmd cmdx.Cmd, options cmdx.RunOptions) (cmdx.RunOutput, error) {
 	dir, hasDir := cmd.Dir().Get()
 	if hasDir {
 		ctx.Debug("running command", "cmd", cmd, "dir", dir.String())
@@ -73,7 +73,7 @@ func (runner CmdRunner) Run(ctx logx.LogCtx, cmd cmdx.Cmd, options cmdx.RunOptio
 	defer logx.FlushLogWriter(stderr)
 
 	argv := cmd.Argv()
-	execCmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
+	execCmd := exec.CommandContext(ctx.AsStdlibContext(), argv[0], argv[1:]...)
 	if hasDir {
 		execCmd.Dir = dir.String()
 	}
@@ -105,7 +105,7 @@ func (runner CmdRunner) Run(ctx logx.LogCtx, cmd cmdx.Cmd, options cmdx.RunOptio
 	return capturedOutput(), nil
 }
 
-func (runner CmdRunner) ExecAll(ctx logx.LogCtx, cmds ...cmdx.Cmd) error {
+func (runner CmdRunner) ExecAll(ctx cmdx.RunCtx, cmds ...cmdx.Cmd) error {
 	return cmdx.BaseRunnerExecAll(runner, ctx, cmds...)
 }
 
@@ -113,8 +113,37 @@ func TimestampClock() timex.TimestampClock {
 	return systemClock{}
 }
 
+func MonotonicClock() timex.MonotonicClock {
+	return systemClock{}
+}
+
+func Scheduler() timex.Scheduler {
+	return systemClock{}
+}
+
 type systemClock struct{}
+
+type systemScheduledFunc struct {
+	// Always non-nil.
+	timer *stdlib_time.Timer
+}
 
 func (s systemClock) GetTimestamp() timex.Timestamp {
 	return timex.NewTimestamp(stdlib_time.Now().UTC())
+}
+
+func (s systemClock) GetInstant() timex.Instant {
+	return timex.NewInstant(stdlib_time.Now())
+}
+
+func (s systemClock) RunAfter(d timex.Duration, f func()) timex.ScheduledFunc {
+	assert.Precondition(f != nil, "scheduled function must be non-nil")
+	return systemScheduledFunc{timer: stdlib_time.AfterFunc(d, f)} //nolint:forbidigo // syscaps is the ambient scheduler boundary
+}
+
+func (s systemScheduledFunc) Stop() timex.StopResult {
+	if s.timer.Stop() {
+		return timex.StopResult_Stopped
+	}
+	return timex.StopResult_TooLate
 }

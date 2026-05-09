@@ -5,12 +5,12 @@
 package codegen
 
 import (
-	"context"
 	"io"
 	"path/filepath"
 	"regexp"
 	"testing"
 
+	"code.kibou.tools/common/cancel"
 	"code.kibou.tools/common/check"
 	"code.kibou.tools/common/cmdx"
 	"code.kibou.tools/common/logx"
@@ -31,7 +31,7 @@ func TestAssertInliningDiagnostics(t *testing.T) {
 		"-gcflags=code.kibou.tools/common/assert/internal/codegen=-m=2",
 		".",
 	)
-	ctx := logx.NewLogCtx(context.Background(), logx.NewLogger(io.Discard, logx.ColorSupport_Disable))
+	ctx := logx.NewLogCtx(cancel.Never(), logx.NewLogger(io.Discard, logx.ColorSupport_Disable))
 	output, err := syscaps.CmdRunner{Env: syscaps.Env()}.Run(ctx, cmd, cmdx.RunOptionsDefault().WithCaptureStderr())
 	h.NoErrorf(err, "go test -c failed\n%s", output.Stderr)
 

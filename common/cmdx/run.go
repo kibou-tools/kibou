@@ -5,6 +5,7 @@
 package cmdx
 
 import (
+	"code.kibou.tools/common/cancel"
 	"code.kibou.tools/common/envx"
 	"code.kibou.tools/common/logx"
 )
@@ -39,6 +40,13 @@ func (o RunOptions) WithCaptureStderr() RunOptions {
 	return o
 }
 
+type RunCtx interface {
+	cancel.Token
+	Debug(msg string, keyvals ...any)
+	Trace(msg string, keyvals ...any)
+	GetLevel() logx.Level
+}
+
 // BaseRunner executes a single command.
 //
 // Run is intended for non-streaming use cases. If we later need streaming
@@ -46,10 +54,13 @@ func (o RunOptions) WithCaptureStderr() RunOptions {
 type BaseRunner interface {
 	// Run runs a command.
 	//
-	// The first return value contains captured output from enabled streams.
-	// There may be captured output even in the presence of errors. Stdout and
-	// stderr are only populated when their corresponding capture option is true.
-	Run(_ logx.LogCtx, _ Cmd, options RunOptions) (RunOutput, error)
+	// The return value contains captured stdout and/or stderr,
+	// based on options.
+	//
+	// CAUTION: If options.CaptureStdout is true, there may be
+	// the returned RunOutput.Stdout may be non-empty even if
+	// err != nil.
+	Run(_ RunCtx, _ Cmd, options RunOptions) (RunOutput, error)
 }
 
 // Runner executes single commands and sequential command lists.
@@ -57,10 +68,10 @@ type Runner interface {
 	BaseRunner
 	// ExecAll runs cmds sequentially with default options, stopping at
 	// the first error.
-	ExecAll(_ logx.LogCtx, cmds ...Cmd) error
+	ExecAll(_ RunCtx, cmds ...Cmd) error
 }
 
-func BaseRunnerExecAll(runner BaseRunner, ctx logx.LogCtx, cmds ...Cmd) error {
+func BaseRunnerExecAll(runner BaseRunner, ctx RunCtx, cmds ...Cmd) error {
 	for _, cmd := range cmds {
 		if _, err := runner.Run(ctx, cmd, RunOptionsDefault()); err != nil {
 			return err

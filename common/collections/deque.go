@@ -9,6 +9,7 @@ import (
 	"math"
 
 	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/core/option"
 )
 
 // Deque is a double-ended queue implemented as a growable
@@ -112,6 +113,13 @@ func (b *Deque[T]) PushBack(value T) {
 	idx := b.nextBackIndex()
 	b.values[idx] = value
 	b.len++
+}
+
+func (b *Deque[T]) TryPopFront() option.Option[T] {
+	if b.len == 0 {
+		return option.None[T]()
+	}
+	return option.Some(b.PopFront())
 }
 
 // PopFront removes and returns the front element.

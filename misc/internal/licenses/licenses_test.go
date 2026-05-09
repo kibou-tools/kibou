@@ -6,7 +6,6 @@ package licenses
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"iter"
 	"runtime"
@@ -17,6 +16,7 @@ import (
 
 	"golang.org/x/sync/semaphore"
 
+	"code.kibou.tools/common/cancel"
 	"code.kibou.tools/common/check"
 	. "code.kibou.tools/common/check/prelude"
 	. "code.kibou.tools/common/core"
@@ -104,7 +104,7 @@ func visitFirstPartyGoFiles[T any](
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			h.NoErrorf(sem.Acquire(context.Background(), 1), "acquire license check semaphore")
+			h.NoErrorf(sem.Acquire(cancel.Never().AsStdlibContext(), 1), "acquire license check semaphore")
 			defer sem.Release(1)
 			resultCh <- visit(rel)
 		}()
