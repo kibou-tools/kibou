@@ -43,6 +43,10 @@ of the corresponding type.
 2. If there are interaction tests across methods of a single type,
    prefer having one `TestTypeName` with subtests.
 
+3. For large test groups with many subtests, factor related subtest groups
+   into helpers that accept `check.Harness`; see `TestWalk` in
+   `common/fsx/fsx_walk/walk_test.go` for the preferred organization style.
+
 ## Comments
 
 ### Field-level comments

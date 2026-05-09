@@ -24,7 +24,7 @@ linters:
       # common/core and common/check/prelude are designed for dot-import usage.
       - linters: [staticcheck]
         text: "ST1001"
-        source: 'common/core|common/check/prelude'
+        source: 'common/core|common/check/prelude|common/unit'
       - linters: [forbidigo]
         path: ^common/core/pathx/pathx.go$
         source: 'os\.(MkdirAll|MkdirTemp)'
@@ -71,6 +71,16 @@ linters:
           deny:
             - pkg: "time"
               desc: "use common/time instead"
+        NoStdlibContext:
+          files:
+            - $all
+            - "!**/common/cancel/*.go"
+            - "!**/common/cancel_bridge/*.go"
+            - "!**/cmd/**/main.go"
+          list-mode: lax
+          deny:
+            - pkg: "context"
+              desc: "use common/cancel.Token instead of context.Context; only common/cancel, common/cancel_bridge, and cli main.go files may import context"
         NoDirectSyscaps:
           files:
             - $all
@@ -93,7 +103,7 @@ linters:
     importas:
       no-unaliased: true
       alias:
-        - pkg: code.kibou.tools/common/(core|check/prelude)
+        - pkg: code.kibou.tools/common/(core|check/prelude|unit)
           alias: .
     exhaustruct:
       # NOTE: Even with allow-empty-returns: false, exhaustruct unconditionally
@@ -113,6 +123,8 @@ linters:
           msg: use common/logx instead of fmt.Print*
         - pattern: ^log\.Print(f|ln)?$
           msg: use common/logx instead of log.Print*
+        - pattern: ^time\.AfterFunc$
+          msg: use timex.Scheduler instead of time.AfterFunc
         - pattern: ^print(ln)?$
           msg: do not use builtin print/println
         - pattern: ^testing\.T\.Errorf$

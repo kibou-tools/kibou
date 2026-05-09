@@ -5,7 +5,7 @@
 package main
 
 import (
-	"context"
+	"context" //nolint:depguard // kido's main is the cli boundary; only place allowed to bridge context.Context to cancel.Token
 	"io"
 	"os"
 	"strings"
@@ -13,6 +13,8 @@ import (
 
 	"github.com/urfave/cli/v3"
 
+	"code.kibou.tools/common/cancel"
+	"code.kibou.tools/common/cancel_bridge"
 	"code.kibou.tools/common/cmdx"
 	"code.kibou.tools/common/collections"
 	. "code.kibou.tools/common/core"
@@ -36,7 +38,7 @@ type Workspace struct {
 
 func newWorkspaceFromGit(runner cmdx.Runner) (Workspace, error) {
 	repoRootCmd := cmdx.New("git", "rev-parse", "--show-toplevel")
-	ctx := logx.NewLogCtx(context.Background(), logx.NewLogger(io.Discard, logx.ColorSupport_Disable))
+	ctx := logx.NewLogCtx(cancel.Never(), logx.NewLogger(io.Discard, logx.ColorSupport_Disable))
 	output, err := runner.Run(ctx, repoRootCmd, cmdx.RunOptionsDefault().WithCaptureStdout())
 	if err != nil {
 		return Workspace{}, errorx.Wrapf("nostack", err, "determine git repository root")
@@ -76,13 +78,13 @@ func main() {
 						return errorx.Wrapf("nostack", err, "in argument for --project")
 					}
 
-					ctx, cancel := withTimeout(ctx, 5*timex.Minute, cmd.Name)
+					tok, cancel := withTimeout(cancel_bridge.Extract(ctx), 5*timex.Minute, cmd.Name)
 					defer cancel()
 					ws, projects, err := resolveProjects(getWorkspace, projectArg)
 					if err != nil {
 						return err
 					}
-					logCtx := logx.NewLogCtx(ctx, logger)
+					logCtx := logx.NewLogCtx(tok, logger)
 					return ws.runSyncBranch(logCtx, projects, RunSyncBranchOptions{
 						Base:    NewOption(cmd.String("base"), cmd.IsSet("base")),
 						Push:    cmd.Bool("push"),
@@ -104,13 +106,13 @@ func main() {
 						return errorx.Wrapf("nostack", err, "in argument for --project")
 					}
 
-					ctx, cancel := withTimeout(ctx, 5*timex.Minute, cmd.Name)
+					tok, cancel := withTimeout(cancel_bridge.Extract(ctx), 5*timex.Minute, cmd.Name)
 					defer cancel()
 					ws, projects, err := resolveProjects(getWorkspace, projectArg)
 					if err != nil {
 						return err
 					}
-					logCtx := logx.NewLogCtx(ctx, logger)
+					logCtx := logx.NewLogCtx(tok, logger)
 					clock := syscaps.TimestampClock()
 					return ws.runSyncPR(logCtx, clock, projects, RunSyncPROptions{
 						Base: NewOption(cmd.String("base"), cmd.IsSet("base")),
@@ -161,7 +163,9 @@ func main() {
 		},
 	}
 
-	if err := app.Run(context.Background(), os.Args); err != nil {
+	rootTok := cancel.Never()
+	rootCtx := cancel_bridge.Inject(context.Background(), rootTok)
+	if err := app.Run(rootCtx, os.Args); err != nil {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
@@ -183,9 +187,9 @@ func resolveProjects(getWorkspace func() (Workspace, error), project fsx.Name) (
 	return ws, []fsx.Name{project}, nil
 }
 
-func withTimeout(ctx context.Context, duration timex.Duration, cmdName string) (context.Context, context.CancelFunc) {
-	return context.WithTimeoutCause(
-		ctx, duration,
-		errorx.Newf("nostack", "%s exceeded time limit of %s", cmdName, duration),
-	)
+func withTimeout(parent cancel.Token, duration timex.Duration, cmdName string) (cancel.ChildClockToken, func()) {
+	tok := cancel.NewClockToken(parent, syscaps.Scheduler(), cancel.OnTimeout(duration))
+	return tok, func() {
+		tok.Cancel(errorx.Newf("nostack", "%s completed", cmdName))
+	}
 }

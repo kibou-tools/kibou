@@ -37,6 +37,10 @@ func (i Instant) IsBefore(other Instant) bool { return i.value.Before(other.valu
 
 func (i Instant) IsAfter(other Instant) bool { return i.value.After(other.value) }
 
+func (i Instant) Equals(other Instant) bool {
+	return i.value.Equal(other.value)
+}
+
 func (i Instant) Compare(other Instant) int {
 	return i.value.Compare(other.value)
 }
