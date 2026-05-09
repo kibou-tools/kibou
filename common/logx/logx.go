@@ -16,17 +16,34 @@ import (
 	"golang.org/x/term"
 )
 
-// Logger is a structured logger.
-type Logger = charmlog.Logger
+// Level is a logging severity.
+type Level = charmlog.Level
 
 // Re-exported log levels so callers don't need to import charmbracelet/log.
 const (
-	DebugLevel = charmlog.DebugLevel
-	InfoLevel  = charmlog.InfoLevel
-	WarnLevel  = charmlog.WarnLevel
-	ErrorLevel = charmlog.ErrorLevel
-	FatalLevel = charmlog.FatalLevel
+	// Level_Trace is below Level_Debug and is used for very high-volume output
+	// such as captured subprocess stdout/stderr.
+	Level_Trace Level = -8
+	Level_Debug       = charmlog.DebugLevel
+	Level_Info        = charmlog.InfoLevel
+	Level_Warn        = charmlog.WarnLevel
+	Level_Error       = charmlog.ErrorLevel
+	Level_Fatal       = charmlog.FatalLevel
 )
+
+// Logger is an interface to represent
+//
+// TODO: This should be refactored to use zap-style concrete types
+// for the keyvals instead of ...any.
+type Logger interface {
+	GetLevel() Level
+	With(keyvals ...any) Logger
+	Error(msg string, keyvals ...any)
+	Warn(msg string, keyvals ...any)
+	Info(msg string, keyvals ...any)
+	Debug(msg string, keyvals ...any)
+	Trace(msg string, keyvals ...any)
+}
 
 // ColorSupport controls whether the logger emits ANSI colors.
 type ColorSupport int
@@ -38,7 +55,7 @@ const (
 )
 
 // NewLogger creates a configured logger writing to w.
-func NewLogger(w io.Writer, cs ColorSupport) *Logger {
+func NewLogger(w io.Writer, cs ColorSupport) Logger {
 	color := false
 	switch cs {
 	case ColorSupport_Enable:
@@ -84,5 +101,26 @@ func NewLogger(w io.Writer, cs ColorSupport) *Logger {
 		logger.SetColorProfile(termenv.Ascii)
 	}
 
-	return logger
+	return &consoleLogger{inner: logger}
+}
+
+type consoleLogger struct {
+	inner *charmlog.Logger
+}
+
+func (l *consoleLogger) GetLevel() Level { return l.inner.GetLevel() }
+
+func (l *consoleLogger) With(keyvals ...any) Logger {
+	return &consoleLogger{inner: l.inner.With(keyvals...)}
+}
+
+func (l *consoleLogger) Error(msg string, keyvals ...any) { l.inner.Error(msg, keyvals...) }
+func (l *consoleLogger) Warn(msg string, keyvals ...any)  { l.inner.Warn(msg, keyvals...) }
+func (l *consoleLogger) Info(msg string, keyvals ...any)  { l.inner.Info(msg, keyvals...) }
+func (l *consoleLogger) Debug(msg string, keyvals ...any) { l.inner.Debug(msg, keyvals...) }
+
+func (l *consoleLogger) Trace(msg string, keyvals ...any) {
+	if l.inner.GetLevel() <= Level_Trace {
+		l.inner.Debug(msg, keyvals...)
+	}
 }

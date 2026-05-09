@@ -68,7 +68,7 @@ func (runner CmdRunner) Run(ctx logx.LogCtx, cmd cmdx.Cmd, options cmdx.RunOptio
 		ctx.Debug("running command", "cmd", cmd)
 	}
 
-	stdout, stderr := ctx.CmdLoggers(cmd)
+	stdout, stderr := logx.CmdLoggers(ctx, cmd)
 	defer logx.FlushLogWriter(stdout)
 	defer logx.FlushLogWriter(stderr)
 
