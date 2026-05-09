@@ -21,7 +21,7 @@ import (
 	"github.com/typesanitizer/happygo/common/fsx/fsx_name"
 	"github.com/typesanitizer/happygo/common/logx"
 	"github.com/typesanitizer/happygo/common/syscaps"
-	"github.com/typesanitizer/happygo/common/time"
+	"github.com/typesanitizer/happygo/common/timex"
 	"github.com/typesanitizer/happygo/misc/internal/config"
 )
 
@@ -76,7 +76,7 @@ func main() {
 						return errorx.Wrapf("nostack", err, "in argument for --project")
 					}
 
-					ctx, cancel := withTimeout(ctx, 5*time.Minute, cmd.Name)
+					ctx, cancel := withTimeout(ctx, 5*timex.Minute, cmd.Name)
 					defer cancel()
 					ws, projects, err := resolveProjects(getWorkspace, projectArg)
 					if err != nil {
@@ -104,14 +104,14 @@ func main() {
 						return errorx.Wrapf("nostack", err, "in argument for --project")
 					}
 
-					ctx, cancel := withTimeout(ctx, 5*time.Minute, cmd.Name)
+					ctx, cancel := withTimeout(ctx, 5*timex.Minute, cmd.Name)
 					defer cancel()
 					ws, projects, err := resolveProjects(getWorkspace, projectArg)
 					if err != nil {
 						return err
 					}
 					logCtx := logx.NewLogCtx(ctx, logger)
-					clock := syscaps.SystemClock()
+					clock := syscaps.TimestampClock()
 					return ws.runSyncPR(logCtx, clock, projects, RunSyncPROptions{
 						Base: NewOption(cmd.String("base"), cmd.IsSet("base")),
 					})
@@ -183,7 +183,7 @@ func resolveProjects(getWorkspace func() (Workspace, error), project fsx.Name) (
 	return ws, []fsx.Name{project}, nil
 }
 
-func withTimeout(ctx context.Context, duration time.Duration, cmdName string) (context.Context, context.CancelFunc) {
+func withTimeout(ctx context.Context, duration timex.Duration, cmdName string) (context.Context, context.CancelFunc) {
 	return context.WithTimeoutCause(
 		ctx, duration,
 		errorx.Newf("nostack", "%s exceeded time limit of %s", cmdName, duration),

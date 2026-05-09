@@ -14,7 +14,6 @@ import (
 	stdlib_time "time"
 
 	"github.com/spf13/afero" //nolint:depguard // syscaps is the ambient-authority boundary
-	"github.com/typesanitizer/happygo/common/time"
 
 	"github.com/typesanitizer/happygo/common/assert"
 	"github.com/typesanitizer/happygo/common/cmdx"
@@ -24,6 +23,7 @@ import (
 	"github.com/typesanitizer/happygo/common/errorx"
 	"github.com/typesanitizer/happygo/common/fsx"
 	"github.com/typesanitizer/happygo/common/logx"
+	"github.com/typesanitizer/happygo/common/timex"
 )
 
 // Env returns the current process environment.
@@ -109,12 +109,12 @@ func (runner CmdRunner) ExecAll(ctx logx.LogCtx, cmds ...cmdx.Cmd) error {
 	return cmdx.BaseRunnerExecAll(runner, ctx, cmds...)
 }
 
-func SystemClock() time.SystemClock {
+func TimestampClock() timex.TimestampClock {
 	return systemClock{}
 }
 
 type systemClock struct{}
 
-func (s systemClock) Now() time.SystemTime {
-	return time.NewSystemTime(stdlib_time.Now())
+func (s systemClock) GetTimestamp() timex.Timestamp {
+	return timex.NewTimestamp(stdlib_time.Now().UTC())
 }
