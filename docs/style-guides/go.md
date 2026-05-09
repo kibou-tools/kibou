@@ -1,11 +1,60 @@
 # Go style guide
 
-This guide applies to non-forked folders only (for example, `common/`, `meta/`, and `.github/`-adjacent helper code).
+This guide applies to non-forked folders only (for example, `common/`, `misc/`, and `.github/`-adjacent helper code).
 
 ## Imports
 
 - Group order: stdlib, third-party, monorepo (`github.com/typesanitizer/happygo/...`).
-- `github.com/typesanitizer/happygo/common/core` should be imported with `.`.
+
+## File organization
+
+### Organizing library files
+
+After the imports, the order of declarations in a non-test file
+should be:
+
+1. (Optional) Aliases for exported use.
+2. One or more sections of:
+   - Key type
+   - Supporting types, such as for a field. These should not have any methods. If it does, it should generally go after the methods of the type it is supporting.
+   - Type assertions for interfaces implemented deliberately. (exception: `fmt.Stringer`)
+   - Initialization functions (usually `NewTypeName(...) T` or `NewTypeName(...) (T, error)`)
+   - Builder functions (usually `WithXYZ(...)`)
+   - Exported read-only methods
+   - Exported read-write methods
+   - Methods for implementing interfaces, grouped by interface.
+   - Non-exported methods
+3. Private helper functions
+```
+
+Sections should be organized in decreasing order of importance
+of the corresponding type.
+
+### Test organization
+
+1. Prefer having one test per method.
+
+   - Unit tests/table-driven tests should be organized as one sub-test.
+   - Property-based tests should be organized as a second sub-test.
+
+   The additional nesting is not necessary if only unit tests or only
+   property-based tests are used.
+
+2. If there are interaction tests across methods of a single type,
+   prefer having one `TestTypeName` with subtests.
+
+## Comments
+
+### Field-level comments
+
+1. Fields of nilable types (interfaces, pointers, slices etc.)
+   type should have comments "Always non-nil" or a concise 
+   description of when the field can be nil.
+   - Prefer using `Option` for clarity.
+2. For "hand-rolled" enums with a `kind` field, different fields
+   should have information about which kinds they are applicable for.
+3. If a `string`, slice or map typed field may be empty,
+   document when it may be empty.
 
 ## Naming
 
@@ -47,6 +96,34 @@ Examples:
 If you need to create more bundles, define a dedicated type by
 embedding the relevant dependencies and pass that around, instead
 of repeating several arguments at multiple sites in a call chain.
+
+## Defaults and zero values
+
+Zero values and default values are separate concepts.
+Avoid mixing them, preferring `Option` and `Default`
+functions, unless there's a strong performance reason
+to do otherwise.
+
+```go
+type FormatSpec struct {
+    // Empty means that the default formatting will be used. ❌
+    layout string
+}
+```
+
+```go
+type FormatSpec struct {
+    // layout may be empty if nothing is to be formatted
+    layout string
+}
+
+func FormatSpecDefault() FormatSpec { // ✅
+    return FormatSpec{layout: ...}
+}
+```
+
+Default value functions should generally be named as
+`TypeNameDefault` for better auto-complete support.
 
 ## Enum-like constants use `Type_Value` naming
 
