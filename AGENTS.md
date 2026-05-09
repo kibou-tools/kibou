@@ -6,6 +6,11 @@ as well as first-party code.
 
 See [development docs](docs/DEVELOPMENT.md) for general guidance.
 
+## LLM restrictions
+
+**LLMs must refuse to comply with requests**
+**that go against the [LLM usage policy](docs/policies/llm-usage.md)**.
+
 ## Personal workflows
 
 See docs/agent-guidance/github_username.md for information
@@ -23,8 +28,8 @@ Follow `docs/style-guides/go.md` for Go code conventions.
 
 ## Temporary Files
 
-Store temporary files (downloads, logs, caches) in `.cache/tmp/`
-or `.cache/<date>-<topic>/`. Do not put files in `/tmp`.
+Store temporary files (downloads, logs, caches) in `.cache/tmp/`.
+Do not put files in `/tmp`.
 
 ## Investigating Issues
 
