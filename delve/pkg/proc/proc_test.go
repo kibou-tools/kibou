@@ -4455,10 +4455,6 @@ func TestIssue1795(t *testing.T) {
 	if !goversion.VersionAfterOrEqual(runtime.Version(), 1, 13) {
 		t.Skip("Test not relevant to Go < 1.13")
 	}
-	var doExecuteName = "regexp.(*Regexp).doExecute"
-	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 27) {
-		doExecuteName = "regexp.(*Regexp).find"
-	}
 	skipOn(t, "broken", "ppc64le")
 	withTestProcessArgs("issue1795", t, ".", []string{}, protest.EnableInlining|protest.EnableOptimization, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -4467,6 +4463,12 @@ func TestIssue1795(t *testing.T) {
 		assertLineNumber(p, t, 13, "wrong line number after Next,")
 	})
 	withTestProcessArgs("issue1795", t, ".", []string{}, protest.EnableInlining|protest.EnableOptimization, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
+		doExecuteName := "regexp.(*Regexp).doExecute"
+		// NOTE(kibou): Use the fixture producer version, not runtime.Version(),
+		// because stable/gotip CI jobs build fixtures with DELVE_TEST_GO.
+		if goversion.ProducerAfterOrEqual(p.BinInfo().Producer(), 1, 27) {
+			doExecuteName = "regexp.(*Regexp).find"
+		}
 		setFunctionBreakpoint(p, t, doExecuteName)
 		assertNoError(grp.Continue(), t, "Continue()")
 		assertLineNumber(p, t, 12, "wrong line number after Continue (1),")
