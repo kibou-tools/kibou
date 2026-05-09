@@ -16,7 +16,7 @@ import (
 	"github.com/typesanitizer/happygo/common/errorx"
 	"github.com/typesanitizer/happygo/common/fsx"
 	"github.com/typesanitizer/happygo/common/logx"
-	"github.com/typesanitizer/happygo/common/time"
+	"github.com/typesanitizer/happygo/common/timex"
 )
 
 type RunSyncPROptions struct {
@@ -63,7 +63,7 @@ func (p parsedSubtreeMetadata) validate() (subtreeMetadata, error) {
 	return subtreeMetadata{Dir: dir, LocalCommit: local, UpstreamCommit: upstream}, nil
 }
 
-func (ws Workspace) runSyncPR(ctx logx.LogCtx, clock time.SystemClock, projects []fsx.Name, options RunSyncPROptions) error {
+func (ws Workspace) runSyncPR(ctx logx.LogCtx, clock timex.TimestampClock, projects []fsx.Name, options RunSyncPROptions) error {
 	assert.Precondition(len(projects) > 0, "must sync 1+ projects")
 	base := options.Base.ValueOr("main")
 	for _, project := range projects {
@@ -74,12 +74,12 @@ func (ws Workspace) runSyncPR(ctx logx.LogCtx, clock time.SystemClock, projects 
 	return nil
 }
 
-func prTitleDatePattern() time.Pattern {
-	return time.NewPattern().Year().Fixed("-").Month().Fixed("-").Day()
+func prTitleDatePattern() timex.Pattern {
+	return timex.NewPattern().Year().Fixed("-").Month().Fixed("-").Day()
 }
 
 func runSyncPRProject(
-	ctx logx.LogCtx, runner cmdx.BaseRunner, clock time.SystemClock,
+	ctx logx.LogCtx, runner cmdx.BaseRunner, clock timex.TimestampClock,
 	repoRoot AbsPath, project fsx.Name, base string,
 ) error {
 	syncBranch := syncBranchPrefix + project.String()
@@ -126,7 +126,7 @@ func runSyncPRProject(
 		return err
 	}
 	title := fmt.Sprintf("chore(%s): Sync changes from upstream (%s)",
-		project, clock.Now().UTC().Format(prTitleDatePattern()))
+		project, clock.GetTimestamp().Format(prTitleDatePattern()))
 	body := formatPRBody(metadata.UpstreamCommit)
 	var prNumber int
 	if existing, ok := existingPR.Get(); ok {

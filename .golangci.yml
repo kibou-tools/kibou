@@ -65,7 +65,7 @@ linters:
         NoStdlibTime:
           files:
             - $all
-            - "!**/common/time/*.go"
+            - "!**/common/timex/*.go"
             - "!**/common/syscaps/*.go"
           list-mode: lax
           deny:
