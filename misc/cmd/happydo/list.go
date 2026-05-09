@@ -55,7 +55,7 @@ type ListOptions struct {
 }
 
 // List writes folder names matching the options, one per line.
-func (w Workspace) List(logger *logx.Logger, out io.Writer, opts ListOptions) error {
+func (w Workspace) List(logger logx.Logger, out io.Writer, opts ListOptions) error {
 	switch opts.Type {
 	case ListType_GoModules:
 		return w.listGoModules(logger, out, opts.Provenance)
@@ -64,7 +64,7 @@ func (w Workspace) List(logger *logx.Logger, out io.Writer, opts ListOptions) er
 	}
 }
 
-func (w Workspace) listGoModules(logger *logx.Logger, out io.Writer, provenance ListProvenance) error {
+func (w Workspace) listGoModules(logger logx.Logger, out io.Writer, provenance ListProvenance) error {
 	folders, err := w.goModules(logger, provenance)
 	if err != nil {
 		return err
@@ -77,7 +77,7 @@ func (w Workspace) listGoModules(logger *logx.Logger, out io.Writer, provenance 
 	return nil
 }
 
-func (w Workspace) goModules(logger *logx.Logger, provenance ListProvenance) ([]fsx.Name, error) {
+func (w Workspace) goModules(logger logx.Logger, provenance ListProvenance) ([]fsx.Name, error) {
 	rootRel := pathx.Dot()
 	var folders []fsx.Name
 	for entryRes := range w.FS.ReadDir(rootRel) {

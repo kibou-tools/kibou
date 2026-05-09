@@ -10,22 +10,21 @@ import (
 	"io"
 )
 
-// CmdLoggers returns line-oriented writers for command stdout and stderr streams.
-func (ctx LogCtx) CmdLoggers(command fmt.Stringer) (io.Writer, io.Writer) {
-	cmdLogger := ctx.With("cmd", command)
+type TraceLogger interface {
+	Trace(msg string, keyvals ...any)
+	GetLevel() Level
+}
 
-	stdout := io.Discard
-	if ctx.IsDebugEnabled() {
-		stdoutLogger := cmdLogger.With("stream", "stdout")
-		stdout = newLineLogger(func(msg []byte) {
-			stdoutLogger.Debug(string(msg))
-		})
+func CmdLoggers(logger TraceLogger, command fmt.Stringer) (io.Writer, io.Writer) {
+	if logger.GetLevel() > Level_Trace {
+		return io.Discard, io.Discard
 	}
-	stderrLogger := cmdLogger.With("stream", "stderr")
-	stderr := io.Writer(newLineLogger(func(msg []byte) {
-		stderrLogger.Info(string(msg))
-	}))
-
+	stdout := newLineLogger(func(msg []byte) {
+		logger.Trace(string(msg), "cmd", command, "stream", "stdout")
+	})
+	stderr := newLineLogger(func(msg []byte) {
+		logger.Trace(string(msg), "cmd", command, "stream", "stderr")
+	})
 	return stdout, stderr
 }
 

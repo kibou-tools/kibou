@@ -162,7 +162,7 @@ func main() {
 	}
 
 	if err := app.Run(context.Background(), os.Args); err != nil {
-		logger.Error(err)
+		logger.Error(err.Error())
 		os.Exit(1)
 	}
 }
