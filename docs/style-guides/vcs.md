@@ -22,12 +22,12 @@ We use a loose form of [conventional commits](https://www.conventionalcommits.or
 ```
 
 Reasonable values for `<type>` include `feat`, `fix`, `ci`, `docs`,
-`test`, `perf`, and `chore`.
+`test`, `perf`, `refactor` and (as a final fallback) `chore`.
 
-Avoid introducing extra types such as `style` or `refactor`.
+Avoid introducing other types.
 Use `chore` for maintenance work and as a fallback.
 
-Write the commit title in sentence case, and do not end the title with a period.
+Write the commit title in sentence case.
 
 For the description, keep it brief but do not omit it entirely.
 
