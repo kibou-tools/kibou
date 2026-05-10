@@ -7,8 +7,8 @@ package cmdx
 import (
 	"al.essio.dev/pkg/shellescape"
 
-	"github.com/typesanitizer/happygo/common/core/option"
-	"github.com/typesanitizer/happygo/common/core/pathx"
+	"code.kibou.tools/common/core/option"
+	"code.kibou.tools/common/core/pathx"
 )
 
 // Cmd describes a command invocation.

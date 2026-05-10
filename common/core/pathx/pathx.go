@@ -15,9 +15,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/core/option"
-	"github.com/typesanitizer/happygo/common/fsx/fsx_name"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/core/option"
+	"code.kibou.tools/common/fsx/fsx_name"
 )
 
 // AbsPath carries an absolute path that has gone through [LexicallyNormalize].

@@ -5,7 +5,7 @@
 // Package core provides foundational generic types.
 package core
 
-import "github.com/typesanitizer/happygo/common/core/option"
+import "code.kibou.tools/common/core/option"
 
 // Option represents a value that may or may not be present.
 type Option[T any] = option.Option[T]

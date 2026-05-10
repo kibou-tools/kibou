@@ -11,10 +11,10 @@ import (
 
 	"github.com/boyter/gocodewalker/go-gitignore"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/core/option"
-	"github.com/typesanitizer/happygo/common/core/pathx"
-	"github.com/typesanitizer/happygo/common/source_code"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/core/option"
+	"code.kibou.tools/common/core/pathx"
+	"code.kibou.tools/common/source_code"
 )
 
 // WalkErrorKind classifies a [WalkError].

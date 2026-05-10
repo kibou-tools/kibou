@@ -7,7 +7,7 @@ package config
 import (
 	"strings"
 
-	"github.com/typesanitizer/happygo/common/errorx"
+	"code.kibou.tools/common/errorx"
 )
 
 // WorkspaceConfigJSON is the top-level JSON input.

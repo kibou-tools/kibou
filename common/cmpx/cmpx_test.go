@@ -7,8 +7,8 @@ package cmpx_test
 import (
 	"testing"
 
-	"github.com/typesanitizer/happygo/common/check"
-	"github.com/typesanitizer/happygo/common/cmpx"
+	"code.kibou.tools/common/check"
+	"code.kibou.tools/common/cmpx"
 )
 
 func TestCompareBool(t *testing.T) {

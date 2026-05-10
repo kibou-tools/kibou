@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/check"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/check"
 )
 
 //nolint:exhaustruct // concise test expectations for RootCauseResult are clearer here

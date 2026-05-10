@@ -81,19 +81,19 @@ linters:
             - "!**/*_testkit/*.go"
           list-mode: lax
           deny:
-            - pkg: "github.com/typesanitizer/happygo/common/syscaps$"
+            - pkg: "code.kibou.tools/common/syscaps$"
               desc: "ambient system capabilities should only be accessed via common/syscaps at program edges or in tests"
         NoCommonCoreInsideCommon:
           files:
             - "common/**/*.go"
           list-mode: lax
           deny:
-            - pkg: "github.com/typesanitizer/happygo/common/core$"
+            - pkg: "code.kibou.tools/common/core$"
               desc: "common/core is an aggregate convenience package for other modules; code under common/ should import smaller common/core/* packages directly"
     importas:
       no-unaliased: true
       alias:
-        - pkg: github.com/typesanitizer/happygo/common/(core|check/prelude)
+        - pkg: code.kibou.tools/common/(core|check/prelude)
           alias: .
     exhaustruct:
       # NOTE: Even with allow-empty-returns: false, exhaustruct unconditionally

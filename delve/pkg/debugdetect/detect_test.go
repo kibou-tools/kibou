@@ -48,7 +48,7 @@ func TestIntegration_WaitForDebugger(t *testing.T) {
 	fixturesDir := protest.FindFixturesDir()
 	fixtureSrc := filepath.Join(fixturesDir, "waitfordebugger.go")
 
-	// NOTE(happygo): Use :0 to let the OS pick a free port. happygo runs
+	// NOTE(kibou): Use :0 to let the OS pick a free port. kibou runs
 	// Delve tests with plain `go test ./...` (concurrent packages), so
 	// hard-coded ports cause bind collisions.
 	cmd := exec.Command(dlvbin, "debug", fixtureSrc, "--headless", "--continue", "--accept-multiclient", "--listen", "127.0.0.1:0")

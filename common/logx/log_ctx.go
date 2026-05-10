@@ -7,7 +7,7 @@ package logx
 import (
 	"context"
 
-	"github.com/typesanitizer/happygo/common/assert"
+	"code.kibou.tools/common/assert"
 )
 
 // LogCtx carries a logger and context together.

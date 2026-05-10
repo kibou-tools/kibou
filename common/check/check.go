@@ -13,7 +13,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/typesanitizer/happygo/common/core/pathx"
+	"code.kibou.tools/common/core/pathx"
 )
 
 func init() {

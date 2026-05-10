@@ -8,8 +8,8 @@ package option
 import (
 	"cmp"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/cmpx"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/cmpx"
 )
 
 // Option represents a value that may or may not be present.

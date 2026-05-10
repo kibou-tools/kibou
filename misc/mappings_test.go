@@ -11,16 +11,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/typesanitizer/happygo/common/fsx"
+	"code.kibou.tools/common/fsx"
 	"gopkg.in/yaml.v3"
 
-	"github.com/typesanitizer/happygo/common/check"
-	. "github.com/typesanitizer/happygo/common/check/prelude"
-	"github.com/typesanitizer/happygo/common/collections"
-	. "github.com/typesanitizer/happygo/common/core"
-	"github.com/typesanitizer/happygo/common/iterx"
-	"github.com/typesanitizer/happygo/common/syscaps"
-	"github.com/typesanitizer/happygo/misc/internal/config"
+	"code.kibou.tools/common/check"
+	. "code.kibou.tools/common/check/prelude"
+	"code.kibou.tools/common/collections"
+	. "code.kibou.tools/common/core"
+	"code.kibou.tools/common/iterx"
+	"code.kibou.tools/common/syscaps"
+	"code.kibou.tools/misc/internal/config"
 )
 
 func TestWorkspaceConfig(t *testing.T) {

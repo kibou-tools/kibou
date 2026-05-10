@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/typesanitizer/happygo/common/check"
-	. "github.com/typesanitizer/happygo/common/check/prelude"
-	. "github.com/typesanitizer/happygo/common/core"
+	"code.kibou.tools/common/check"
+	. "code.kibou.tools/common/check/prelude"
+	. "code.kibou.tools/common/core"
 )
 
 func TestParseSingleRemoteRef(t *testing.T) {

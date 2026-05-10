@@ -8,8 +8,8 @@ package source_code
 import (
 	"fmt"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/core/pathx"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/core/pathx"
 )
 
 // Position identifies a 1-based line and column within a file.

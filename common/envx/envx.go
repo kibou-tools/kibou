@@ -10,11 +10,11 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/collections"
-	"github.com/typesanitizer/happygo/common/core/op"
-	"github.com/typesanitizer/happygo/common/core/option"
-	"github.com/typesanitizer/happygo/common/core/pair"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/collections"
+	"code.kibou.tools/common/core/op"
+	"code.kibou.tools/common/core/option"
+	"code.kibou.tools/common/core/pair"
 )
 
 // Env is an immutable environment mapping.

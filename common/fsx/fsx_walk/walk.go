@@ -13,14 +13,14 @@ import (
 
 	"github.com/boyter/gocodewalker/go-gitignore"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/core/option"
-	"github.com/typesanitizer/happygo/common/core/pathx"
-	"github.com/typesanitizer/happygo/common/core/result"
-	"github.com/typesanitizer/happygo/common/errorx"
-	"github.com/typesanitizer/happygo/common/fsx"
-	"github.com/typesanitizer/happygo/common/iterx"
-	"github.com/typesanitizer/happygo/common/source_code"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/core/option"
+	"code.kibou.tools/common/core/pathx"
+	"code.kibou.tools/common/core/result"
+	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/common/fsx"
+	"code.kibou.tools/common/iterx"
+	"code.kibou.tools/common/source_code"
 )
 
 // WalkNonDet returns an iterator over the entries in the [root] directory.

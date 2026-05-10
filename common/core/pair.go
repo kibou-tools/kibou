@@ -4,7 +4,7 @@
 
 package core
 
-import "github.com/typesanitizer/happygo/common/core/pair"
+import "code.kibou.tools/common/core/pair"
 
 // Pair holds two values of (potentially different) types.
 type Pair[A, B any] = pair.Pair[A, B]

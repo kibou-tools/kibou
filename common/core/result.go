@@ -4,7 +4,7 @@
 
 package core
 
-import "github.com/typesanitizer/happygo/common/core/result"
+import "code.kibou.tools/common/core/result"
 
 // Result holds either a value of type T or an error.
 //

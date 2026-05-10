@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/typesanitizer/happygo/common/assert"
+	"code.kibou.tools/common/assert"
 )
 
 // --- Aliases for external use ---

@@ -55,7 +55,7 @@ package goexperiment
 //
 // If you change this struct definition, run "go generate".
 type Flags struct {
-	// HappyEnum enables support for sum types (aka enums) in happygo.
+	// HappyEnum enables support for sum types (aka enums) in kibou.
 	HappyEnum bool
 
 	FieldTrack        bool

@@ -16,7 +16,7 @@ type Instant struct {
 	// Right now, //go:linkname is already forbidden for
 	// some files, see go/src/cmd/link/internal/loader/loader.go.
 	//
-	// TODO(issue: https://github.com/typesanitizer/happygo/issues/160):
+	// TODO(issue: https://github.com/kibou-tools/kibou/issues/160):
 	// In the future, we should replace this, even if that means
 	// directly doing syscalls ourselves as a fully supported
 	// interface.

@@ -351,16 +351,16 @@ const (
 )
 
 func trimLimit() (time.Duration, error) {
-	value := os.Getenv("HAPPYGO_TRIM_CACHE_LIMIT")
+	value := os.Getenv("KIBOU_TRIM_CACHE_LIMIT")
 	if value == "" {
 		return defaultTrimLimit, nil
 	}
 	limit, err := time.ParseDuration(value)
 	if err != nil {
-		return 0, fmt.Errorf("invalid HAPPYGO_TRIM_CACHE_LIMIT: %w", err)
+		return 0, fmt.Errorf("invalid KIBOU_TRIM_CACHE_LIMIT: %w", err)
 	}
 	if limit < 0 {
-		return 0, fmt.Errorf("invalid HAPPYGO_TRIM_CACHE_LIMIT %q: must be non-negative", value)
+		return 0, fmt.Errorf("invalid KIBOU_TRIM_CACHE_LIMIT %q: must be non-negative", value)
 	}
 	return limit, nil
 }

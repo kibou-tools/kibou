@@ -7,8 +7,8 @@ package collections
 import (
 	"testing"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/check"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/check"
 )
 
 func TestInsert(t *testing.T) {

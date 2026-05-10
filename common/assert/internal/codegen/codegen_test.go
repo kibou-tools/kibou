@@ -11,10 +11,10 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/typesanitizer/happygo/common/check"
-	"github.com/typesanitizer/happygo/common/cmdx"
-	"github.com/typesanitizer/happygo/common/logx"
-	"github.com/typesanitizer/happygo/common/syscaps"
+	"code.kibou.tools/common/check"
+	"code.kibou.tools/common/cmdx"
+	"code.kibou.tools/common/logx"
+	"code.kibou.tools/common/syscaps"
 )
 
 func TestAssertInliningDiagnostics(t *testing.T) {
@@ -27,8 +27,8 @@ func TestAssertInliningDiagnostics(t *testing.T) {
 		"test",
 		"-c",
 		"-o", outPath,
-		"-gcflags=github.com/typesanitizer/happygo/common/assert=-m=2",
-		"-gcflags=github.com/typesanitizer/happygo/common/assert/internal/codegen=-m=2",
+		"-gcflags=code.kibou.tools/common/assert=-m=2",
+		"-gcflags=code.kibou.tools/common/assert/internal/codegen=-m=2",
 		".",
 	)
 	ctx := logx.NewLogCtx(context.Background(), logx.NewLogger(io.Discard, logx.ColorSupport_Disable))

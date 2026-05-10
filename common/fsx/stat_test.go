@@ -12,14 +12,14 @@ import (
 
 	"pgregory.net/rapid"
 
-	"github.com/typesanitizer/happygo/common/check"
-	. "github.com/typesanitizer/happygo/common/check/prelude"
-	"github.com/typesanitizer/happygo/common/core/pathx"
-	"github.com/typesanitizer/happygo/common/core/pathx/pathx_testkit"
-	"github.com/typesanitizer/happygo/common/errorx"
-	"github.com/typesanitizer/happygo/common/fsx"
-	"github.com/typesanitizer/happygo/common/fsx/fsx_testkit"
-	"github.com/typesanitizer/happygo/common/syscaps"
+	"code.kibou.tools/common/check"
+	. "code.kibou.tools/common/check/prelude"
+	"code.kibou.tools/common/core/pathx"
+	"code.kibou.tools/common/core/pathx/pathx_testkit"
+	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/common/fsx"
+	"code.kibou.tools/common/fsx/fsx_testkit"
+	"code.kibou.tools/common/syscaps"
 )
 
 func TestFSStat(t *testing.T) {

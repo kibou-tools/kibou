@@ -13,16 +13,16 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/typesanitizer/happygo/common/cmdx"
-	"github.com/typesanitizer/happygo/common/collections"
-	. "github.com/typesanitizer/happygo/common/core"
-	"github.com/typesanitizer/happygo/common/errorx"
-	"github.com/typesanitizer/happygo/common/fsx"
-	"github.com/typesanitizer/happygo/common/fsx/fsx_name"
-	"github.com/typesanitizer/happygo/common/logx"
-	"github.com/typesanitizer/happygo/common/syscaps"
-	"github.com/typesanitizer/happygo/common/timex"
-	"github.com/typesanitizer/happygo/misc/internal/config"
+	"code.kibou.tools/common/cmdx"
+	"code.kibou.tools/common/collections"
+	. "code.kibou.tools/common/core"
+	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/common/fsx"
+	"code.kibou.tools/common/fsx/fsx_name"
+	"code.kibou.tools/common/logx"
+	"code.kibou.tools/common/syscaps"
+	"code.kibou.tools/common/timex"
+	"code.kibou.tools/misc/internal/config"
 )
 
 const syncBranchPrefix = "merge-bot/sync/"
@@ -57,7 +57,7 @@ func main() {
 		return newWorkspaceFromGit(runner)
 	})
 	app := &cli.Command{
-		Name:  "meta",
+		Name:  "kido",
 		Usage: "Perform workspace-related administrative tasks",
 		Commands: []*cli.Command{
 			{

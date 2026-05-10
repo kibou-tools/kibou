@@ -10,9 +10,9 @@ import (
 
 	"pgregory.net/rapid"
 
-	"github.com/typesanitizer/happygo/common/check"
-	"github.com/typesanitizer/happygo/common/core/op"
-	"github.com/typesanitizer/happygo/common/iterx"
+	"code.kibou.tools/common/check"
+	"code.kibou.tools/common/core/op"
+	"code.kibou.tools/common/iterx"
 )
 
 func TestMonotoneMap(t *testing.T) {

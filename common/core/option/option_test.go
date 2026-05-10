@@ -7,9 +7,9 @@ package option_test
 import (
 	"testing"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/check"
-	. "github.com/typesanitizer/happygo/common/core/option"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/check"
+	. "code.kibou.tools/common/core/option"
 )
 
 func TestOption(t *testing.T) {

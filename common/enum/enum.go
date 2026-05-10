@@ -4,7 +4,7 @@
 
 package enum
 
-import "github.com/typesanitizer/happygo/common/assert"
+import "code.kibou.tools/common/assert"
 
 // --- Aliases for external use ---
 

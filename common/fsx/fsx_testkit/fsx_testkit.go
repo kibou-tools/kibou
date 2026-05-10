@@ -11,12 +11,12 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/typesanitizer/happygo/common/check"
-	"github.com/typesanitizer/happygo/common/core/pathx"
-	"github.com/typesanitizer/happygo/common/core/result"
-	"github.com/typesanitizer/happygo/common/errorx"
-	"github.com/typesanitizer/happygo/common/fsx"
-	"github.com/typesanitizer/happygo/common/syscaps"
+	"code.kibou.tools/common/check"
+	"code.kibou.tools/common/core/pathx"
+	"code.kibou.tools/common/core/result"
+	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/common/fsx"
+	"code.kibou.tools/common/syscaps"
 )
 
 // TempDirFS returns a host FS rooted at a new test temporary directory.

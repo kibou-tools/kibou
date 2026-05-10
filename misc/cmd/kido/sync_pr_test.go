@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/typesanitizer/happygo/common/check"
-	"github.com/typesanitizer/happygo/common/fsx"
+	"code.kibou.tools/common/check"
+	"code.kibou.tools/common/fsx"
 )
 
 func TestSyncMergeBodyAllTrailers(t *testing.T) {

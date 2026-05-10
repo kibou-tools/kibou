@@ -7,7 +7,7 @@ package errorx
 import (
 	"fmt"
 
-	"github.com/typesanitizer/happygo/common/assert"
+	"code.kibou.tools/common/assert"
 )
 
 // Code classifies a structured non-stack error.

@@ -35,7 +35,7 @@ taxonomy.
 
 #### Policy
 
-In the happygo monorepo, we assume drive letters are ASCII letters (A-Z,
+In the kibou monorepo, we assume drive letters are ASCII letters (A-Z,
 case-insensitive). While users can technically assign non-ASCII drive letters
 via NT APIs, this is rare enough that we do not handle it.
 

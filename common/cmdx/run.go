@@ -5,8 +5,8 @@
 package cmdx
 
 import (
-	"github.com/typesanitizer/happygo/common/envx"
-	"github.com/typesanitizer/happygo/common/logx"
+	"code.kibou.tools/common/envx"
+	"code.kibou.tools/common/logx"
 )
 
 // RunOutput contains output captured from a command invocation.

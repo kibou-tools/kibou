@@ -8,7 +8,7 @@ import (
 	"strings"
 	stdlib_time "time"
 
-	"github.com/typesanitizer/happygo/common/assert"
+	"code.kibou.tools/common/assert"
 )
 
 type Timestamp struct {

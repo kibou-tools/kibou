@@ -10,8 +10,8 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/typesanitizer/happygo/common/core/op"
-	"github.com/typesanitizer/happygo/common/errorx"
+	"code.kibou.tools/common/core/op"
+	"code.kibou.tools/common/errorx"
 )
 
 // TrySymlink creates a symlink named link pointing at target if the platform
