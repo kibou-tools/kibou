@@ -7,12 +7,12 @@ package main
 import (
 	"strings"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/cmdx"
-	. "github.com/typesanitizer/happygo/common/core"
-	"github.com/typesanitizer/happygo/common/errorx"
-	"github.com/typesanitizer/happygo/common/fsx"
-	"github.com/typesanitizer/happygo/common/logx"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/cmdx"
+	. "code.kibou.tools/common/core"
+	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/common/fsx"
+	"code.kibou.tools/common/logx"
 )
 
 type RunSyncBranchOptions struct {

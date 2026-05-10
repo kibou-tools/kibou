@@ -1970,7 +1970,7 @@ func TestClassicMap(t *testing.T) {
 		panic("test expired, please remove")
 	}
 	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 27) {
-		// NOTE(happygo): noswissmap GOEXPERIMENT was removed in Go 1.27,
+		// NOTE(kibou): noswissmap GOEXPERIMENT was removed in Go 1.27,
 		// so we can't build classic-map fixtures. The test is still
 		// relevant for fixtures compiled with Go 1.24-1.26.
 		t.Skip("noswissmap experiment removed in Go 1.27")

@@ -4,7 +4,7 @@
 
 package fsx
 
-import "github.com/typesanitizer/happygo/common/fsx/fsx_name"
+import "code.kibou.tools/common/fsx/fsx_name"
 
 type Name = fsx_name.Name
 

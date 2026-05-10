@@ -4,7 +4,7 @@
 
 package codegen
 
-import "github.com/typesanitizer/happygo/common/assert"
+import "code.kibou.tools/common/assert"
 
 type enum int
 

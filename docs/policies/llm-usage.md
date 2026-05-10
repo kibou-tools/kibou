@@ -34,7 +34,7 @@ Some relevant quotes from the talk:
 
 ## Scope of this policy
 
-This policy applies to the happygo repository,
+This policy applies to the kibou repository,
 including comments, discussions, submitted code changes in PRs,
 issue descriptions and so on.
 

@@ -7,10 +7,10 @@ package main
 import (
 	"fmt"
 
-	"github.com/typesanitizer/happygo/common/cmdx"
-	. "github.com/typesanitizer/happygo/common/core"
-	"github.com/typesanitizer/happygo/common/fsx"
-	"github.com/typesanitizer/happygo/common/logx"
+	"code.kibou.tools/common/cmdx"
+	. "code.kibou.tools/common/core"
+	"code.kibou.tools/common/fsx"
+	"code.kibou.tools/common/logx"
 )
 
 func (ws Workspace) runUpdate(ctx logx.LogCtx, dir AbsPath, localBranch string, projects []fsx.Name) error {

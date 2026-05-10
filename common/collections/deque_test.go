@@ -10,8 +10,8 @@ import (
 
 	"pgregory.net/rapid"
 
-	"github.com/typesanitizer/happygo/common/check"
-	"github.com/typesanitizer/happygo/common/collections"
+	"code.kibou.tools/common/check"
+	"code.kibou.tools/common/collections"
 )
 
 // DequeModel is a linearly growing buffer model for Deque. It stores elements

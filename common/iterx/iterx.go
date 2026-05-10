@@ -7,10 +7,10 @@ package iterx
 import (
 	"iter"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/core/option"
-	"github.com/typesanitizer/happygo/common/core/pair"
-	"github.com/typesanitizer/happygo/common/core/result"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/core/option"
+	"code.kibou.tools/common/core/pair"
+	"code.kibou.tools/common/core/result"
 )
 
 func Empty[T any]() iter.Seq[T] {

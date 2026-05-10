@@ -100,7 +100,7 @@ func TestBuild(t *testing.T) {
 
 	buildtestdir := filepath.Join(fixtures, "buildtest")
 
-	// NOTE(happygo): Use :0 to let the OS pick a free port. happygo runs
+	// NOTE(kibou): Use :0 to let the OS pick a free port. kibou runs
 	// Delve tests with plain `go test ./...` (concurrent packages), so
 	// hard-coded ports cause bind collisions.
 	cmd := exec.Command(dlvbin, "debug", "--headless=true", "--listen=127.0.0.1:0", "--api-version=2", "--backend="+testBackend, "--log", "--log-output=debugger,rpc")

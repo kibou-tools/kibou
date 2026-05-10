@@ -15,13 +15,13 @@ import (
 
 	"pgregory.net/rapid"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/check"
-	"github.com/typesanitizer/happygo/common/core/option"
-	"github.com/typesanitizer/happygo/common/core/pathx"
-	"github.com/typesanitizer/happygo/common/core/pathx/pathx_testkit"
-	"github.com/typesanitizer/happygo/common/errorx"
-	"github.com/typesanitizer/happygo/common/iterx"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/check"
+	"code.kibou.tools/common/core/option"
+	"code.kibou.tools/common/core/pathx"
+	"code.kibou.tools/common/core/pathx/pathx_testkit"
+	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/common/iterx"
 )
 
 func TestMakeRelativeTo(t *testing.T) {

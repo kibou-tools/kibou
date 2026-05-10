@@ -7,7 +7,7 @@ package fsx
 import (
 	"os"
 
-	"github.com/typesanitizer/happygo/common/core/pathx"
+	"code.kibou.tools/common/core/pathx"
 )
 
 // Stat returns file info for the given root-relative path.

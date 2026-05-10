@@ -11,10 +11,10 @@ import (
 	"fmt"
 	"iter"
 
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/core/option"
+	"code.kibou.tools/common/iterx"
 	cockroach "github.com/cockroachdb/errors" //nolint:depguard // In designated wrapper package
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/core/option"
-	"github.com/typesanitizer/happygo/common/iterx"
 )
 
 // IncludeStackTrace controls whether a stack trace is captured when creating an error.

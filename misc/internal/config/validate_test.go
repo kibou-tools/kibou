@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/typesanitizer/happygo/common/check"
-	. "github.com/typesanitizer/happygo/common/check/prelude"
+	"code.kibou.tools/common/check"
+	. "code.kibou.tools/common/check/prelude"
 )
 
 func validConfig() WorkspaceConfigJSON {

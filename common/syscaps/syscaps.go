@@ -15,15 +15,15 @@ import (
 
 	"github.com/spf13/afero" //nolint:depguard // syscaps is the ambient-authority boundary
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/cmdx"
-	"github.com/typesanitizer/happygo/common/core/pair"
-	"github.com/typesanitizer/happygo/common/core/pathx"
-	"github.com/typesanitizer/happygo/common/envx"
-	"github.com/typesanitizer/happygo/common/errorx"
-	"github.com/typesanitizer/happygo/common/fsx"
-	"github.com/typesanitizer/happygo/common/logx"
-	"github.com/typesanitizer/happygo/common/timex"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/cmdx"
+	"code.kibou.tools/common/core/pair"
+	"code.kibou.tools/common/core/pathx"
+	"code.kibou.tools/common/envx"
+	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/common/fsx"
+	"code.kibou.tools/common/logx"
+	"code.kibou.tools/common/timex"
 )
 
 // Env returns the current process environment.

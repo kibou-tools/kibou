@@ -9,8 +9,8 @@ import (
 	"iter"
 	"sort"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/core/op"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/core/op"
 )
 
 // Set is a basic mutable set.

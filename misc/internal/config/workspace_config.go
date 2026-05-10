@@ -8,8 +8,8 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/typesanitizer/happygo/common/errorx"
-	"github.com/typesanitizer/happygo/common/fsx"
+	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/common/fsx"
 )
 
 // WorkspaceConfig is the validated in-memory repository configuration.

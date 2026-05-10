@@ -14,16 +14,16 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
-	"github.com/typesanitizer/happygo/common/check"
-	. "github.com/typesanitizer/happygo/common/check/prelude"
-	"github.com/typesanitizer/happygo/common/core/option"
-	"github.com/typesanitizer/happygo/common/core/pathx"
-	"github.com/typesanitizer/happygo/common/core/result"
-	"github.com/typesanitizer/happygo/common/fsx/fsx_testkit"
-	"github.com/typesanitizer/happygo/common/fsx/fsx_walk"
-	"github.com/typesanitizer/happygo/common/iterx"
-	"github.com/typesanitizer/happygo/common/source_code"
-	"github.com/typesanitizer/happygo/common/syscaps"
+	"code.kibou.tools/common/check"
+	. "code.kibou.tools/common/check/prelude"
+	"code.kibou.tools/common/core/option"
+	"code.kibou.tools/common/core/pathx"
+	"code.kibou.tools/common/core/result"
+	"code.kibou.tools/common/fsx/fsx_testkit"
+	"code.kibou.tools/common/fsx/fsx_walk"
+	"code.kibou.tools/common/iterx"
+	"code.kibou.tools/common/source_code"
+	"code.kibou.tools/common/syscaps"
 )
 
 type WalkResultSeq = iter.Seq[result.Result[fsx_walk.FSWalkEntry]]

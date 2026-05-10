@@ -123,7 +123,7 @@ func TestLineEdits(t *testing.T) {
 func TestToUnified(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip(`
-// NOTE(happygo): LUCI Windows builders seem to skip this test
+// NOTE(kibou): LUCI Windows builders seem to skip this test
 // because patch.exe is not on PATH. However, the presence of
 // patch.exe on GHA Windows runners causes this test to run,
 // which leads to a failure. So adding an explicit skip below.

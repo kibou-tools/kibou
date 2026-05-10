@@ -4,7 +4,7 @@
 
 package collections
 
-import "github.com/typesanitizer/happygo/common/assert"
+import "code.kibou.tools/common/assert"
 
 // Stack is a simple LIFO stack.
 type Stack[T any] struct {

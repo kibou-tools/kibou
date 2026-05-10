@@ -9,12 +9,12 @@ import (
 	"io"
 	"slices"
 
-	. "github.com/typesanitizer/happygo/common/core"
-	"github.com/typesanitizer/happygo/common/core/pathx"
-	"github.com/typesanitizer/happygo/common/errorx"
-	"github.com/typesanitizer/happygo/common/fsx"
-	"github.com/typesanitizer/happygo/common/logx"
-	"github.com/typesanitizer/happygo/misc/internal/config"
+	. "code.kibou.tools/common/core"
+	"code.kibou.tools/common/core/pathx"
+	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/common/fsx"
+	"code.kibou.tools/common/logx"
+	"code.kibou.tools/misc/internal/config"
 )
 
 func loadWorkspaceConfig(repoFS fsx.FS) (_ config.WorkspaceConfig, retErr error) {

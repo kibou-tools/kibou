@@ -4,7 +4,7 @@
 
 package core
 
-import "github.com/typesanitizer/happygo/common/core/pathx"
+import "code.kibou.tools/common/core/pathx"
 
 // Path types for manipulating host platform paths.
 // See the pathx package for details.

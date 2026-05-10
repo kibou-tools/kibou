@@ -1,4 +1,4 @@
-module github.com/typesanitizer/happygo/misc
+module code.kibou.tools/misc
 
 go 1.24.0
 

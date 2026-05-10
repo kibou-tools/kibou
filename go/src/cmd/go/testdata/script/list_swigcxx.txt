@@ -3,7 +3,7 @@
 [!exec:swig] skip
 [!exec:g++] skip
 [!cgo] skip
-# NOTE(happygo): This test is not run on Windows upstream because swig
+# NOTE(kibou): This test is not run on Windows upstream because swig
 # is not installed on LUCI Windows builders. On GHA Windows, swig is
 # available but the test fails because $GOCACHE backslashes are
 # interpreted as regex escapes in the stdout pattern match.

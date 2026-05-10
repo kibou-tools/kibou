@@ -11,7 +11,7 @@ import (
 
 	"pgregory.net/rapid"
 
-	"github.com/typesanitizer/happygo/common/core/pathx"
+	"code.kibou.tools/common/core/pathx"
 )
 
 // ComponentGen generates a short, safe-looking path component.

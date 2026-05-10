@@ -8,7 +8,7 @@ import (
 	"iter"
 	"math"
 
-	"github.com/typesanitizer/happygo/common/assert"
+	"code.kibou.tools/common/assert"
 )
 
 // Deque is a double-ended queue implemented as a growable

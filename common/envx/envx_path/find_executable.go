@@ -13,11 +13,11 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/core/pathx"
-	"github.com/typesanitizer/happygo/common/envx"
-	"github.com/typesanitizer/happygo/common/errorx"
-	"github.com/typesanitizer/happygo/common/fsx"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/core/pathx"
+	"code.kibou.tools/common/envx"
+	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/common/fsx"
 )
 
 // NotExecutableErr indicates a candidate file exists but is not executable.

@@ -13,17 +13,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/check"
-	. "github.com/typesanitizer/happygo/common/check/prelude"
-	"github.com/typesanitizer/happygo/common/core/pathx"
-	"github.com/typesanitizer/happygo/common/envx"
-	"github.com/typesanitizer/happygo/common/envx/envx_path"
-	"github.com/typesanitizer/happygo/common/errorx"
-	"github.com/typesanitizer/happygo/common/fsx"
-	"github.com/typesanitizer/happygo/common/fsx/fsx_testkit"
-	"github.com/typesanitizer/happygo/common/iterx"
-	"github.com/typesanitizer/happygo/common/syscaps"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/check"
+	. "code.kibou.tools/common/check/prelude"
+	"code.kibou.tools/common/core/pathx"
+	"code.kibou.tools/common/envx"
+	"code.kibou.tools/common/envx/envx_path"
+	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/common/fsx"
+	"code.kibou.tools/common/fsx/fsx_testkit"
+	"code.kibou.tools/common/iterx"
+	"code.kibou.tools/common/syscaps"
 )
 
 func TestFindExecutable(t *testing.T) {

@@ -5,7 +5,7 @@
 // Package prelude provides terse test helpers intended for dot-import in tests.
 package prelude
 
-import "github.com/typesanitizer/happygo/common/check"
+import "code.kibou.tools/common/check"
 
 // Do turns a (T, error) pair into a harness-applied extractor.
 func Do[T any](value T, err error) func(check.BasicHarness) T {

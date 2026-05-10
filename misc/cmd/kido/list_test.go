@@ -9,13 +9,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/typesanitizer/happygo/common/check"
-	"github.com/typesanitizer/happygo/common/envx"
-	"github.com/typesanitizer/happygo/common/fsx"
-	"github.com/typesanitizer/happygo/common/fsx/fsx_testkit"
-	"github.com/typesanitizer/happygo/common/logx"
-	"github.com/typesanitizer/happygo/common/syscaps"
-	"github.com/typesanitizer/happygo/misc/internal/config"
+	"code.kibou.tools/common/check"
+	"code.kibou.tools/common/envx"
+	"code.kibou.tools/common/fsx"
+	"code.kibou.tools/common/fsx/fsx_testkit"
+	"code.kibou.tools/common/logx"
+	"code.kibou.tools/common/syscaps"
+	"code.kibou.tools/misc/internal/config"
 )
 
 func TestList(t *testing.T) {

@@ -288,7 +288,7 @@ func ProducerAfterOrEqual(producer string, major, minor int) bool {
 	if ver.IsOldDevel() {
 		return true
 	}
-	// NOTE(happygo): Fix this for consistency with VersionAfterOrEqual.
+	// NOTE(kibou): Fix this for consistency with VersionAfterOrEqual.
 	// Otherwise, as of Jan 15 2026, recent gotip builds with 1.26devel
 	// get interpreted as being lower than < 1.26, causing TestGotoA1
 	// to fail for arm64.

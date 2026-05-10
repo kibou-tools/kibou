@@ -6,7 +6,7 @@
 // an error.
 package result
 
-import "github.com/typesanitizer/happygo/common/assert"
+import "code.kibou.tools/common/assert"
 
 // Result holds either a value of type T or an error.
 //

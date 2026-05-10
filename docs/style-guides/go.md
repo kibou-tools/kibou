@@ -4,7 +4,7 @@ This guide applies to non-forked folders only (for example, `common/`, `misc/`, 
 
 ## Imports
 
-- Group order: stdlib, third-party, monorepo (`github.com/typesanitizer/happygo/...`).
+- Group order: stdlib, third-party, monorepo (`code.kibou.tools/...`).
 
 ## File organization
 

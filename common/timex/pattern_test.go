@@ -8,7 +8,7 @@ import (
 	"testing"
 	stdlib_time "time"
 
-	"github.com/typesanitizer/happygo/common/check"
+	"code.kibou.tools/common/check"
 )
 
 func TestPatternFormatsDate(t *testing.T) {

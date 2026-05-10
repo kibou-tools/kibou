@@ -112,7 +112,7 @@ jobs:
         run: |
           export GOROOT="$PWD/go"
           export PATH="$GOROOT/bin:$PATH"
-          patterns=$(go run ./misc/cmd/happydo list --type=go-module --provenance=first-party | sed 's|.*|./&/...|')
+          patterns=$(go run ./misc/cmd/kido list --type=go-module --provenance=first-party | sed 's|.*|./&/...|')
           go test -race $patterns
 
   lint-first-party:
@@ -135,7 +135,7 @@ jobs:
           export GOROOT="$PWD/go"
           export PATH="$GOROOT/bin:$PATH"
           export CGO_ENABLED=0
-          patterns=$(go run ./misc/cmd/happydo list --type=go-module --provenance=first-party | sed 's|.*|./&/...|')
+          patterns=$(go run ./misc/cmd/kido list --type=go-module --provenance=first-party | sed 's|.*|./&/...|')
           # Version is pinned via the tool dependency in common/go.mod;
           # see NOTE(id: workspace-tool-directives).
           go tool golangci-lint run $patterns
@@ -158,7 +158,7 @@ jobs:
         with:
           go-version: 1.25.x
           # setup-go cache warns when GOCACHE is customized; we manage caching explicitly.
-          # See https://github.com/typesanitizer/happygo/actions/runs/20907489161/job/60063662688
+          # See https://github.com/kibou-tools/kibou/actions/runs/20907489161/job/60063662688
           cache: false
       - name: Capture stable GOROOT
         id: stable-goroot

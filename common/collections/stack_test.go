@@ -7,11 +7,11 @@ package collections_test
 import (
 	"slices"
 	"testing"
-	
+
 	"pgregory.net/rapid"
 
-	"github.com/typesanitizer/happygo/common/check"
-	"github.com/typesanitizer/happygo/common/collections"
+	"code.kibou.tools/common/check"
+	"code.kibou.tools/common/collections"
 )
 
 func TestStack(t *testing.T) {

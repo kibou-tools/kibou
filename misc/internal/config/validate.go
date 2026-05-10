@@ -5,10 +5,10 @@
 package config
 
 import (
-	"github.com/typesanitizer/happygo/common/collections"
-	"github.com/typesanitizer/happygo/common/errorx"
-	"github.com/typesanitizer/happygo/common/fsx"
-	"github.com/typesanitizer/happygo/common/fsx/fsx_name"
+	"code.kibou.tools/common/collections"
+	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/common/fsx"
+	"code.kibou.tools/common/fsx/fsx_name"
 )
 
 // Validate checks structural invariants for JSON workspace configuration and builds validated config.

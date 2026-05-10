@@ -7,10 +7,10 @@ package result_test
 import (
 	"testing"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/check"
-	. "github.com/typesanitizer/happygo/common/core/result"
-	"github.com/typesanitizer/happygo/common/errorx"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/check"
+	. "code.kibou.tools/common/core/result"
+	"code.kibou.tools/common/errorx"
 )
 
 func TestResult(t *testing.T) {

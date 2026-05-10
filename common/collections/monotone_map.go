@@ -7,8 +7,8 @@ package collections
 import (
 	"iter"
 
-	"github.com/typesanitizer/happygo/common/core/op"
-	"github.com/typesanitizer/happygo/common/core/option"
+	"code.kibou.tools/common/core/op"
+	"code.kibou.tools/common/core/option"
 )
 
 // MonotoneMap is a mutable map that preserves insertion order of keys,

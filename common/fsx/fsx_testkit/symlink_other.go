@@ -9,7 +9,7 @@ package fsx_testkit
 import (
 	"os"
 
-	"github.com/typesanitizer/happygo/common/core/op"
+	"code.kibou.tools/common/core/op"
 )
 
 // TrySymlink creates a symlink named link pointing at target if the platform

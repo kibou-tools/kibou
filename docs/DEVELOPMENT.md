@@ -1,4 +1,4 @@
-# Working on happygo
+# Working on kibou
 
 ## Project structure
 

@@ -12,13 +12,13 @@ import (
 
 	"pgregory.net/rapid"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/check"
-	"github.com/typesanitizer/happygo/common/core/option"
-	"github.com/typesanitizer/happygo/common/core/pair"
-	"github.com/typesanitizer/happygo/common/core/result"
-	"github.com/typesanitizer/happygo/common/errorx"
-	"github.com/typesanitizer/happygo/common/iterx"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/check"
+	"code.kibou.tools/common/core/option"
+	"code.kibou.tools/common/core/pair"
+	"code.kibou.tools/common/core/result"
+	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/common/iterx"
 )
 
 func TestEmpty(t *testing.T) {

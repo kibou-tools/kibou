@@ -136,7 +136,7 @@ func dummyID(x int) [HashSize]byte {
 }
 
 func TestCacheTrimLimitEnv(t *testing.T) {
-	t.Setenv("HAPPYGO_TRIM_CACHE_LIMIT", "24h")
+	t.Setenv("KIBOU_TRIM_CACHE_LIMIT", "24h")
 
 	dir := t.TempDir()
 	c, err := Open(dir)
@@ -165,7 +165,7 @@ func TestCacheTrimLimitEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := c.Get(oldID); err == nil {
-		t.Fatal("Trim did not remove entry older than HAPPYGO_TRIM_CACHE_LIMIT")
+		t.Fatal("Trim did not remove entry older than KIBOU_TRIM_CACHE_LIMIT")
 	}
 	if _, err := c.Get(recentID); err != nil {
 		t.Fatalf("Trim removed recent entry: %v", err)
@@ -173,15 +173,15 @@ func TestCacheTrimLimitEnv(t *testing.T) {
 }
 
 func TestCacheTrimLimitEnvInvalid(t *testing.T) {
-	t.Setenv("HAPPYGO_TRIM_CACHE_LIMIT", "not-a-duration")
+	t.Setenv("KIBOU_TRIM_CACHE_LIMIT", "not-a-duration")
 
 	dir := t.TempDir()
 	c, err := Open(dir)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	if err := c.Trim(); err == nil || !strings.Contains(err.Error(), "HAPPYGO_TRIM_CACHE_LIMIT") {
-		t.Fatalf("Trim error = %v, want HAPPYGO_TRIM_CACHE_LIMIT error", err)
+	if err := c.Trim(); err == nil || !strings.Contains(err.Error(), "KIBOU_TRIM_CACHE_LIMIT") {
+		t.Fatalf("Trim error = %v, want KIBOU_TRIM_CACHE_LIMIT error", err)
 	}
 }
 

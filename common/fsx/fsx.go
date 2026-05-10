@@ -16,15 +16,15 @@ import (
 	"iter"
 	"os"
 
+	"code.kibou.tools/common/fsx/fsx_name"
 	"github.com/spf13/afero" //nolint:depguard // fsx is the designated wrapper
-	"github.com/typesanitizer/happygo/common/fsx/fsx_name"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/core/pathx"
-	"github.com/typesanitizer/happygo/common/core/result"
-	"github.com/typesanitizer/happygo/common/errorx"
-	"github.com/typesanitizer/happygo/common/internal/constants"
-	"github.com/typesanitizer/happygo/common/iterx"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/core/pathx"
+	"code.kibou.tools/common/core/result"
+	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/common/internal/constants"
+	"code.kibou.tools/common/iterx"
 )
 
 // ErrNotExist is [fs.ErrNotExist], re-exported so callers need not import io/fs.

@@ -17,14 +17,14 @@ import (
 
 	"golang.org/x/sync/semaphore"
 
-	"github.com/typesanitizer/happygo/common/check"
-	. "github.com/typesanitizer/happygo/common/check/prelude"
-	. "github.com/typesanitizer/happygo/common/core"
-	"github.com/typesanitizer/happygo/common/errorx"
-	"github.com/typesanitizer/happygo/common/fsx"
-	"github.com/typesanitizer/happygo/common/fsx/fsx_walk"
-	"github.com/typesanitizer/happygo/common/syscaps"
-	"github.com/typesanitizer/happygo/misc/internal/config"
+	"code.kibou.tools/common/check"
+	. "code.kibou.tools/common/check/prelude"
+	. "code.kibou.tools/common/core"
+	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/common/fsx"
+	"code.kibou.tools/common/fsx/fsx_walk"
+	"code.kibou.tools/common/syscaps"
+	"code.kibou.tools/misc/internal/config"
 )
 
 const firstPartyGoLicenseHeader = `// Copyright 2026 Varun Gandhi

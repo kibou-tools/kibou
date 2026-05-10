@@ -10,13 +10,13 @@ import (
 
 	"pgregory.net/rapid"
 
-	"github.com/typesanitizer/happygo/common/assert"
-	"github.com/typesanitizer/happygo/common/check"
-	. "github.com/typesanitizer/happygo/common/check/prelude"
-	"github.com/typesanitizer/happygo/common/collections"
-	"github.com/typesanitizer/happygo/common/core/pathx"
-	"github.com/typesanitizer/happygo/common/fsx/fsx_testkit"
-	"github.com/typesanitizer/happygo/common/internal/constants"
+	"code.kibou.tools/common/assert"
+	"code.kibou.tools/common/check"
+	. "code.kibou.tools/common/check/prelude"
+	"code.kibou.tools/common/collections"
+	"code.kibou.tools/common/core/pathx"
+	"code.kibou.tools/common/fsx/fsx_testkit"
+	"code.kibou.tools/common/internal/constants"
 )
 
 func TestFSReadDirBatched(t *testing.T) {

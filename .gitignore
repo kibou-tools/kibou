@@ -21,8 +21,8 @@ node_modules/
 # Build outputs
 
 ## Accidentally built binaries
-## Related: TODO(issue: https://github.com/typesanitizer/happygo/issues/162)
+## Related: TODO(issue: https://github.com/kibou-tools/kibou/issues/162)
 ## The linter should probably also check that this .gitignore
 ## is in sync based on where 'go build' command outputs generally go.
-/happydo
-/misc/happydo
+/kido
+/misc/kido
