@@ -100,6 +100,14 @@ linters:
           deny:
             - pkg: "code.kibou.tools/common/core$"
               desc: "common/core is an aggregate convenience package for other modules; code under common/ should import smaller common/core/* packages directly"
+        NoDirectRivoUniseg:
+          files:
+            - $all
+            - "!**/common/internal/uniseg/*.go"
+          list-mode: lax
+          deny:
+            - pkg: "github.com/rivo/uniseg$"
+              desc: "use common/internal/uniseg instead of importing rivo/uniseg directly"
     importas:
       no-unaliased: true
       alias:
