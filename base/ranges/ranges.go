@@ -38,6 +38,9 @@ func (s Span[T]) Start() T      { return s.start }
 func (s Span[T]) End() T        { return s.end }
 func (s Span[T]) IsEmpty() bool { return s.start == s.end }
 
+// Contains reports whether v is in this half-open span.
+func (s Span[T]) Contains(v T) bool { return s.start <= v && v < s.end }
+
 // Length attempts to compute the length of this span using the
 // span's numeric type.
 //

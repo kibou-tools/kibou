@@ -23,6 +23,7 @@ func TestSpan(t *testing.T) {
 
 	h.Run("NewSpan", testNewSpan)
 	h.Run("Length", testLength)
+	h.Run("Contains", testContains)
 	h.Run("CompareStrict", testCompareStrict)
 	h.Run("Overlaps", func(h check.Harness) {
 		h.Run("unit", testOverlapsUnit)
@@ -62,6 +63,19 @@ func testLength(h check.Harness) {
 				start, end, length)
 		}
 	}
+}
+
+func testContains(h check.Harness) {
+	h.Parallel()
+
+	span := ranges.NewSpan(3, 7)
+	check.AssertSame(h, false, span.Contains(2), "before start")
+	check.AssertSame(h, true, span.Contains(3), "at start")
+	check.AssertSame(h, true, span.Contains(6), "before end")
+	check.AssertSame(h, false, span.Contains(7), "at end")
+
+	empty := ranges.NewSpan(3, 3)
+	check.AssertSame(h, false, empty.Contains(3), "empty span")
 }
 
 func testCompareStrict(h check.Harness) {

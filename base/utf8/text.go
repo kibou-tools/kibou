@@ -19,6 +19,18 @@ type Text struct {
 	text string
 }
 
+// Len returns the byte length of t.
+func (t Text) Len() int {
+	return len(t.text)
+}
+
+// GetByte gets the i-th byte for this Text value.
+//
+// Precondition: 0 <= i < t.Len().
+func (t Text) GetByte(i int) byte {
+	return t.text[i]
+}
+
 // ParseText validates s as UTF-8 text.
 func ParseText(s string) (Text, *TextParseError) {
 	if span, ok := firstInvalidSpan(s).Get(); ok {
@@ -48,7 +60,7 @@ func (t Text) String() string {
 //
 // If offset already lies on a codepoint boundary, the result is None.
 //
-// Precondition: offset ∈ [0, len(t.String())].
+// Precondition: offset ∈ [0, t.Len()].
 func (t Text) CodePointContaining(offset int) Option[ranges.Span[int]] {
 	text := t.text
 	if offset < 0 || len(text) < offset {
