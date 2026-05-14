@@ -108,6 +108,15 @@ linters:
           deny:
             - pkg: "github.com/rivo/uniseg$"
               desc: "use base/internal/uniseg instead of importing rivo/uniseg directly"
+        NoStdlibUTF8:
+          files:
+            - "base/**/*.go"
+            - "misc/**/*.go"
+            - "!**/base/utf8/*.go"
+          list-mode: lax
+          deny:
+            - pkg: "unicode/utf8$"
+              desc: "use base/utf8 instead of unicode/utf8 directly"
     importas:
       no-unaliased: true
       alias:

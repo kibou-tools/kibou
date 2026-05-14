@@ -6,7 +6,6 @@ package uniseg
 
 import (
 	"iter"
-	"unicode/utf8"
 
 	"code.kibou.tools/base/assert"
 	rivouniseg "github.com/rivo/uniseg"
@@ -14,6 +13,7 @@ import (
 	"code.kibou.tools/base/collections"
 	"code.kibou.tools/base/core/option"
 	"code.kibou.tools/base/ranges"
+	"code.kibou.tools/base/utf8"
 )
 
 // SegmentedText stores text together with its grapheme cluster boundaries.
@@ -43,10 +43,10 @@ func NewSegmentedText(text string) SegmentedText {
 func (t *SegmentedText) CheckSpan(span ranges.Span[int]) *SpanBoundaryError {
 	start := span.Start()
 	end := span.End()
-	if start != len(t.text) && !utf8.RuneStart(t.text[start]) {
+	if start != len(t.text) && !utf8.IsPotentialStartOfRune(t.text[start]) {
 		return &SpanBoundaryError{SpanBoundaryErrorKind_NotUTF8Boundary, ranges.Bound_Start, span, option.None[ranges.Span[int]]()}
 	}
-	if end != len(t.text) && !utf8.RuneStart(t.text[end]) {
+	if end != len(t.text) && !utf8.IsPotentialStartOfRune(t.text[end]) {
 		return &SpanBoundaryError{SpanBoundaryErrorKind_NotUTF8Boundary, ranges.Bound_End, span, option.None[ranges.Span[int]]()}
 	}
 	if !t.boundaries.Get(start) {
