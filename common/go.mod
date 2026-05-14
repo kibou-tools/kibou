@@ -10,6 +10,7 @@ require (
 	github.com/cockroachdb/errors v1.12.0
 	github.com/google/go-cmp v0.7.0
 	github.com/muesli/termenv v0.16.0
+	github.com/rivo/uniseg v0.4.7
 	golang.org/x/term v0.40.0
 	pgregory.net/rapid v1.2.0
 )
@@ -169,7 +170,6 @@ require (
 	github.com/quasilyte/regex/syntax v0.0.0-20210819130434-b3f0c404a727 // indirect
 	github.com/quasilyte/stdinfo v0.0.0-20220114132959-f7386bf02567 // indirect
 	github.com/raeperd/recvcheck v0.2.0 // indirect
-	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/ryancurrah/gomodguard v1.4.1 // indirect
 	github.com/ryanrolds/sqlclosecheck v0.5.1 // indirect
