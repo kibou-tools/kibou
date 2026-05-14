@@ -1,0 +1,142 @@
+# Design of the kibou common libraries
+
+This document is focused on explaining
+the design motivations behind creating
+what is essentially a (small) alternate standard library.
+
+## Guidance, or The Pit of Success
+
+> A well-designed system makes it easy to do the right things
+> and annoying (but not impossible) to do the wrong things
+>
+> -- Jeff Atwood, [Falling into the Pit of Success](https://blog.codinghorror.com/falling-into-the-pit-of-success/)
+
+The design of APIs should:
+
+- Guide users towards the right patterns.
+- Guide users away from wrong patterns.
+- Make power user-style workflows accessible to novice users.
+- Provide users confidence that the code using the APIs
+  will continue to work reliably over time.
+
+Static types, well-chosen names,
+auto-complete friendly design,
+runtime assertions, and documentation
+are all tools in our toolbelt to guide users.
+
+### Corollary: Taking static types seriously
+
+Consider the example of joining paths.
+That should be a simple operation, right?
+
+As of May 2026, there's no mainstream statically
+typed language which will prevent you from
+accidentally joining two absolute paths.
+
+Some of them do document the behavior where
+one of the arguments is discarded.
+Such a documentation comment essentially imposes
+complexity on every usage site when doing code review,
+because users generally don't expect a method named
+`join` to discard the receiver or an argument.
+
+### Corollary: Correctness over performance
+
+> For a lot of code, performance is a constraint to satisfy,
+> not a goal to maximise; once we’re close to good enough,
+> it makes sense to trade performance away.
+>
+> -- Paul Khuong, [Slitter: a slab allocator that trusts, but verifies](https://pvk.ca/Blog/2021/08/01/slitter-a-less-footgunny-slab-allocator/)
+
+The vast majority of Go code falls into this bucket.
+
+This doesn't mean that we don't care about performance
+-- for example, our implementation of cancellation tokens
+tries to be judicious in the number of locks it takes,
+as well as controlling memory usage.
+
+However, if a choice comes down to picking _between_
+correctness and performance, the defaults should lean
+towards correctness, with potentially optional knobs
+or alternate APIs tuned towards performance.
+
+### Corollary: High-fidelity errors
+
+In long-lived codebases, when the code is running
+in production, the vast majority of CPU time is
+spent on the program's happy path.
+On the other hand, a much larger fraction of engineers' time
+is spent on understanding and debugging the error paths.
+
+It is not sufficient for a library function to return `error`.
+For a library user, it should be clear
+what the possible error cases are -- including
+the possibility of more cases in the future --
+and in what kind of real-world situations they can arise.
+
+## Testability
+
+As code is written over time, and as maintainership
+changes over time, the one ratchet that stays in place
+are the code's tests. We want tests to be:
+
+- Fast: Because life is too short to be spent waiting.
+- Reliable: Because life is too short to be spent hunting down flakiness.
+- Realistic: Because the production code will run against
+  reality, which can fail idealized assumptions in a variety
+  of unexpected ways.
+
+Capability-passing offers a general way to designing testable systems,
+when accompanied by techniques such as using assertions,
+property-based testing/fuzzing, fault injection,
+as well as static checks to prevent the use
+of global state and ambient authority.
+
+Today, in the Kibou monorepo, custom static checks are only
+part of the linter configuration that we have
+in the repo's `.golangci.yml` file.
+
+An eventual goal is to be able to ship something in the compiler
+which allows you to flip the default -- instead of allowing
+ambient authority and global state everywhere,
+you could restrict it to an allowlist.
+
+## Ease of comprehension
+
+Consider the following code:
+
+```go
+if !slices.Equal(wantUsers, gotUsers) {
+    t.Fatalf("mismatch between users:\nwant: %v\ngot: %v", wantUsers, gotUsers)
+}
+```
+
+vs
+
+```go
+check.AssertSame(h, wantUsers, gotUsers, "users")
+```
+
+In the former, arguably the `!` is the most important token
+in the first line, but it's just 1 character.
+You have to do a small extra mental jump
+"ah, so below this `if`, these slices are guaranteed to be equal."
+The latter states what is expected directly.
+
+There's a reason that the `testify` libraries
+are among the [most popular dependencies](https://blog.thibaut-rousseau.com/blog/the-most-popular-go-dependency-is/)
+in the Go ecosystem;
+they make code easier to comprehend.
+
+---
+
+For example, the following concepts are different:
+
+- A stack
+- A ring buffer
+- A buffer that is frozen after initialization
+
+Promoting the usage of the same type directly
+with different sets of invariants makes it difficult
+to reason about code -- conversely, removing degrees of freedom
+makes it easier.
