@@ -2,7 +2,8 @@
 //
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 
-// Package option provides a generic optional value type.
+// Package option provides some generic optional value types
+// which are commonly needed by a variety of applications.
 package option
 
 import (
