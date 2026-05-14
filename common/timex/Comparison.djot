@@ -1,0 +1,12 @@
+# Comparison with `time` in the Go standard library
+
+## Open upstream issues fixed in timex
+
+- [#50863][golang-go-issue-50863]: `TZ` environment variable doesn't support
+  complex formats like `TZ="EST5EDT,M3.2.0/2,M11.1.0/2"`.
+  When such a format is used, code silently falls back to UTC.
+
+  - Upstream status: Issue opened in Jan 2022, marked as backlog.
+  - `timex`: All structured POSIX.1-2024 TZ-string forms parse correctly.
+
+[golang-go-issue-50863]: https://github.com/golang/go/issues/50863
