@@ -24,7 +24,7 @@ linters:
       # common/core and common/check/prelude are designed for dot-import usage.
       - linters: [staticcheck]
         text: "ST1001"
-        source: 'common/core|common/check/prelude|common/unit'
+        source: 'common/core|common/check/prelude|common/unit|common/zero'
       - linters: [forbidigo]
         path: ^common/core/pathx/pathx.go$
         source: 'os\.(MkdirAll|MkdirTemp)'
@@ -103,7 +103,7 @@ linters:
     importas:
       no-unaliased: true
       alias:
-        - pkg: code.kibou.tools/common/(core|check/prelude|unit)
+        - pkg: code.kibou.tools/common/(core|check/prelude|unit|zero)
           alias: .
     exhaustruct:
       # NOTE: Even with allow-empty-returns: false, exhaustruct unconditionally
