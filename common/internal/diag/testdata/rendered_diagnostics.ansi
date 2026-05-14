@@ -1,0 +1,16 @@
+## ansi styling
+
+[1;31mError:[0m ANSI styled error (ANSI001)
+│
+│ [1;36mcontext[0m: context text
+│ [1;36mhint[0m: hint text
+│
+│ For more details, see https://docs.example.test/errors/ANSI001
+
+[1;33mWarning:[0m ANSI styled warning
+│
+│  In ansi.go
+│
+│  warn := true
+│  ^^^^ warning span
+

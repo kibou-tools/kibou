@@ -57,3 +57,10 @@ func (b BoundsChecked[T]) Unwrap() T {
 	}
 	return b.value
 }
+
+func (b BoundsChecked[T]) Expect(invariantMsg string) T {
+	if b.overflowed {
+		assert.Invariant(false, invariantMsg)
+	}
+	return b.value
+}

@@ -55,6 +55,18 @@ func TestEmpty(t *testing.T) {
 	})
 }
 
+func TestOnce(t *testing.T) {
+	h := check.New(t)
+	h.Parallel()
+
+	h.Run("Unit", func(h check.Harness) {
+		h.Parallel()
+
+		got := iterx.Collect(iterx.Once(42))
+		h.Assertf(slices.Equal(got, []int{42}), "Once(42) yielded %#v, want %#v", got, []int{42})
+	})
+}
+
 func TestCollect(t *testing.T) {
 	h := check.New(t)
 	h.Parallel()

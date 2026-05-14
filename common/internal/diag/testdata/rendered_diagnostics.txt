@@ -1,0 +1,253 @@
+## build target contains a misspelled package (MaxWidth: 80)
+
+Error: Failed to configure build target //server:server (BUILD001)
+│
+│  In server/BUILD.bazel:6:17
+│
+│  6 |         "//libs:payemnts",
+│    :                 ^^^^^^^^ this target is not defined in //libs
+│
+│ hint: Did you mean '//libs:payments'?
+│
+│ For more details, see https://docs.example.test/errors/BUILD001
+
+## server startup error (MaxWidth: 80)
+
+Error: Server failed to start (SRV002)
+│
+│ context: The address 127.0.0.1:8080 is already in use by api-dev-server (pid:
+│   41812)
+│ hint: Set API_SERVER_PORT or pass --port to choose a different port
+
+## custom see-also prefix
+
+Error: Configuration file is invalid (CFG123)
+│
+│ Explain with: https://docs.example.test/errors/CFG123
+
+## command-line argument error
+
+Error: Invalid value for --jobs
+│
+│  In command line
+│
+│  --jobs=0
+│         ^ must be at least 1
+│
+│ hint: If you want maximum parallelism, use --jobs=:ncpu
+
+## environment warning
+
+Warning: Remote cache is disabled because the auth token is missing
+│
+│  In environment
+│
+│  BUILDKIT_REMOTE_CACHE=1
+│  ^^^^^^^^^^^^^^^^^^^^^ requires BUILDKIT_CACHE_TOKEN
+│
+│ hint: Set BUILDKIT_CACHE_TOKEN or unset BUILDKIT_REMOTE_CACHE
+
+## source line with tabs
+
+Error: Tab-aligned source
+│
+│  In tabs.txt
+│
+│  x value = 1
+│    ^^^^^ aligned after tab
+
+## wrapping overflows unbreakable words (MaxWidth: 24)
+
+Error: supercalifragilisticexpialidocious
+
+## wrapping preserves internal whitespace (MaxWidth: 24)
+
+Error: alpha  beta gamma
+
+## wrapping trims leading whitespace after split (MaxWidth: 24)
+
+Error: alpha      beta
+│      gamma
+
+## two annotations on same line (MaxWidth: 80)
+
+Error: Cannot use untyped string constant as int value (TYP041)
+│
+│  In config/limits.go
+│
+│  3 | var MaxAttempts int = "five"
+│    :                 ^^^   ^^^^^^
+│    :                 |     └── untyped string constant
+│    :                 └── declared type
+│
+│ For more details, see https://docs.example.test/errors/TYP041
+
+## annotations on different lines (MaxWidth: 80)
+
+Error: Return value has wrong type (TYP073)
+│
+│  In timeout/parse.go
+│
+│  3 | func Parse(s string) time.Duration {
+│    :                      ^^^^^^^^^^^^^ declared as time.Duration
+│  4 |     return s
+│    :            ^ but a string value is returned
+│
+│ For more details, see https://docs.example.test/errors/TYP073
+
+## two annotations on single-line source
+
+Error: The --input and --output flags must refer to different paths
+│
+│  In command line
+│
+│  myapp --input=build.log --output=build.log
+│                ^^^^^^^^^          ^^^^^^^^^
+│                |                  └── would be overwritten
+│                └── read from here
+
+## multiline source without annotations
+
+Error: Multiline source is attached without a span
+│
+│  In input.txt
+│
+│  41 | line one
+│  42 | line two
+
+## multi-line span renders as a separate block
+
+Error: Multiline span has surrounding single-line labels
+│
+│  In blocks.txt
+│
+│  50 | single := "before"
+│     :           ^^^^^^^^ single-line label before
+│
+│  51 | first line
+│     : ^^^^^^^^^^
+│  52 | second line
+│     : ^^^^^^ multi-line label
+│
+│  53 | single := "after"
+│     :           ^^^^^^^ single-line label after
+
+## single-line label before multi-line span on same line
+
+Error: Single-line label starts before a multiline span on the same line
+│
+│  In same-line-before.txt
+│
+│  60 | before middle
+│     : ^^^^^^ before the multiline span
+│
+│  60 | before middle
+│     :        ^^^^^^
+│  61 | finish
+│     : ^^^^^^ multi-line label
+
+## single-line label after multi-line span on same line
+
+Error: Single-line label starts after a multiline span on the same line
+│
+│  In same-line-after.txt
+│
+│  70 | begin
+│     : ^^^^^
+│  71 | middle after
+│     : ^^^^^^ multi-line label
+│
+│  71 | middle after
+│     :        ^^^^^ after the multiline span
+
+## single-line label inside multi-line span renders as a separate block
+
+Error: Single-line label is contained in a multiline span
+│
+│  In inside-multiline.txt
+│
+│  80 | begin and inside
+│     : ^^^^^^^^^^^^^^^^
+│  81 | finish
+│     : ^^^^^^ multi-line label
+│
+│  80 | begin and inside
+│     :           ^^^^^^ inside the multiline span
+
+## mixed labeled and unlabeled annotations
+
+Error: Mismatched delimiters
+│
+│  In query.txt
+│
+│  filter(items[ where x > 0)
+│              ^            ^
+│              |            └── expected ']' to close the bracket above
+│              └── opening bracket
+
+## annotations around emoji grapheme clusters
+
+Error: Status text uses unsupported glyphs
+│
+│  In status.txt
+│
+│  status: "👩‍💻 ready"
+│           ^^ ^^^^^
+│           |  └── text after emoji stays aligned
+│           └── emoji is one grapheme cluster
+
+## annotations across multiple snippets
+
+Error: Configuration value changed type
+│
+│  In config.old
+│
+│  timeout_ms = 1000
+│               ^^^^ previously an integer
+│
+│  In config.new
+│
+│  timeout_ms = "fast"
+│               ^^^^^^ now a string
+
+## overlapping annotations on same line
+
+Error: Type errors in argument expression
+│
+│  In report.go
+│
+│  sum := total(items.length)
+│         ^^^^^^^^^^^^^^^^^^^ total expects []int, got int
+│               ^^^^^^^^^^^^ slices have no .length field; use len(items)
+
+## point annotation at end of source
+
+Error: Missing semicolon
+│
+│  In expr.go
+│
+│  x := foo()
+│            ^ insert ';' here
+
+## point annotation on LF line break
+
+Error: Missing semicolon before next statement
+│
+│  In lf.go
+│
+│  10 | alpha := 1
+│     :           ^ insert ';' before newline
+│  11 | beta := 2
+│     : ^^^^ next statement starts here
+
+## point annotation on CRLF line break
+
+Error: Missing semicolon before next statement
+│
+│  In crlf.go
+│
+│  20 | alpha := 1
+│     :           ^ insert ';' before CRLF
+│  21 | beta := 2
+│     : ^^^^ next statement starts here
+

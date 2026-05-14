@@ -1,0 +1,8 @@
+## FIXME: embedded newlines in messages and hints break framing
+
+Error: first message line
+second message line
+│
+│ hint: first hint line
+second hint line
+
