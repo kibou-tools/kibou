@@ -4,6 +4,12 @@
 
 // Package errorx wraps cockroachdb/errors for consistent error handling.
 // All error creation in first-party code should go through this package.
+//
+// Common substitutes:
+//
+// - Stdlib errors.Is -> errorx.GetRootCauseAsValue
+// - Stdlib errors.As -> errorx.GetRootCauseAs or FindInChainAs
+// - Stdlib errors.Join -> errorx.Join
 package errorx
 
 import (
