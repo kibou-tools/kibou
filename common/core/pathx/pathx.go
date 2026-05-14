@@ -213,6 +213,11 @@ func (p RelPath) RelativeTo(base RelPath) RelPath {
 	return RelPath{suffix[1:]}
 }
 
+func (p RelPath) JoinOne(name fsx_name.Name) RelPath {
+	// TODO: Use an unchecked code path here, because we know the invariant can't be violated.
+	return NewRelPath(filepath.Join(p.value, name.String()))
+}
+
 // JoinComponents joins individual path components onto p.
 //
 // Pre-condition: all elements are non-empty and do not contain a path separator.

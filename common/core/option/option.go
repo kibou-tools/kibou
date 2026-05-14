@@ -51,6 +51,13 @@ func (o Option[T]) Unwrap() T {
 	return o.value
 }
 
+func (o Option[T]) Expect(invariantMsg string) T {
+	if !o.valid {
+		assert.Invariant(false, invariantMsg)
+	}
+	return o.value
+}
+
 // IsSome reports whether the Option contains a value.
 func (o Option[T]) IsSome() bool {
 	return o.valid
