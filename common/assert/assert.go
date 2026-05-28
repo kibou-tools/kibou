@@ -52,6 +52,14 @@ func Preconditionf(b bool, msg string, args ...any) {
 	Always(b, "precondition violation: "+msg, args...)
 }
 
+// Requirement panics if b is false, prefixing the message with
+// "requirement violation for <qualifiedMethodName>: ".
+func Requirement(b bool, qualifiedMethodName string, msg string) {
+	if !b {
+		panicWith[int]("requirement violation for %s: %s", []any{qualifiedMethodName, msg})
+	}
+}
+
 // Invariant panics if b is false, prefixing the message with
 // "invariant violation: ".
 func Invariant(b bool, msg string) {

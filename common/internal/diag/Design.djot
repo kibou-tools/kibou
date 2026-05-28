@@ -1,0 +1,49 @@
+# Design of the `diag` package
+
+The design of the interfaces in the `diag` package
+is inspired by the Rust library [miette](https://github.com/zkat/miette).
+
+The focus of this library is on the _presentational_
+aspect of errors, to guide library design in a way
+which leads to applications surfacing errors consistently
+to developers.
+
+## Key design goals
+
+1. Provide a standard way to provide more structured
+   information across library boundaries, compared to
+   the standard `error` interface, which only surfaces
+   a `string` message.
+2. Make it possible to have a holistic, consistent
+   story for reporting errors in applications.
+3. Address the common needs of presenting errors that
+   arise in various circumstances:
+
+   - Errors in explicitly passed or implicitly read files
+   - Errors in various kinds of input (e.g. env vars,
+     command-line arguments)
+   - Errors encountered during execution
+
+## Non-goals
+
+The main non-goal of this package is to avoid dictating
+a particular _semantics_ for errors. For example,
+the following are out-of-scope:
+
+1. Creating a detailed taxonomy for all possible kinds of errors.
+
+2. Handle all possible error reporting needs. For example,
+   RPC between servers may care about:
+
+   - Retryability
+   - Correlation IDs
+   - Redaction
+
+   and so on.
+
+For semantics, different applications have different needs,
+and it seems very difficult to come up with a taxonomy
+that works for everything.
+
+## The `Diagnostic` interface
+

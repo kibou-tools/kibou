@@ -48,10 +48,15 @@ func TestOption(t *testing.T) {
 
 	h.Run("Expect", func(h check.Harness) {
 		h.Parallel()
+
 		h.Assertf(Some(42).Expect("expected value") == 42, "Some(42).Expect(...) = %d, want 42", Some(42).Expect("expected value"))
 		want := assert.AssertionError{Fmt: "invariant violation: %s", Args: []any{"expected value"}}
 		h.AssertPanicsWith(want, func() {
 			_ = None[int]().Expect("expected value")
+		})
+		h.Assertf(InRange(42).Expect("expected value") == 42, "InRange(42).Expect(...) = %d, want 42", InRange(42).Expect("expected value"))
+		h.AssertPanicsWith(want, func() {
+			_ = Overflowed[int]().Expect("expected value")
 		})
 	})
 
