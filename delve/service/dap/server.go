@@ -1116,7 +1116,7 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 			s.send(&dap.OutputEvent{
 				Event: *s.newEvent("output"),
 				Body: dap.OutputEventBody{
-					Output:   fmt.Sprintf("Building %s", args.Program),
+					Output:   fmt.Sprintf("Building %s\n", args.Program),
 					Category: "stdout",
 				}})
 			cmd, out, err = gobuild.GoBuildCombinedOutput(args.Output, []string{args.Program}, args.BuildFlags.value)
@@ -1128,7 +1128,7 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 			s.send(&dap.OutputEvent{
 				Event: *s.newEvent("output"),
 				Body: dap.OutputEventBody{
-					Output:   fmt.Sprintf("Building tests of %s", args.Program),
+					Output:   fmt.Sprintf("Building tests of %s\n", args.Program),
 					Category: "stdout",
 				}})
 			cmd, out, err = gobuild.GoTestBuildCombinedOutput(args.Output, []string{args.Program}, args.BuildFlags.value)
@@ -3637,8 +3637,8 @@ func (s *Session) onSetVariableRequest(request *dap.SetVariableRequest) {
 	s.send(response)
 }
 
-// onSetExpression sends a not-yet-implemented error response.
-// Capability 'supportsSetExpression' is not set 'initialize' response.
+// onSetExpressionRequest sends a not-yet-implemented error response.
+// Capability 'supportsSetExpression' is set to false in the 'initialize' response.
 func (s *Session) onSetExpressionRequest(request *dap.SetExpressionRequest) {
 	s.sendNotYetImplementedErrorResponse(request.Request)
 }
