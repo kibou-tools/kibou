@@ -53,7 +53,7 @@ val targets = arrayOf(
 
         "linux/ppc64le/1.26",
 
-        // "linux/riscv64/1.26", // needs exp.linuxriscv64 build tag, disabled due to CI issues
+        "linux/riscv64/1.26",
 
         "windows/amd64/1.26",
         "windows/amd64/tip",
@@ -132,7 +132,7 @@ class AggregatorBuild(tests: Collection<BuildType>) : BuildType({
     }
 
     failureConditions {
-        executionTimeoutMin = 60
+        executionTimeoutMin = 120
     }
 })
 
@@ -196,7 +196,7 @@ class TestBuild(val os: String, val arch: String, val version: String, buildId: 
     }
 
     failureConditions {
-        executionTimeoutMin = 30
+        executionTimeoutMin = 120
 
         if (version != "tip") {
             failOnMetricChange {

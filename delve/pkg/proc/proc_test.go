@@ -4463,14 +4463,20 @@ func TestIssue1795(t *testing.T) {
 		assertLineNumber(p, t, 13, "wrong line number after Next,")
 	})
 	withTestProcessArgs("issue1795", t, ".", []string{}, protest.EnableInlining|protest.EnableOptimization, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFunctionBreakpoint(p, t, "regexp.(*Regexp).doExecute")
+		doExecuteName := "regexp.(*Regexp).doExecute"
+		// NOTE(kibou): Use the fixture producer version, not runtime.Version(),
+		// because stable/gotip CI jobs build fixtures with DELVE_TEST_GO.
+		if goversion.ProducerAfterOrEqual(p.BinInfo().Producer(), 1, 27) {
+			doExecuteName = "regexp.(*Regexp).find"
+		}
+		setFunctionBreakpoint(p, t, doExecuteName)
 		assertNoError(grp.Continue(), t, "Continue()")
 		assertLineNumber(p, t, 12, "wrong line number after Continue (1),")
 		assertNoError(grp.Continue(), t, "Continue()")
 		frames, err := proc.ThreadStacktrace(p, p.CurrentThread(), 40)
 		assertNoError(err, t, "ThreadStacktrace()")
 		logStacktrace(t, p, frames)
-		if err := checkFrame(frames[0], "regexp.(*Regexp).doExecute", "", 0, false); err != nil {
+		if err := checkFrame(frames[0], doExecuteName, "", 0, false); err != nil {
 			t.Errorf("Wrong frame 0: %v", err)
 		}
 		if err := checkFrame(frames[1], "regexp.(*Regexp).doMatch", "", 0, true); err != nil {
