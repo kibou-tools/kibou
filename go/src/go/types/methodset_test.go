@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"go/ast"
-	"go/parser"
 	"go/token"
 	. "go/types"
 )
@@ -36,6 +35,18 @@ func TestNewMethodSet(t *testing.T) {
 		"var a *T[int]; type T[P any] struct{}; func (T[P]) f() {}":  {{"f", []int{0}, true}},
 		"var a T[int]; type T[P any] struct{}; func (*T[P]) f() {}":  {},
 		"var a *T[int]; type T[P any] struct{}; func (*T[P]) f() {}": {{"f", []int{0}, true}},
+
+		// Generic methods on named types
+		"var a T; type T struct{}; func (T) f[P any]() {}":   {},
+		"var a *T; type T struct{}; func (T) f[P any]() {}":  {},
+		"var a T; type T struct{}; func (*T) f[P any]() {}":  {},
+		"var a *T; type T struct{}; func (*T) f[P any]() {}": {},
+
+		// Generic methods on generic named types
+		"var a T[int]; type T[P any] struct{}; func (T[P]) f[Q any]() {}":   {},
+		"var a *T[int]; type T[P any] struct{}; func (T[P]) f[Q any]() {}":  {},
+		"var a T[int]; type T[P any] struct{}; func (*T[P]) f[Q any]() {}":  {},
+		"var a *T[int]; type T[P any] struct{}; func (*T[P]) f[Q any]() {}": {},
 
 		// Interfaces
 		"var a T; type T interface{ f() }":                           {{"f", []int{0}, true}},
@@ -144,10 +155,8 @@ type Instance = *Tree[int]
 `
 
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, "foo.go", src, 0)
-	if err != nil {
-		panic(err)
-	}
+	f := mustParse(fset, src)
+
 	pkg := NewPackage("pkg", f.Name.Name)
 	if err := NewChecker(nil, fset, pkg, nil).Files([]*ast.File{f}); err != nil {
 		panic(err)
@@ -165,10 +174,7 @@ func (T) m() {} // expected error: invalid receiver type
 `
 
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, "p.go", src, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := mustParse(fset, src)
 
 	var conf Config
 	pkg, err := conf.Check("p", fset, []*ast.File{f}, nil)

@@ -88,7 +88,8 @@ var depsRules = `
 	internal/strconv,
 	internal/trace/tracev2,
 	math/bits,
-	structs
+	structs,
+	simd/archsimd
 	< internal/bytealg
 	< internal/stringslite
 	< internal/unsafeheader
@@ -258,6 +259,10 @@ var depsRules = `
 	< encoding/binary;
 
 	FMT, encoding < flag;
+
+	FMT, simd/archsimd < simd/internal/bridge;
+
+	simd/internal/bridge < simd;
 
 	fmt !< encoding/base32, encoding/base64;
 
@@ -559,7 +564,8 @@ var depsRules = `
 	  crypto/hkdf,
 	  crypto/pbkdf2,
 	  crypto/ecdh,
-	  crypto/mlkem
+	  crypto/mlkem,
+	  crypto/mldsa
 	< CRYPTO;
 
 	CRYPTO
@@ -684,9 +690,6 @@ var depsRules = `
 	net/http, net/http/internal/ascii
 	< net/http/cookiejar, net/http/httputil;
 
-	net/http, flag
-	< net/http/httptest;
-
 	net/http, regexp
 	< net/http/cgi
 	< net/http/fcgi;
@@ -731,6 +734,12 @@ var depsRules = `
 	testing, crypto/rand
 	< testing/cryptotest;
 
+	NET, internal/gate
+	< internal/nettest;
+
+	net/http, flag, internal/nettest, testing
+	< net/http/httptest;
+
 	FMT, crypto/sha256, encoding/binary, encoding/json,
 	go/ast, go/parser, go/token,
 	internal/godebug, math/rand, encoding/hex
@@ -768,6 +777,9 @@ var depsRules = `
 
 	CRYPTO-MATH, testing, internal/testenv, internal/testhash, encoding/json, regexp
 	< crypto/internal/cryptotest;
+
+	crypto/internal/cryptotest, encoding/hex
+	< crypto/internal/cryptotest/wycheproof;
 
 	CGO, FMT
 	< crypto/internal/sysrand/internal/seccomp;
