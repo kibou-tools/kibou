@@ -44,10 +44,11 @@
 //     `omitzero` instead (which is identically supported in both v1 and v2).
 //
 //   - In v1, a Go struct field marked as `string` can be used to quote a
-//     Go string, bool, or number as a JSON string. It does not recursively
-//     take effect on composite Go types. In contrast, v2 restricts
-//     the `string` option to only quote a Go number as a JSON string.
-//     It does recursively take effect on Go numbers within a composite Go type.
+//     Go string, bool, number, or pointer to such as a JSON string.
+//     In contrast, v2 restricts the `string` option to only quote a value
+//     that would normally be represented as a JSON number,
+//     but also expands support for it to operate with any Go type
+//     that would normally be represented as a JSON number.
 //     The [StringifyWithLegacySemantics] option controls this behavior difference.
 //
 //   - In v1, a nil Go slice or Go map is marshaled as a JSON null.
@@ -346,7 +347,7 @@ func FormatDurationAsNano(v bool) Options {
 // occurs under [jsonv2.MatchCaseInsensitiveNames] or the `case:ignore` tag option.
 // Thus, case-insensitive name matching is identical to [strings.EqualFold].
 // Use of this option diminishes the ability of case-insensitive matching
-// to be able to match common case variants (e.g, "foo_bar" with "fooBar").
+// to be able to match common case variants (e.g., "foo_bar" with "fooBar").
 //
 // This affects either marshaling or unmarshaling.
 // The v1 default is true.
@@ -398,7 +399,7 @@ func MergeWithLegacySemantics(v bool) Options {
 //
 // The v1 and v2 definitions of `omitempty` are practically the same for
 // Go strings, slices, arrays, and maps. Usages of `omitempty` on
-// Go bools, ints, uints floats, pointers, and interfaces should migrate to use
+// Go bools, ints, uints, floats, pointers, and interfaces should migrate to use
 // the `omitzero` tag option, which omits a field if it is the zero Go value.
 //
 // This only affects marshaling and is ignored when unmarshaling.
@@ -500,15 +501,13 @@ func ReportErrorsWithLegacySemantics(v bool) Options {
 // StringifyWithLegacySemantics specifies that the `string` tag option
 // may stringify bools and string values. It only takes effect on fields
 // where the top-level type is a bool, string, numeric kind, or a pointer to
-// such a kind. Specifically, `string` will not stringify bool, string,
-// or numeric kinds within a composite data type
-// (e.g., array, slice, struct, map, or interface).
+// such a kind.
 //
-// When marshaling, such Go values are serialized as their usual
-// JSON representation, but quoted within a JSON string.
-// When unmarshaling, such Go values must be deserialized from
-// a JSON string containing their usual JSON representation or
-// Go number representation for that numeric kind.
+// When marshaling, such Go values are serialized as their usual JSON
+// representation, but quoted within a JSON string.
+// When unmarshaling, such Go values must be deserialized from a JSON string
+// containing their usual JSON representation or Go number representation for
+// that numeric kind.
 // Note that the Go number grammar is a superset of the JSON number grammar.
 // A JSON null quoted in a JSON string is a valid substitute for JSON null
 // while unmarshaling into a Go value that `string` takes effect on.

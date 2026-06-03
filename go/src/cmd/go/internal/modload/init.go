@@ -1989,8 +1989,10 @@ func UpdateGoModFromReqs(ld *Loader, ctx context.Context, opts WriteOpts) (befor
 	// Update require blocks.
 	if gover.Compare(goVersion, gover.SeparateIndirectVersion) < 0 {
 		modFile.SetRequire(list)
-	} else {
+	} else if gover.Compare(goVersion, gover.SimplifyRequireVersion) < 0 {
 		modFile.SetRequireSeparateIndirect(list)
+	} else {
+		modFile.SetRequireAtMostTwo(list)
 	}
 	modFile.Cleanup()
 	after, err = modFile.Format()
@@ -2302,7 +2304,11 @@ func CheckGodebug(verb, k, v string) error {
 	}
 	for _, info := range godebugs.Removed {
 		if info.Name == k {
-			return fmt.Errorf("use of removed %s %q, see https://go.dev/doc/godebug#go-1%v", verb, k, info.Removed)
+			if info.Old(v) {
+				return fmt.Errorf("use of removed %s %q with old value %q (see https://go.dev/doc/godebug#go-1%v)", verb, k, v, info.Removed)
+			}
+			// Using a removed GODEBUG setting with a non-old value is ok (see go.dev/issue/76163).
+			return nil
 		}
 	}
 	return fmt.Errorf("unknown %s %q", verb, k)
