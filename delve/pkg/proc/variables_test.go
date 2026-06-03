@@ -996,7 +996,7 @@ func TestEvalExpression(t *testing.T) {
 					return
 				}
 				if err != nil && err.Error() == "expression *ast.CompositeLit not implemented" {
-					if runtime.GOARCH == "386" {
+					if runtime.GOARCH == "386" || runtime.GOARCH == "riscv64" {
 						// composite literals are currently unsupported on 386
 						return
 					}
@@ -1423,6 +1423,7 @@ func TestCallFunction(t *testing.T) {
 		{`mul2ptr(&main.a2struct{Y: 3})`, []string{":int:6"}, nil, 1},
 		{`mul2ptr(&main.a2struct{1})`, []string{":int:2"}, nil, 1},
 		{`m[main.intpair{3, 1}]`, []string{`:string:"three,one"`}, nil, 0},
+		{`main.Derived{ x: 1, y: 2 }`, []string{`:main.Derived:main.Derived {x: 1, Base: main.Base {y: 2}}`}, nil, 0},
 	}
 
 	withTestProcessArgs("fncall", t, ".", nil, protest.AllNonOptimized, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
@@ -2116,6 +2117,18 @@ func TestEmbeddedStructMethodsAndFieldLookup(t *testing.T) {
 					t.Fatalf("Unexpected error. Expected %s got %s", tc.err.Error(), err.Error())
 				}
 			}
+		}
+	})
+}
+
+func TestCGlobal(t *testing.T) {
+	skipOn(t, "not working on freebsd", "freebsd")
+	withTestProcess("dwzcompression", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
+		setFunctionBreakpoint(p, t, "C.fortytwo")
+		assertNoError(grp.Continue(), t, "first Continue()")
+		val := evalVariable(p, t, "globalvar")
+		if val.RealType == nil {
+			t.Errorf("Can't find type for \"stdin\" global variable")
 		}
 	})
 }

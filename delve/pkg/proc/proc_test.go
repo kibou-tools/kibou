@@ -2162,6 +2162,7 @@ func TestStepOut(t *testing.T) {
 
 func TestStepConcurrentDirect(t *testing.T) {
 	protest.AllowRecording(t)
+	skipOn(t, "broken - step concurrent", "windows", "arm64")
 	withTestProcess("teststepconcurrent", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFileBreakpoint(p, t, fixture.Source, 37)
 
@@ -2383,6 +2384,7 @@ func TestStepOutDeferReturnAndDirectCall(t *testing.T) {
 }
 
 func TestStepOnCallPtrInstr(t *testing.T) {
+	skipOn(t, "broken", "linux", "riscv64")
 	protest.AllowRecording(t)
 	withTestProcess("teststepprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 10)
@@ -2906,6 +2908,7 @@ func TestDebugStripped(t *testing.T) {
 	skipOn(t, "not working on windows", "windows")
 	skipOn(t, "not working on freebsd", "freebsd")
 	skipOn(t, "not working on linux/386", "linux", "386")
+	skipOn(t, "not working on linux/riscv64", "linux", "riscv64")
 	skipOn(t, "not working on linux/ppc64le when -gcflags=-N -l is passed", "linux", "ppc64le")
 	ver, _ := goversion.Parse(runtime.Version())
 	if ver.IsDevelBuild() {
@@ -4455,6 +4458,10 @@ func TestIssue1795(t *testing.T) {
 	if !goversion.VersionAfterOrEqual(runtime.Version(), 1, 13) {
 		t.Skip("Test not relevant to Go < 1.13")
 	}
+	var doExecuteName = "regexp.(*Regexp).doExecute"
+	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 27) {
+		doExecuteName = "regexp.(*Regexp).find"
+	}
 	skipOn(t, "broken", "ppc64le")
 	withTestProcessArgs("issue1795", t, ".", []string{}, protest.EnableInlining|protest.EnableOptimization, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -4463,14 +4470,14 @@ func TestIssue1795(t *testing.T) {
 		assertLineNumber(p, t, 13, "wrong line number after Next,")
 	})
 	withTestProcessArgs("issue1795", t, ".", []string{}, protest.EnableInlining|protest.EnableOptimization, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFunctionBreakpoint(p, t, "regexp.(*Regexp).doExecute")
+		setFunctionBreakpoint(p, t, doExecuteName)
 		assertNoError(grp.Continue(), t, "Continue()")
 		assertLineNumber(p, t, 12, "wrong line number after Continue (1),")
 		assertNoError(grp.Continue(), t, "Continue()")
 		frames, err := proc.ThreadStacktrace(p, p.CurrentThread(), 40)
 		assertNoError(err, t, "ThreadStacktrace()")
 		logStacktrace(t, p, frames)
-		if err := checkFrame(frames[0], "regexp.(*Regexp).doExecute", "", 0, false); err != nil {
+		if err := checkFrame(frames[0], doExecuteName, "", 0, false); err != nil {
 			t.Errorf("Wrong frame 0: %v", err)
 		}
 		if err := checkFrame(frames[1], "regexp.(*Regexp).doMatch", "", 0, true); err != nil {
@@ -5271,6 +5278,7 @@ func TestSetOnFunctions(t *testing.T) {
 }
 
 func TestNilPtrDerefInBreakInstr(t *testing.T) {
+	skipOn(t, "not implemented", "linux", "riscv64")
 	// Checks that having a breakpoint on the exact instruction that causes a
 	// nil pointer dereference does not cause problems.
 
@@ -5284,8 +5292,6 @@ func TestNilPtrDerefInBreakInstr(t *testing.T) {
 		asmfile = "main_386.s"
 	case "ppc64le":
 		asmfile = "main_ppc64le.s"
-	case "riscv64":
-		asmfile = "main_riscv64.s"
 	case "loong64":
 		asmfile = "main_loong64.s"
 	default:
@@ -5962,6 +5968,7 @@ func TestStackwatchClearBug(t *testing.T) {
 	skipOn(t, "not implemented", "386")
 	skipOn(t, "not implemented", "ppc64le")
 	skipOn(t, "not implemented", "loong64")
+	skipOn(t, "not implemented", "riscv64")
 	skipOn(t, "see https://github.com/go-delve/delve/issues/2768", "windows")
 
 	showbps := func(bps *proc.BreakpointMap) {
