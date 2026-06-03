@@ -227,7 +227,18 @@ type UIOptions struct {
 
 	// SemanticTokens determines whether gopls will return a
 	// SemanticTokensProvider at initialization, or respond
-	// to request for semantic tokens.
+	// to requests for semantic tokens.
+	//
+	// This setting being `false` won't necessary disable the client's calls
+	// for semantic tokens. If you want that, it would need to be configured in
+	// the client. For example, in VSCode, this would disable all Go semantic
+	// token calls to the LSP server:
+	//
+	// ```json5
+	// "[go]": {
+	//     "editor.semanticHighlighting.enabled": false,
+	// }
+	// ```
 	SemanticTokens bool `status:"experimental"`
 
 	// NoSemanticString turns off the sending of the semantic token 'string'
@@ -559,30 +570,30 @@ type InlayHint string
 const (
 	// ParameterNames controls inlay hints for parameter names:
 	// ```go
-	// 	parseInt(/* str: */ "123", /* radix: */ 8)
+	// 	parseInt(« str: » "123", « radix: » 8)
 	// ```
 	ParameterNames InlayHint = "parameterNames"
 
 	// AssignVariableTypes controls inlay hints for variable types in assign statements:
 	// ```go
-	// 	i/* int*/, j/* int*/ := 0, len(r)-1
+	// 	i« int», j« int» := 0, len(r)-1
 	// ```
 	AssignVariableTypes InlayHint = "assignVariableTypes"
 
 	// ConstantValues controls inlay hints for constant values:
 	// ```go
 	// 	const (
-	// 		KindNone   Kind = iota/* = 0*/
-	// 		KindPrint/*  = 1*/
-	// 		KindPrintf/* = 2*/
-	// 		KindErrorf/* = 3*/
+	// 		KindNone   Kind = iota« = 0»
+	// 		KindPrint«  = 1»
+	// 		KindPrintf« = 2»
+	// 		KindErrorf« = 3»
 	// 	)
 	// ```
 	ConstantValues InlayHint = "constantValues"
 
 	// RangeVariableTypes controls inlay hints for variable types in range statements:
 	// ```go
-	// 	for k/* int*/, v/* string*/ := range []string{} {
+	// 	for k« int», v« string» := range []string{} {
 	// 		fmt.Println(k, v)
 	// 	}
 	// ```
@@ -593,26 +604,28 @@ const (
 	// 	for _, c := range []struct {
 	// 		in, want string
 	// 	}{
-	// 		/*struct{ in string; want string }*/{"Hello, world", "dlrow ,olleH"},
+	// 		«struct{ in string; want string }»{"Hello, world", "dlrow ,olleH"},
 	// 	}
 	// ```
 	CompositeLiteralTypes InlayHint = "compositeLiteralTypes"
 
 	// CompositeLiteralFieldNames inlay hints for composite literal field names:
 	// ```go
-	// 	{/*in: */"Hello, world", /*want: */"dlrow ,olleH"}
+	// 	Point2D{«X: »1, «Y: »2}
+	//
+	//	Outer{«Embedded.»Field: 0}
 	// ```
 	CompositeLiteralFieldNames InlayHint = "compositeLiteralFields"
 
 	// FunctionTypeParameters inlay hints for implicit type parameters on generic functions:
 	// ```go
-	// 	myFoo/*[int, string]*/(1, "hello")
+	// 	myFoo«[int, string]»(1, "hello")
 	// ```
 	FunctionTypeParameters InlayHint = "functionTypeParameters"
 
 	// IgnoredError inlay hints for implicitly discarded errors:
 	// ```go
-	// 	f.Close() // ignore error
+	// 	f.Close()« // ignore error»
 	// ```
 	// This check inserts an `// ignore error` hint following any
 	// statement that is a function call whose error result is
@@ -662,6 +675,17 @@ type UserOptions struct {
 	BuildOptions
 	UIOptions
 	FormattingOptions
+
+	// FileWatcher specifies the server-side file watching strategy used by gopls.
+	//
+	// By default, this is set to "off", meaning gopls relies exclusively on the
+	// language client (e.g., the editor) to send file change notifications.
+	//
+	// Available options:
+	//   - "off"      : Client-driven watching (default)
+	//   - "fsnotify" : OS-level event notifications
+	//   - "poll"     : Periodic directory scanning
+	FileWatcher FileWatcherMode `status:"experimental"`
 
 	// MaxFileCacheBytes sets a soft limit on the file cache size in bytes.
 	// If zero, the default budget is used.
@@ -792,17 +816,6 @@ type InternalOptions struct {
 	// example, if like VS Code it drops file notifications), please file an
 	// issue.
 	SubdirWatchPatterns SubdirWatchPatterns
-
-	// FileWatcher specifies the server-side file watching strategy used by gopls.
-	//
-	// By default, this is set to "off", meaning gopls relies exclusively on the
-	// language client (e.g., the editor) to send file change notifications.
-	//
-	// Available options:
-	//   - "off"      : Client-driven watching (default)
-	//   - "fsnotify" : OS-level event notifications
-	//   - "poll"     : Periodic directory scanning
-	FileWatcher FileWatcherMode
 
 	// ReportAnalysisProgressAfter sets the duration for gopls to wait before starting
 	// progress reporting for ongoing go/analysis passes.
@@ -1195,10 +1208,16 @@ func (o *Options) setOne(name string, value any) (applied []CounterPath, _ error
 	case "completionBudget":
 		return nil, setDuration(&o.CompletionBudget, value)
 	case "importsSource":
-		return setEnum(&o.ImportsSource, value,
+		res, err := setEnum(&o.ImportsSource, value,
 			ImportsSourceOff,
 			ImportsSourceGopls,
 			ImportsSourceGoimports)
+		if err != nil {
+			return nil, err
+		}
+		return res, &SoftError{
+			msg: "importsSource is deprecated as it is no longer needed",
+		}
 	case "matcher":
 		return setEnum(&o.Matcher, value,
 			Fuzzy,
