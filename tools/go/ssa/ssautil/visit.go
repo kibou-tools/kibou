@@ -75,7 +75,11 @@ func AllFunctions(prog *ssa.Program) map[*ssa.Function]bool {
 		if !types.IsInterface(T) {
 			mset := prog.MethodSets.MethodSet(T)
 			for method := range mset.Methods() {
-				function(prog.MethodValue(method))
+				// NOTE(kibou): MethodValue returns nil for generic methods,
+				// which may appear in method sets with Go 1.27 generic methods.
+				if fn := prog.MethodValue(method); fn != nil {
+					function(fn)
+				}
 			}
 		}
 	}

@@ -32,6 +32,7 @@ func TestRTA(t *testing.T) {
 	archivePaths := []string{
 		"testdata/func.txtar",
 		"testdata/generics.txtar",
+		"testdata/genericmethods.txtar",
 		"testdata/iface.txtar",
 		"testdata/reflectcall.txtar",
 		"testdata/rtype.txtar",

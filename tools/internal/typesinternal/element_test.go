@@ -42,6 +42,10 @@ type G = struct { U }
 type U struct{}
 func (U) method() uint32
 
+type H struct{}
+func (H) generic[X any](x X) X { return x }
+func (H) plain() bool
+
 `
 
 func TestForEachElement(t *testing.T) {
@@ -95,6 +99,13 @@ func TestForEachElement(t *testing.T) {
 
 		// struct with embedded field that has methods
 		{"G", []string{"*U", "struct{U}", "uint32", "U"}},
+
+		// type with both a generic and a plain method. Generic methods
+		// are not reflection-reachable (go.dev/issue/77273) and must be
+		// skipped without panicking on the type-parameter operand in the
+		// generic method's signature. Plain method's results must still
+		// be visited.
+		{"H", []string{"H", "*H", "bool"}},
 	}
 	var msets typeutil.MethodSetCache
 	for _, test := range tests {
