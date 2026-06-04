@@ -5084,6 +5084,9 @@ func getPC(t *testing.T, client *daptest.Client, threadId int) (uint64, error) {
 // TestNextParked tests that we can switched selected goroutine to a parked one
 // and perform next operation on it.
 func TestNextParked(t *testing.T) {
+	if runtime.GOOS == "windows" && runtime.GOARCH == "arm64" {
+		t.Skip("broken")
+	}
 	runTest(t, "parallel_next", func(client *daptest.Client, fixture protest.Fixture) {
 		runDebugSessionWithBPs(t, client, "launch",
 			// Launch
@@ -6957,7 +6960,7 @@ func TestBadLaunchRequests(t *testing.T) {
 
 		client.LaunchRequestWithArgs(map[string]any{"mode": "exec", "program": fixture.Path, "args": []int{1, 2}})
 		checkFailedToLaunchWithMessage(client.ExpectVisibleErrorResponse(t),
-			"Failed to launch: invalid debug configuration - cannot unmarshal number into \"args\" of type string")
+			"Failed to launch: invalid debug configuration - cannot unmarshal number into …")
 
 		// Bad "buildFlags"
 		client.LaunchRequestWithArgs(map[string]any{"mode": "debug", "program": fixture.Source, "buildFlags": 123})

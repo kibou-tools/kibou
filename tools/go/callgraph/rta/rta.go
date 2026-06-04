@@ -435,6 +435,13 @@ func (r *rta) addRuntimeType(T types.Type, skip bool) {
 			m := sel.Obj()
 
 			if m.Exported() {
+				if m.Type().(*types.Signature).TypeParams().Len() > 0 {
+					// NOTE(kibou): Generic methods are not accessible via reflection
+					// based on https://github.com/golang/go/issues/77273, so they
+					// are not reflection-reachable. prog.MethodValue would also
+					// return nil for an uninstantiated generic method.
+					continue
+				}
 				// Exported methods are always potentially callable via reflection.
 				r.addReachable(r.prog.MethodValue(sel), true)
 			}
@@ -472,6 +479,12 @@ func (r *rta) addRuntimeType(T types.Type, skip bool) {
 	for method := range mset.Methods() {
 		if method.Obj().Exported() {
 			sig := method.Type().(*types.Signature)
+			if sig.TypeParams().Len() > 0 {
+				// NOTE(kibou): Generic methods are not accessible via reflection
+				// based on https://github.com/golang/go/issues/77273, so just
+				// skip them here.
+				continue
+			}
 			r.addRuntimeType(sig.Params(), true)  // skip the Tuple itself
 			r.addRuntimeType(sig.Results(), true) // skip the Tuple itself
 		}

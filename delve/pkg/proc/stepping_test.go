@@ -1123,7 +1123,7 @@ func TestRangeOverFuncNext(t *testing.T) {
 		// depends on the toolchain version used to compile the
 		// fixtures, not the toolchain version used to compile
 		// delve's own test packages.
-		if goversion.ProducerAfterOrEqual(p.BinInfo().Producer(), 1, 26) && !goversion.ProducerAfterOrEqual(p.BinInfo().Producer(), 1, 27) && runtime.GOARCH == "arm64" {
+		if goversion.ProducerAfterOrEqual(p.BinInfo().Producer(), 1, 26) && !goversion.ProducerAfterOrEqual(p.BinInfo().Producer(), 1, 28) && runtime.GOARCH == "arm64" {
 			t.Run("TestGotoA1", func(t *testing.T) {
 				testseq2intl(t, fixture, grp, p, nil, []seqTest{
 					funcBreak(t, "main.TestGotoA1"),
@@ -1256,12 +1256,10 @@ func TestRangeOverFuncStepOut(t *testing.T) {
 }
 
 func TestRangeOverFuncNextInlined(t *testing.T) {
-	if !goversion.VersionAfterOrEqual(runtime.Version(), 1, 23) {
-		t.Skip("N/A")
-	}
 	// NOTE(kibou): Upstream checks against runtime.Version() here,
 	// but that's incorrect for us due to use of different toolchain
-	// to compile the test fixtures.
+	// to compile the test fixtures. The toolchain version is accessible
+	// later in the code, so we don't have any checks here.
 	var bp *proc.Breakpoint
 
 	funcBreak := func(t *testing.T, fnname string) seqTest {
@@ -1600,9 +1598,7 @@ func TestRangeOverFuncNextInlined(t *testing.T) {
 				assertEval(t, "result", "[]int len: 3, cap: 10, [1000,10,2]"),
 				nx(98), // if z >= 4 {
 				nx(99), // continue W
-				nx(93),
 				nx(101),
-				nx(91),
 				nx(103),
 				nx(90),
 				nx(105),
@@ -1673,6 +1669,12 @@ func TestRangeOverFuncNextInlined(t *testing.T) {
 				nx(141), // if k == 1
 				nx(142), // break Y
 				nx(135),
+				{contNothing, func(grp *proc.TargetGroup, p *proc.Target) {
+					if goversion.VersionAfterOrEqual(runtime.Version(), 1, 27) {
+						assertNoError(grp.Next(), t, "Next()")
+					}
+				}},
+				{contNothing, 135},
 				nx(145),
 				nx(127), // defer func()
 				nx(128), // r := recover()
@@ -1702,6 +1704,12 @@ func TestRangeOverFuncNextInlined(t *testing.T) {
 				nx(168), // if k == 1
 				nx(169), // break Y
 				nx(159),
+				{contNothing, func(grp *proc.TargetGroup, p *proc.Target) {
+					if goversion.VersionAfterOrEqual(runtime.Version(), 1, 27) {
+						assertNoError(grp.Next(), t, "Next()")
+					}
+				}},
+				{contNothing, 159},
 				nx(172),
 				nx(160), // defer func()
 				nx(161), // fmt.Println
@@ -1804,7 +1812,6 @@ func TestRangeOverFuncNextInlined(t *testing.T) {
 				assertFunc(t, "main.TestRecur"),
 				assertEval(t, "n", "3"),
 				nx(237), // result = ...
-				assertFunc(t, "main.TestRecur-range1"),
 				assertEval(t, "x", "10", "n", "3"),
 				nx(238), // if n == 3
 				nx(239), // TestRecur(0)

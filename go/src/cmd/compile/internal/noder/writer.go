@@ -780,7 +780,9 @@ func (pw *pkgWriter) objIdx(obj types2.Object) index {
 
 	if isDefinedType(obj) && obj.Pkg() == pw.curpkg {
 		decl, ok := pw.typDecls[obj.(*types2.TypeName)]
-		assert(ok)
+		if !ok {
+			base.Fatalf("%v not in pw.typDecls", obj.(*types2.TypeName))
+		}
 		dict.implicits = decl.implicits
 	}
 
@@ -863,8 +865,6 @@ func (w *writer) doObj(wext *writer, obj types2.Object) pkgbits.CodeObj {
 
 		w.pos(obj)
 		if isGenericMethod(sig) {
-			// otherwise the reader won't know to expect the flag
-			assert(w.Version().Has(pkgbits.GenericMethods))
 			w.Bool(true) // generic method
 
 			w.selector(obj)
@@ -921,6 +921,9 @@ func (w *writer) doObj(wext *writer, obj types2.Object) pkgbits.CodeObj {
 		w.Len(len(methods))
 		for _, m := range methods {
 			w.method(wext, m)
+		}
+		if len(gmethods) > 0 {
+			assert(w.Version().Has(pkgbits.GenericMethods))
 		}
 		// encode a pointer to each generic method
 		if w.Version().Has(pkgbits.GenericMethods) {

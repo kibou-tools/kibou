@@ -37,6 +37,12 @@ func ForEachElement(rtypes *typeutil.Map, msets *typeutil.MethodSetCache, T type
 		tmset := msets.MethodSet(T)
 		for method := range tmset.Methods() {
 			sig := method.Type().(*types.Signature)
+			if sig.TypeParams().Len() > 0 {
+				// NOTE(kibou): Generic methods are not accessible via reflection
+				// based on https://github.com/golang/go/issues/77273, so just
+				// skip them here.
+				continue
+			}
 			// It is tempting to call visit(sig, false)
 			// but, as noted in golang.org/cl/65450043,
 			// the Signature.Recv field is ignored by

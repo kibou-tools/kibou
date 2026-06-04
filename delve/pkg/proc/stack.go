@@ -67,13 +67,13 @@ type Stackframe struct {
 	lastpc uint64
 
 	// closurePtr is the value of .closureptr, if present. This variable is
-	// used to correlated range-over-func closure bodies with their enclosing
+	// used to correlate range-over-func closure bodies with their enclosing
 	// function.
 	closurePtr int64
 
 	// TopmostDefer is the defer that would be at the top of the stack when a
 	// panic unwind would get to this call frame, in other words it's the first
-	// deferred function that will  be called if the runtime unwinds past this
+	// deferred function that will be called if the runtime unwinds past this
 	// call frame.
 	TopmostDefer *Defer
 
@@ -501,7 +501,7 @@ func (it *stackIterator) appendInlineCalls(callback func(Stackframe) bool, frame
 		return callback(frame)
 	}
 
-	for _, entry := range reader.InlineStack(dwarfTree, callpc) {
+	for i, entry := range reader.InlineStack(dwarfTree, callpc) {
 		frame.hasInlines = true
 		fnname, okname := entry.Val(dwarf.AttrName).(string)
 		fileidx, okfileidx := entry.Val(dwarf.AttrCallFile).(int64)
@@ -531,6 +531,7 @@ func (it *stackIterator) appendInlineCalls(callback func(Stackframe) bool, frame
 			Ret:         frame.Ret,
 			Err:         frame.Err,
 			SystemStack: frame.SystemStack,
+			hasInlines:  i > 0,
 			Inlined:     true,
 			lastpc:      frame.lastpc,
 			closurePtr:  frame.closurePtr,
@@ -1120,7 +1121,7 @@ func ruleString(rule *frame.DWRule, regnumToString func(uint64) string) string {
 	}
 }
 
-// rangeFuncStackTrace, if the topmost frame of the stack is a the body of a
+// rangeFuncStackTrace, if the topmost frame of the stack is the body of a
 // range-over-func statement, returns a slice containing the stack of range
 // bodies on the stack, interleaved with their return frames, the frame of
 // the function containing them and finally the function that called it.

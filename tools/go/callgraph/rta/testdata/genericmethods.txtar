@@ -1,0 +1,35 @@
+-- go.mod --
+module example.com
+go 1.27
+
+-- genericmethods.go --
+package main
+
+// Test that addRuntimeType does not panic on a type whose method set
+// contains a generic method. Generic methods are not reflection-reachable
+// per go.dev/issue/77273, so they must be skipped when walking the method
+// signatures for reachability. The crash this guards against is a
+// `panic(T)` from the `default` arm of addRuntimeType's switch when
+// recursing into a `sig.Params()` Tuple that contains a *types.TypeParam.
+
+func use(interface{})
+
+type S struct{}
+
+// Generic method; never instantiated in this program.
+func (S) Generic[X any](x X) X { return x }
+
+// Plain method; its signature must still be walked.
+func (S) Plain() string { return "" }
+
+func main() {
+	use(S{}) // forces S to become a runtime type
+}
+
+// WANT:
+//
+//  reachable main
+//  reachable use
+//
+//  rtype S
+//  rtype string
