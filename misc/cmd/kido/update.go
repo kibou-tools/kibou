@@ -7,10 +7,10 @@ package main
 import (
 	"fmt"
 
-	"code.kibou.tools/common/cmdx"
-	. "code.kibou.tools/common/core"
-	"code.kibou.tools/common/fsx"
-	"code.kibou.tools/common/logx"
+	"code.kibou.tools/base/cmdx"
+	. "code.kibou.tools/base/core"
+	"code.kibou.tools/base/fsx"
+	"code.kibou.tools/base/logx"
 )
 
 func (ws Workspace) runUpdate(ctx logx.LogCtx, dir AbsPath, localBranch string, projects []fsx.Name) error {

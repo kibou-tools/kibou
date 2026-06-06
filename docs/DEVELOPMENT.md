@@ -4,7 +4,7 @@
 
 ```
 .
-├─ common/
+├─ base/
 │  Meant for shared internal-use libraries for delve/,
 │  tools/ and misc/. A proving ground for capability-based
 │  standard library (for enhanced testability). 
@@ -39,7 +39,7 @@ go -C <subdir> test ./...
 ## Linting
 
 ```bash
-go tool golangci-lint run ./common/... ./misc/...
+go tool golangci-lint run ./base/... ./misc/...
 ```
 
 See `.golangci.yml` at the repo root.

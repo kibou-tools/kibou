@@ -11,15 +11,15 @@ import (
 	"strings"
 	"testing"
 
-	"code.kibou.tools/common/fsx"
+	"code.kibou.tools/base/fsx"
 	"gopkg.in/yaml.v3"
 
-	"code.kibou.tools/common/check"
-	. "code.kibou.tools/common/check/prelude"
-	"code.kibou.tools/common/collections"
-	. "code.kibou.tools/common/core"
-	"code.kibou.tools/common/iterx"
-	"code.kibou.tools/common/syscaps"
+	"code.kibou.tools/base/check"
+	. "code.kibou.tools/base/check/prelude"
+	"code.kibou.tools/base/collections"
+	. "code.kibou.tools/base/core"
+	"code.kibou.tools/base/iterx"
+	"code.kibou.tools/base/syscaps"
 	"code.kibou.tools/misc/internal/config"
 )
 

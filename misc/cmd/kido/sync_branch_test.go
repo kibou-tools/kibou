@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"code.kibou.tools/common/check"
-	. "code.kibou.tools/common/check/prelude"
-	. "code.kibou.tools/common/core"
+	"code.kibou.tools/base/check"
+	. "code.kibou.tools/base/check/prelude"
+	. "code.kibou.tools/base/core"
 )
 
 func TestParseSingleRemoteRef(t *testing.T) {

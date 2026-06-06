@@ -8,8 +8,8 @@ import (
 	"encoding/json"
 	"io"
 
-	"code.kibou.tools/common/errorx"
-	"code.kibou.tools/common/fsx"
+	"code.kibou.tools/base/errorx"
+	"code.kibou.tools/base/fsx"
 )
 
 // WorkspaceConfig is the validated in-memory repository configuration.

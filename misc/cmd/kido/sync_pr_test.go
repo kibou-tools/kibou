@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"code.kibou.tools/common/check"
-	"code.kibou.tools/common/fsx"
+	"code.kibou.tools/base/check"
+	"code.kibou.tools/base/fsx"
 )
 
 func TestSyncMergeBodyAllTrailers(t *testing.T) {

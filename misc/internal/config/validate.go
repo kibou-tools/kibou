@@ -5,10 +5,10 @@
 package config
 
 import (
-	"code.kibou.tools/common/collections"
-	"code.kibou.tools/common/errorx"
-	"code.kibou.tools/common/fsx"
-	"code.kibou.tools/common/fsx/fsx_name"
+	"code.kibou.tools/base/collections"
+	"code.kibou.tools/base/errorx"
+	"code.kibou.tools/base/fsx"
+	"code.kibou.tools/base/fsx/fsx_name"
 )
 
 // Validate checks structural invariants for JSON workspace configuration and builds validated config.

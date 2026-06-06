@@ -9,12 +9,12 @@ import (
 	"os"
 	"testing"
 
-	"code.kibou.tools/common/check"
-	"code.kibou.tools/common/envx"
-	"code.kibou.tools/common/fsx"
-	"code.kibou.tools/common/fsx/fsx_testkit"
-	"code.kibou.tools/common/logx"
-	"code.kibou.tools/common/syscaps"
+	"code.kibou.tools/base/check"
+	"code.kibou.tools/base/envx"
+	"code.kibou.tools/base/fsx"
+	"code.kibou.tools/base/fsx/fsx_testkit"
+	"code.kibou.tools/base/logx"
+	"code.kibou.tools/base/syscaps"
 	"code.kibou.tools/misc/internal/config"
 )
 
