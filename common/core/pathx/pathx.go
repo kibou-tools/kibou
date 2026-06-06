@@ -27,13 +27,32 @@ type AbsPath struct {
 	value string
 }
 
+func ParseAbsPath(path string) (AbsPath, *AbsPathParseError) {
+	if path == "" {
+		return AbsPath{}, NewAbsPathParseError(AbsPathParseErrorKind_Empty, path)
+	}
+	if !filepath.IsAbs(path) {
+		return AbsPath{}, NewAbsPathParseError(AbsPathParseErrorKind_NotAbsolute, path)
+	}
+	return AbsPath{LexicallyNormalize(path)}, nil
+}
+
 // MustParseAbsPath creates an AbsPath from an already-absolute path string.
 //
 // Pre-condition: path is non-empty and absolute per [filepath.IsAbs].
 func MustParseAbsPath(path string) AbsPath {
-	assert.Preconditionf(path != "", "path is empty")
-	assert.Preconditionf(filepath.IsAbs(path), "path is not absolute: %q", path)
-	return AbsPath{LexicallyNormalize(path)}
+	absPath, err := ParseAbsPath(path)
+	if err != nil {
+		switch err.Kind() {
+		case AbsPathParseErrorKind_Empty:
+			assert.Preconditionf(false, "MustParseAbsPath called with empty path")
+		case AbsPathParseErrorKind_NotAbsolute:
+			assert.Preconditionf(false, "MustParseAbsPath called with non-absolute path: %q", path)
+		default:
+			assert.PanicUnknownCase[any](err.Kind())
+		}
+	}
+	return absPath
 }
 
 func (p AbsPath) String() string {
@@ -173,13 +192,33 @@ func Dot() RelPath {
 	return RelPath{"."}
 }
 
+// ParseRelPath creates a RelPath from a relative path string.
+func ParseRelPath(path string) (RelPath, *RelPathParseError) {
+	if path == "" {
+		return RelPath{}, NewRelPathParseError(RelPathParseErrorKind_Empty, path)
+	}
+	if filepath.IsAbs(path) {
+		return RelPath{}, NewRelPathParseError(RelPathParseErrorKind_NotRelative, path)
+	}
+	return RelPath{LexicallyNormalize(path)}, nil
+}
+
 // MustParseRelPath creates a RelPath from a relative path string.
 //
 // Pre-condition: path is non-empty and not absolute per [filepath.IsAbs].
 func MustParseRelPath(path string) RelPath {
-	assert.Preconditionf(path != "", "path is empty")
-	assert.Preconditionf(!filepath.IsAbs(path), "path is not relative: %q", path)
-	return RelPath{LexicallyNormalize(path)}
+	relPath, err := ParseRelPath(path)
+	if err != nil {
+		switch err.Kind() {
+		case RelPathParseErrorKind_Empty:
+			assert.Preconditionf(false, "MustParseRelPath called with empty path")
+		case RelPathParseErrorKind_NotRelative:
+			assert.Preconditionf(false, "MustParseRelPath called with absolute path: %q", path)
+		default:
+			assert.PanicUnknownCase[any](err.Kind())
+		}
+	}
+	return relPath
 }
 
 // String is guaranteed to be "." if a relative path for the current directory.
