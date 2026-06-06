@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"code.kibou.tools/common/check"
-	. "code.kibou.tools/common/check/prelude"
+	"code.kibou.tools/base/check"
+	. "code.kibou.tools/base/check/prelude"
 )
 
 func validConfig() WorkspaceConfigJSON {

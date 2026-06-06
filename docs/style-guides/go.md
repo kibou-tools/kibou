@@ -1,6 +1,6 @@
 # Go style guide
 
-This guide applies to non-forked folders only (for example, `common/`, `misc/`, and `.github/`-adjacent helper code).
+This guide applies to non-forked folders only (for example, `base/`, `misc/`, and `.github/`-adjacent helper code).
 
 ## Imports
 
@@ -45,7 +45,7 @@ of the corresponding type.
 
 3. For large test groups with many subtests, factor related subtest groups
    into helpers that accept `check.Harness`; see `TestWalk` in
-   `common/fsx/fsx_walk/walk_test.go` for the preferred organization style.
+   `base/fsx/fsx_walk/walk_test.go` for the preferred organization style.
 
 ## Comments
 
@@ -158,6 +158,6 @@ Related: <https://matklad.github.io/2026/02/11/programming-aphorisms.html>
 
 Generally, the fields of an `Options` type will fall into one of 3 cases:
 - The zero value for the field is a sensible default.
-- Have type `common/core.Option`,
+- Have type `base/core.Option`,
 - The field is initialized to a sensible default by the matching
   `func New*Options` constructor.

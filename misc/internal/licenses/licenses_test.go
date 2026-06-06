@@ -16,14 +16,14 @@ import (
 
 	"golang.org/x/sync/semaphore"
 
-	"code.kibou.tools/common/cancel"
-	"code.kibou.tools/common/check"
-	. "code.kibou.tools/common/check/prelude"
-	. "code.kibou.tools/common/core"
-	"code.kibou.tools/common/errorx"
-	"code.kibou.tools/common/fsx"
-	"code.kibou.tools/common/fsx/fsx_walk"
-	"code.kibou.tools/common/syscaps"
+	"code.kibou.tools/base/cancel"
+	"code.kibou.tools/base/check"
+	. "code.kibou.tools/base/check/prelude"
+	. "code.kibou.tools/base/core"
+	"code.kibou.tools/base/errorx"
+	"code.kibou.tools/base/fsx"
+	"code.kibou.tools/base/fsx/fsx_walk"
+	"code.kibou.tools/base/syscaps"
 	"code.kibou.tools/misc/internal/config"
 )
 

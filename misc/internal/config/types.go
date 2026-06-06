@@ -7,7 +7,7 @@ package config
 import (
 	"strings"
 
-	"code.kibou.tools/common/errorx"
+	"code.kibou.tools/base/errorx"
 )
 
 // WorkspaceConfigJSON is the top-level JSON input.

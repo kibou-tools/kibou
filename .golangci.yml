@@ -21,12 +21,12 @@ linters:
     - unused
   exclusions:
     rules:
-      # common/core and common/check/prelude are designed for dot-import usage.
+      # base/core and base/check/prelude are designed for dot-import usage.
       - linters: [staticcheck]
         text: "ST1001"
-        source: 'common/core|common/check/prelude|common/unit|common/zero'
+        source: 'base/core|base/check/prelude|base/unit|base/zero'
       - linters: [forbidigo]
-        path: ^common/core/pathx/pathx.go$
+        path: ^base/core/pathx/pathx.go$
         source: 'os\.(MkdirAll|MkdirTemp)'
     # Upstream projects are excluded; linting only applies to our code.
     # SYNC(id: linter-exclusions)
@@ -42,45 +42,45 @@ linters:
           list-mode: lax
           deny:
             - pkg: "errors"
-              desc: "use common/errorx instead of stdlib errors"
+              desc: "use base/errorx instead of stdlib errors"
             - pkg: "github.com/cockroachdb/errors"
-              desc: "use common/errorx instead of cockroachdb/errors directly"
+              desc: "use base/errorx instead of cockroachdb/errors directly"
             - pkg: "log"
-              desc: "use common/logx instead of stdlib log"
+              desc: "use base/logx instead of stdlib log"
             - pkg: "log/slog"
-              desc: "use common/logx instead of log/slog"
+              desc: "use base/logx instead of log/slog"
             - pkg: "github.com/charmbracelet/log"
-              desc: "use common/logx instead of charmbracelet/log directly"
+              desc: "use base/logx instead of charmbracelet/log directly"
             - pkg: "github.com/spf13/afero"
-              desc: "use common/fsx instead of spf13/afero directly"
+              desc: "use base/fsx instead of spf13/afero directly"
         NoDirectOsExec:
           files:
             - $all
-            - "!**/common/syscaps/*.go"
-            - "!**/common/envx/envx_path/*.go"
+            - "!**/base/syscaps/*.go"
+            - "!**/base/envx/envx_path/*.go"
           list-mode: lax
           deny:
             - pkg: "os/exec$"
-              desc: "use cmdx abstractions instead of os/exec directly; only common/syscaps and common/envx/envx_path are allowed to import it"
+              desc: "use cmdx abstractions instead of os/exec directly; only base/syscaps and base/envx/envx_path are allowed to import it"
         NoStdlibTime:
           files:
             - $all
-            - "!**/common/timex/*.go"
-            - "!**/common/syscaps/*.go"
+            - "!**/base/timex/*.go"
+            - "!**/base/syscaps/*.go"
           list-mode: lax
           deny:
             - pkg: "time"
-              desc: "use common/time instead"
+              desc: "use base/time instead"
         NoStdlibContext:
           files:
             - $all
-            - "!**/common/cancel/*.go"
-            - "!**/common/cancel_bridge/*.go"
+            - "!**/base/cancel/*.go"
+            - "!**/base/cancel_bridge/*.go"
             - "!**/cmd/**/main.go"
           list-mode: lax
           deny:
             - pkg: "context"
-              desc: "use common/cancel.Token instead of context.Context; only common/cancel, common/cancel_bridge, and cli main.go files may import context"
+              desc: "use base/cancel.Token instead of context.Context; only base/cancel, base/cancel_bridge, and cli main.go files may import context"
         NoDirectSyscaps:
           files:
             - $all
@@ -91,27 +91,27 @@ linters:
             - "!**/*_testkit/*.go"
           list-mode: lax
           deny:
-            - pkg: "code.kibou.tools/common/syscaps$"
-              desc: "ambient system capabilities should only be accessed via common/syscaps at program edges or in tests"
-        NoCommonCoreInsideCommon:
+            - pkg: "code.kibou.tools/base/syscaps$"
+              desc: "ambient system capabilities should only be accessed via base/syscaps at program edges or in tests"
+        NoBaseCoreInsideBase:
           files:
-            - "common/**/*.go"
+            - "base/**/*.go"
           list-mode: lax
           deny:
-            - pkg: "code.kibou.tools/common/core$"
-              desc: "common/core is an aggregate convenience package for other modules; code under common/ should import smaller common/core/* packages directly"
+            - pkg: "code.kibou.tools/base/core$"
+              desc: "base/core is an aggregate convenience package for other modules; code under base/ should import smaller base/core/* packages directly"
         NoDirectRivoUniseg:
           files:
             - $all
-            - "!**/common/internal/uniseg/*.go"
+            - "!**/base/internal/uniseg/*.go"
           list-mode: lax
           deny:
             - pkg: "github.com/rivo/uniseg$"
-              desc: "use common/internal/uniseg instead of importing rivo/uniseg directly"
+              desc: "use base/internal/uniseg instead of importing rivo/uniseg directly"
     importas:
       no-unaliased: true
       alias:
-        - pkg: code.kibou.tools/common/(core|check/prelude|unit|zero)
+        - pkg: code.kibou.tools/base/(core|check/prelude|unit|zero)
           alias: .
     exhaustruct:
       # NOTE: Even with allow-empty-returns: false, exhaustruct unconditionally
@@ -124,21 +124,21 @@ linters:
       analyze-types: true
       forbid:
         - pattern: ^fmt\.Errorf$
-          msg: use common/errorx instead of fmt.Errorf
+          msg: use base/errorx instead of fmt.Errorf
         - pattern: ^errors\.New$
-          msg: use common/errorx instead of errors.New
+          msg: use base/errorx instead of errors.New
         - pattern: ^fmt\.Print(f|ln)?$
-          msg: use common/logx instead of fmt.Print*
+          msg: use base/logx instead of fmt.Print*
         - pattern: ^log\.Print(f|ln)?$
-          msg: use common/logx instead of log.Print*
+          msg: use base/logx instead of log.Print*
         - pattern: ^time\.AfterFunc$
           msg: use timex.Scheduler instead of time.AfterFunc
         - pattern: ^print(ln)?$
           msg: do not use builtin print/println
         - pattern: ^testing\.T\.Errorf$
-          msg: use common/check Harness assertions instead of t.Errorf
+          msg: use base/check Harness assertions instead of t.Errorf
         - pattern: ^testing\.T\.Fatalf$
-          msg: use common/check Harness assertions instead of t.Fatalf
+          msg: use base/check Harness assertions instead of t.Fatalf
         - pattern: ^testing\.T\.Run$
           msg: use Harness.Run instead of t.Run
         - pattern: ^testing\.T\.Parallel$

@@ -135,7 +135,7 @@ jobs:
         run: |
           export CGO_ENABLED=0
           patterns=$(go run ./misc/cmd/kido list --type=go-module --provenance=first-party | sed 's|.*|./&/...|')
-          # Version is pinned via the tool dependency in common/go.mod;
+          # Version is pinned via the tool dependency in base/go.mod;
           # see NOTE(id: workspace-tool-directives).
           go tool golangci-lint run $patterns
 
