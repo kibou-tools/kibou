@@ -60,7 +60,7 @@ func TestFSReadDirOnFileReturnsError(t *testing.T) {
 
 	repoFS := fsx_testkit.TempDirFS(h)
 
-	fileRel := pathx.NewRelPath("file.txt")
+	fileRel := pathx.MustParseRelPath("file.txt")
 	h.NoErrorf(repoFS.WriteFile(fileRel, []byte("data"), 0o644), "WriteFile(%q)", fileRel)
 
 	gotAny := false

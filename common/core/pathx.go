@@ -13,16 +13,16 @@ type AbsPath = pathx.AbsPath
 
 type RelPath = pathx.RelPath
 
-type RootRelPath = pathx.RootRelPath
-
-func NewAbsPath(path string) AbsPath {
-	return pathx.NewAbsPath(path)
+// MustParseAbsPath creates an AbsPath from an already-absolute path string.
+//
+// Pre-condition: path is non-empty and absolute per [filepath.IsAbs].
+func MustParseAbsPath(path string) AbsPath {
+	return pathx.MustParseAbsPath(path)
 }
 
-func NewRelPath(path string) RelPath {
-	return pathx.NewRelPath(path)
-}
-
-func NewRootRelPath(root AbsPath, subpath RelPath) RootRelPath {
-	return pathx.NewRootRelPath(root, subpath)
+// MustParseRelPath creates a RelPath from a relative path string.
+//
+// Pre-condition: path is non-empty and not absolute per [filepath.IsAbs].
+func MustParseRelPath(path string) RelPath {
+	return pathx.MustParseRelPath(path)
 }

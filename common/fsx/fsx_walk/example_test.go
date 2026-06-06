@@ -28,7 +28,7 @@ func Example_iterative() {
 		panic(err)
 	}
 	mustWrite := func(path, content string) {
-		rel := pathx.NewRelPath(path)
+		rel := pathx.MustParseRelPath(path)
 		if dir, ok := rel.Dir().Get(); ok {
 			if err := fs.MkdirAll(dir, 0o755); err != nil {
 				panic(err)

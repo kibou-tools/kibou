@@ -36,8 +36,8 @@ func TestMakeRelativeTo(t *testing.T) {
 			rootSegs := segmentsGen.Draw(t, "root_segments")
 			pathSegs := segmentsGen.Draw(t, "path_segments")
 
-			root := pathx.NewAbsPath(filepath.Join(append([]string{base}, rootSegs...)...))
-			path := pathx.NewAbsPath(filepath.Join(append([]string{base}, pathSegs...)...))
+			root := pathx.MustParseAbsPath(filepath.Join(append([]string{base}, rootSegs...)...))
+			path := pathx.MustParseAbsPath(filepath.Join(append([]string{base}, pathSegs...)...))
 			_ = path.MakeRelativeTo(root)
 		})
 	})
@@ -45,7 +45,7 @@ func TestMakeRelativeTo(t *testing.T) {
 	h.Run("InsideRoot", func(h check.Harness) {
 		h.Parallel()
 
-		root := pathx.NewAbsPath(h.T().TempDir())
+		root := pathx.MustParseAbsPath(h.T().TempDir())
 		inside := root.JoinComponents("a", "b")
 		rel := inside.MakeRelativeTo(root)
 		h.Assertf(rel.IsSome(), "inside path should be relative to root")
@@ -55,15 +55,15 @@ func TestMakeRelativeTo(t *testing.T) {
 	h.Run("OutsideRoot", func(h check.Harness) {
 		h.Parallel()
 
-		root := pathx.NewAbsPath(h.T().TempDir())
-		outside := root.Join(pathx.NewRelPath(filepath.Join("..", "outside")))
+		root := pathx.MustParseAbsPath(h.T().TempDir())
+		outside := root.Join(pathx.MustParseRelPath(filepath.Join("..", "outside")))
 		h.Assertf(!outside.MakeRelativeTo(root).IsSome(), "outside path should not be relative to root")
 	})
 
 	h.Run("ContainedPathRoundTrip", func(h check.Harness) {
 		h.Parallel()
 
-		root := pathx.NewAbsPath(h.T().TempDir())
+		root := pathx.MustParseAbsPath(h.T().TempDir())
 		safeRelGen := pathx_testkit.SafeRelPathGen()
 		rapid.Check(h.T(), func(t *rapid.T) {
 			basic := check.NewBasic(t)
@@ -84,7 +84,7 @@ func TestMakeRelativeTo(t *testing.T) {
 	h.Run("RejectsEscapingPaths", func(h check.Harness) {
 		h.Parallel()
 
-		root := pathx.NewAbsPath(h.T().TempDir())
+		root := pathx.MustParseAbsPath(h.T().TempDir())
 		escapingRelGen := pathx_testkit.EscapingRelPathGen()
 		rapid.Check(h.T(), func(t *rapid.T) {
 			basic := check.NewBasic(t)
@@ -105,7 +105,7 @@ func TestSplit(t *testing.T) {
 	h.Run("RoundTrip", func(h check.Harness) {
 		h.Parallel()
 
-		root := pathx.NewAbsPath(h.T().TempDir())
+		root := pathx.MustParseAbsPath(h.T().TempDir())
 		componentsGen := rapid.SliceOfN(pathx_testkit.ComponentGen(), 1, 6)
 		rapid.Check(h.T(), func(t *rapid.T) {
 			basic := check.NewBasic(t)
@@ -114,7 +114,7 @@ func TestSplit(t *testing.T) {
 			dir, file := path.Split()
 			check.AssertSame(basic, components[len(components)-1], file.String(), "Split() file")
 
-			reconstructed := dir.Join(pathx.NewRelPath(file.String()))
+			reconstructed := dir.Join(pathx.MustParseRelPath(file.String()))
 			check.AssertSame(basic, path.String(), reconstructed.String(), "Split() round-trip")
 		})
 	})
@@ -123,7 +123,7 @@ func TestSplit(t *testing.T) {
 func TestAbsPathAncestors(t *testing.T) {
 	h := check.New(t)
 
-	path := pathx.NewAbsPath(h.T().TempDir()).JoinComponents("a", "b", "c")
+	path := pathx.MustParseAbsPath(h.T().TempDir()).JoinComponents("a", "b", "c")
 	got := iterx.Collect(iterx.Map(path.Ancestors(), pathx.AbsPath.String))
 	var reverse []string
 	for parent, ok := path.Dir().Get(); ok; parent, ok = parent.Dir().Get() {
@@ -152,7 +152,7 @@ func TestRelPathComponents(t *testing.T) {
 
 	for _, tt := range tests {
 		h.Run(tt.path, func(h check.Harness) {
-			got := iterx.Collect(pathx.NewRelPath(tt.path).Components())
+			got := iterx.Collect(pathx.MustParseRelPath(tt.path).Components())
 			check.AssertSame(h, tt.want, got, fmt.Sprintf("Components(%q)", tt.path))
 		})
 	}
@@ -174,7 +174,7 @@ func TestRelPathAncestors(t *testing.T) {
 
 	for _, tt := range tests {
 		h.Run(tt.path, func(h check.Harness) {
-			got := iterx.Collect(iterx.Map(pathx.NewRelPath(tt.path).Ancestors(), pathx.RelPath.String))
+			got := iterx.Collect(iterx.Map(pathx.MustParseRelPath(tt.path).Ancestors(), pathx.RelPath.String))
 			check.AssertSame(h, tt.want, got, fmt.Sprintf("Ancestors(%q)", tt.path))
 		})
 	}
@@ -199,7 +199,7 @@ func TestRelPathRelativeTo(t *testing.T) {
 
 	for _, tt := range tests {
 		h.Run(fmt.Sprintf("%s_from_%s", tt.path, tt.base), func(h check.Harness) {
-			got := pathx.NewRelPath(tt.path).RelativeTo(pathx.NewRelPath(tt.base))
+			got := pathx.MustParseRelPath(tt.path).RelativeTo(pathx.MustParseRelPath(tt.base))
 			check.AssertSame(h, tt.want, got.String(),
 				fmt.Sprintf("RelativeTo(%q, %q)", tt.path, tt.base))
 		})
@@ -211,7 +211,7 @@ func TestRelPathRelativeTo(t *testing.T) {
 			Args: []any{"b", "a"},
 		}
 		h.AssertPanicsWith(want, func() {
-			_ = pathx.NewRelPath("a").RelativeTo(pathx.NewRelPath("b"))
+			_ = pathx.MustParseRelPath("a").RelativeTo(pathx.MustParseRelPath("b"))
 		})
 	})
 
@@ -222,14 +222,14 @@ func TestRelPathRelativeTo(t *testing.T) {
 			Args: []any{"a", "ab"},
 		}
 		h.AssertPanicsWith(want, func() {
-			_ = pathx.NewRelPath("ab").RelativeTo(pathx.NewRelPath("a"))
+			_ = pathx.MustParseRelPath("ab").RelativeTo(pathx.MustParseRelPath("a"))
 		})
 	})
 }
 
 func TestLexicallyContains(t *testing.T) {
 	h := check.New(t)
-	root := pathx.NewAbsPath(t.TempDir())
+	root := pathx.MustParseAbsPath(t.TempDir())
 
 	tests := []struct {
 		path string
@@ -244,7 +244,7 @@ func TestLexicallyContains(t *testing.T) {
 
 	for _, tt := range tests {
 		h.Run(tt.path, func(h check.Harness) {
-			got := root.LexicallyContains(pathx.NewRelPath(tt.path))
+			got := root.LexicallyContains(pathx.MustParseRelPath(tt.path))
 			h.Assertf(got == tt.want, "LexicallyContains(%q) = %v, want %v", tt.path, got, tt.want)
 		})
 	}
@@ -270,7 +270,7 @@ func TestAbsPathDir(t *testing.T) {
 		}
 		for _, tt := range tests {
 			h.Run(tt.path, func(h check.Harness) {
-				dir, ok := pathx.NewAbsPath(tt.path).Dir().Get()
+				dir, ok := pathx.MustParseAbsPath(tt.path).Dir().Get()
 				got := option.NewOption(dir.String(), ok)
 				h.Assertf(option.Compare(tt.want, got) == 0,
 					"Dir(%q) = %v, want %v", tt.path, got, tt.want)
@@ -294,7 +294,7 @@ func TestAbsPathDir(t *testing.T) {
 		}
 		for _, tt := range tests {
 			h.Run(tt.path, func(h check.Harness) {
-				dir, ok := pathx.NewAbsPath(tt.path).Dir().Get()
+				dir, ok := pathx.MustParseAbsPath(tt.path).Dir().Get()
 				got := option.NewOption(dir.String(), ok)
 				h.Assertf(option.Compare(tt.want, got) == 0,
 					"Dir(%q) = %v, want %v", tt.path, got, tt.want)
@@ -319,7 +319,7 @@ func TestRelPathDir(t *testing.T) {
 
 	for _, tt := range tests {
 		h.Run(tt.path, func(h check.Harness) {
-			dir, ok := pathx.NewRelPath(tt.path).Dir().Get()
+			dir, ok := pathx.MustParseRelPath(tt.path).Dir().Get()
 			got := option.NewOption(dir.String(), ok)
 			h.Assertf(option.Compare(tt.want, got) == 0,
 				"Dir(%q) = %v, want %v", tt.path, got, tt.want)
@@ -329,8 +329,8 @@ func TestRelPathDir(t *testing.T) {
 
 func TestJoinMatchesJoinComponents(t *testing.T) {
 	h := check.New(t)
-	root := pathx.NewAbsPath(t.TempDir())
-	rel := pathx.NewRelPath(filepath.Join("a", "b", "c"))
+	root := pathx.MustParseAbsPath(t.TempDir())
+	rel := pathx.MustParseRelPath(filepath.Join("a", "b", "c"))
 
 	got := root.Join(rel)
 	want := root.JoinComponents("a", "b", "c")
@@ -343,7 +343,7 @@ func TestAppendExtension(t *testing.T) {
 	h.Run("AppendsExtension", func(h check.Harness) {
 		h.Parallel()
 
-		root := pathx.NewAbsPath(h.T().TempDir())
+		root := pathx.MustParseAbsPath(h.T().TempDir())
 		path := root.JoinComponents("tool")
 		got := path.AppendExtension(".exe")
 		check.AssertSame(h, root.JoinComponents("tool.exe").String(), got.String(), "AppendExtension")
@@ -361,7 +361,7 @@ func TestAppendExtension(t *testing.T) {
 	h.Run("PanicsOnTrailingSeparator", func(h check.Harness) {
 		h.Parallel()
 
-		path := pathx.NewAbsPath(h.T().TempDir() + string(filepath.Separator))
+		path := pathx.MustParseAbsPath(h.T().TempDir() + string(filepath.Separator))
 		want := assert.AssertionError{
 			Fmt:  "precondition violation: path %q ends with a path separator; so it's not a valid file path",
 			Args: []any{path.String()},
@@ -435,8 +435,8 @@ func TestLexicallyNormalize(t *testing.T) {
 
 func TestRootRelPathBasics(t *testing.T) {
 	h := check.New(t)
-	root := pathx.NewAbsPath(t.TempDir())
-	rel := pathx.NewRelPath(filepath.Join("dir", "file.txt"))
+	root := pathx.MustParseAbsPath(t.TempDir())
+	rel := pathx.MustParseRelPath(filepath.Join("dir", "file.txt"))
 	rootRelPath := pathx.NewRootRelPath(root, rel)
 	check.AssertSame(h, rel.String(), rootRelPath.String(), "RootRelPath.String()")
 	check.AssertSame(h, root.Join(rel).String(), rootRelPath.AsAbsPath().String(), "RootRelPath.AsAbsPath()")
@@ -458,8 +458,8 @@ func TestPathFormatting(t *testing.T) {
 	relStr := filepath.Join("a", "b")
 	rootRelStr := relStr // RootRelPath.String() returns just the relative portion.
 
-	abs := pathx.NewAbsPath(absStr)
-	rel := pathx.NewRelPath(relStr)
+	abs := pathx.MustParseAbsPath(absStr)
+	rel := pathx.MustParseRelPath(relStr)
 	rootRel := pathx.NewRootRelPath(abs, rel)
 
 	tests := []struct {
@@ -507,8 +507,8 @@ func TestRejectsEmptyPaths(t *testing.T) {
 		name string
 		call func()
 	}{
-		{name: "NewAbsPath", call: func() { _ = pathx.NewAbsPath("") }},
-		{name: "NewRelPath", call: func() { _ = pathx.NewRelPath("") }},
+		{name: "MustParseAbsPath", call: func() { _ = pathx.MustParseAbsPath("") }},
+		{name: "MustParseRelPath", call: func() { _ = pathx.MustParseRelPath("") }},
 	}
 
 	for _, tt := range tests {

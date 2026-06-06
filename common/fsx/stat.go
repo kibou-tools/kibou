@@ -61,7 +61,7 @@ func (fs rootedFS) Stat(rel pathx.RelPath, opts StatOptions) (os.FileInfo, error
 		}
 	}
 	if lo < len(seps) {
-		return nil, &StatError{fsError: err, shortestMissing: pathx.NewRelPath(raw[:seps[lo]])}
+		return nil, &StatError{fsError: err, shortestMissing: pathx.MustParseRelPath(raw[:seps[lo]])}
 	}
 	// All ancestors exist; the leaf itself is the shallowest missing.
 	return nil, &StatError{fsError: err, shortestMissing: rel}

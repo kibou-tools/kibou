@@ -62,7 +62,7 @@ func SafeRelPathGen() *rapid.Generator[pathx.RelPath] {
 			return pathx.Dot()
 		}
 		// Use strings.Join to avoid the Clean operation invoked by filepath.Join.
-		return pathx.NewRelPath(strings.Join(components, string(filepath.Separator)))
+		return pathx.MustParseRelPath(strings.Join(components, string(filepath.Separator)))
 	})
 }
 
@@ -95,6 +95,6 @@ func EscapingRelPathGen() *rapid.Generator[pathx.RelPath] {
 			}
 		}
 		// Use strings.Join to avoid the Clean operation invoked by filepath.Join.
-		return pathx.NewRelPath(strings.Join(components, string(filepath.Separator)))
+		return pathx.MustParseRelPath(strings.Join(components, string(filepath.Separator)))
 	})
 }

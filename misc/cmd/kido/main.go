@@ -43,7 +43,7 @@ func newWorkspaceFromGit(runner cmdx.Runner) (Workspace, error) {
 	if err != nil {
 		return Workspace{}, errorx.Wrapf("nostack", err, "determine git repository root")
 	}
-	repoRoot := NewAbsPath(strings.TrimSpace(output.Stdout))
+	repoRoot := MustParseAbsPath(strings.TrimSpace(output.Stdout))
 	repoFS, err := syscaps.FS(repoRoot)
 	if err != nil {
 		return Workspace{}, errorx.Wrapf("+stacks", err, "open repo filesystem at %s", repoRoot)

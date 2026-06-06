@@ -66,9 +66,9 @@ func FindExecutable(fs fsx.FS, env envx.Env, name string) (pathx.AbsPath, error)
 	for searchDir := range searchDirs(pathEnvVar) {
 		var dir pathx.AbsPath
 		if searchDir.isRelative {
-			dir = fs.Root().Join(pathx.NewRelPath(searchDir.pathEntry))
+			dir = fs.Root().Join(pathx.MustParseRelPath(searchDir.pathEntry))
 		} else {
-			dir = pathx.NewAbsPath(searchDir.pathEntry)
+			dir = pathx.MustParseAbsPath(searchDir.pathEntry)
 		}
 		if !dir.MakeRelativeTo(fs.Root()).IsSome() {
 			err := errorx.NewProblem(errorx.Code_AccessDenied,

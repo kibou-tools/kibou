@@ -32,7 +32,7 @@ func TestWorkspaceConfig(t *testing.T) {
 	h.Assertf(ok, "working directory %s must have a parent", workingDir)
 	repoFS := DoMsg(syscaps.FS(repoRoot))(h, "opening repo FS")
 
-	f := DoMsg(repoFS.Open(NewRelPath("misc/repo-configuration.json"), fsx.OpenOptions{Mode: fsx.OpenMode_ReadOnly}))(h, "opening repo-configuration.json")
+	f := DoMsg(repoFS.Open(MustParseRelPath("misc/repo-configuration.json"), fsx.OpenOptions{Mode: fsx.OpenMode_ReadOnly}))(h, "opening repo-configuration.json")
 	t.Cleanup(func() { _ = f.Close() })
 
 	wsConfig := Do(config.Load(f))(h)
@@ -68,7 +68,7 @@ func TestWorkspaceConfig(t *testing.T) {
 	h.Run("WorkflowProjectChoices", func(h check.Harness) {
 		h.Parallel()
 
-		workflowBytes := DoMsg(repoFS.ReadFile(NewRelPath(".github/workflows/upstream-sync.yml")))(h,
+		workflowBytes := DoMsg(repoFS.ReadFile(MustParseRelPath(".github/workflows/upstream-sync.yml")))(h,
 			"reading upstream-sync.yml")
 
 		var workflow struct {
@@ -96,7 +96,7 @@ func TestWorkspaceConfig(t *testing.T) {
 	h.Run("LinterExclusions", func(h check.Harness) {
 		h.Parallel()
 
-		lintBytes := DoMsg(repoFS.ReadFile(NewRelPath(".golangci.yml")))(h,
+		lintBytes := DoMsg(repoFS.ReadFile(MustParseRelPath(".golangci.yml")))(h,
 			"reading .golangci.yml")
 
 		var lintCfg struct {

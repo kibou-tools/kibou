@@ -75,7 +75,7 @@ func TestWalk(t *testing.T) {
 				h.T().Skipf("symlinks not supported on this platform")
 			}
 
-			fs := Do(syscaps.FS(pathx.NewAbsPath(link)))(h)
+			fs := Do(syscaps.FS(pathx.MustParseAbsPath(link)))(h)
 
 			_, err := fsx_walk.WalkNonDet(fs, pathx.Dot(), fsx_walk.WalkOptions{RespectGitIgnore: false})
 			walkErr := requireWalkError(h, err, fsx_walk.WalkErrorKind_RootNotDir)
@@ -175,7 +175,7 @@ func testFaults(h check.Harness) {
 	h.Run("InitialGitStat", func(h check.Harness) {
 		h.Parallel()
 
-		fs := fsx_testkit.NewFaultyFS(h, fsx_testkit.NewMemFS(h), fsx_testkit.Fault{Op: fsx_testkit.FaultOp_Stat, Rel: pathx.NewRelPath(".git")})
+		fs := fsx_testkit.NewFaultyFS(h, fsx_testkit.NewMemFS(h), fsx_testkit.Fault{Op: fsx_testkit.FaultOp_Stat, Rel: pathx.MustParseRelPath(".git")})
 
 		_, err := fsx_walk.WalkNonDet(fs, pathx.Dot(), fsx_walk.WalkOptions{RespectGitIgnore: true})
 		_ = requireWalkError(h, err, fsx_walk.WalkErrorKind_IOFailed)
@@ -189,7 +189,7 @@ func testFaults(h check.Harness) {
 			".git": "gitdir: root\n",
 			"a/":   "",
 		})
-		fs := fsx_testkit.NewFaultyFS(h, baseFS, fsx_testkit.Fault{Op: fsx_testkit.FaultOp_Stat, Rel: pathx.NewRelPath("a/.git")})
+		fs := fsx_testkit.NewFaultyFS(h, baseFS, fsx_testkit.Fault{Op: fsx_testkit.FaultOp_Stat, Rel: pathx.MustParseRelPath("a/.git")})
 
 		entries := Do(fsx_walk.WalkNonDet(fs, pathx.Dot(), fsx_walk.WalkOptions{RespectGitIgnore: true}))(h)
 		_ = requireWalkError(h, firstWalkError(h, entries), fsx_walk.WalkErrorKind_IOFailed)
@@ -203,7 +203,7 @@ func testFaults(h check.Harness) {
 			".git": "gitdir: root\n",
 			"a/":   "",
 		})
-		fs := fsx_testkit.NewFaultyFS(h, baseFS, fsx_testkit.Fault{Op: fsx_testkit.FaultOp_Open, Rel: pathx.NewRelPath("a/.gitignore")})
+		fs := fsx_testkit.NewFaultyFS(h, baseFS, fsx_testkit.Fault{Op: fsx_testkit.FaultOp_Open, Rel: pathx.MustParseRelPath("a/.gitignore")})
 
 		entries := Do(fsx_walk.WalkNonDet(fs, pathx.Dot(), fsx_walk.WalkOptions{RespectGitIgnore: true}))(h)
 		_ = requireWalkError(h, firstWalkError(h, entries), fsx_walk.WalkErrorKind_IOFailed)
@@ -216,7 +216,7 @@ func testFaults(h check.Harness) {
 		fsx_testkit.WriteTree(h, baseFS, map[string]string{
 			"a/": "",
 		})
-		fs := fsx_testkit.NewFaultyFS(h, baseFS, fsx_testkit.Fault{Op: fsx_testkit.FaultOp_Open, Rel: pathx.NewRelPath("a")})
+		fs := fsx_testkit.NewFaultyFS(h, baseFS, fsx_testkit.Fault{Op: fsx_testkit.FaultOp_Open, Rel: pathx.MustParseRelPath("a")})
 
 		entries := Do(fsx_walk.WalkNonDet(fs, pathx.Dot(), fsx_walk.WalkOptions{RespectGitIgnore: false}))(h)
 		_ = requireWalkError(h, firstWalkError(h, entries), fsx_walk.WalkErrorKind_IOFailed)
@@ -246,11 +246,11 @@ blocked/
 
 	h.Run("Ignores root subtree when blocked by ancestor", func(h check.Harness) {
 		h.Parallel()
-		_, err := fsx_walk.WalkNonDet(fs, pathx.NewRelPath("blocked/child"), fsx_walk.WalkOptions{RespectGitIgnore: true})
+		_, err := fsx_walk.WalkNonDet(fs, pathx.MustParseRelPath("blocked/child"), fsx_walk.WalkOptions{RespectGitIgnore: true})
 		walkErr := requireWalkError(h, err, fsx_walk.WalkErrorKind_RootIsIgnored)
 		check.AssertSame(h,
 			source_code.Snippet{
-				Path:     pathx.NewRelPath(".gitignore"),
+				Path:     pathx.MustParseRelPath(".gitignore"),
 				Position: source_code.NewPosition(2, 1),
 				Text:     "blocked/",
 			},
@@ -264,14 +264,14 @@ blocked/
 
 	h.Run("Walks subtree with ancestor gitignore matchers", func(h check.Harness) {
 		h.Parallel()
-		entries := Do(fsx_walk.WalkNonDet(fs, pathx.NewRelPath("open/child"), fsx_walk.WalkOptions{RespectGitIgnore: true}))(h)
+		entries := Do(fsx_walk.WalkNonDet(fs, pathx.MustParseRelPath("open/child"), fsx_walk.WalkOptions{RespectGitIgnore: true}))(h)
 		got := collectPaths(h, entries)
 		checkVisitedPaths(h, []string{"file.go"}, got)
 	})
 
 	h.Run("Walks subtree when gitignore is disabled", func(h check.Harness) {
 		h.Parallel()
-		entries := Do(fsx_walk.WalkNonDet(fs, pathx.NewRelPath("blocked/child"), fsx_walk.WalkOptions{RespectGitIgnore: false}))(h)
+		entries := Do(fsx_walk.WalkNonDet(fs, pathx.MustParseRelPath("blocked/child"), fsx_walk.WalkOptions{RespectGitIgnore: false}))(h)
 		got := collectPaths(h, entries)
 		checkVisitedPaths(h, []string{"file.txt"}, got)
 	})
@@ -308,7 +308,7 @@ func testGitIgnore_ResetsAtNestedRepo(h check.Harness) {
 
 	h.Run("ExplicitSubtree", func(h check.Harness) {
 		h.Parallel()
-		entries := Do(fsx_walk.WalkNonDet(fs, pathx.NewRelPath("nested/child"), fsx_walk.WalkOptions{RespectGitIgnore: true}))(h)
+		entries := Do(fsx_walk.WalkNonDet(fs, pathx.MustParseRelPath("nested/child"), fsx_walk.WalkOptions{RespectGitIgnore: true}))(h)
 		got := collectPaths(h, entries)
 		checkVisitedPaths(h, []string{"file.txt"}, got)
 	})
@@ -359,8 +359,8 @@ func testGitIgnore_PreservesAllParseErrors(h check.Harness) {
 	h.Assertf(ok, "WalkError.Unwrap() = %T, want an error with Snippets() []source_code.Snippet", walkErr.Unwrap())
 	check.AssertSame(h,
 		[]source_code.Snippet{
-			{Path: pathx.NewRelPath(".gitignore"), Position: source_code.NewPosition(1, 2), Text: "!"},
-			{Path: pathx.NewRelPath(".gitignore"), Position: source_code.NewPosition(2, 4), Text: "** *"},
+			{Path: pathx.MustParseRelPath(".gitignore"), Position: source_code.NewPosition(1, 2), Text: "!"},
+			{Path: pathx.MustParseRelPath(".gitignore"), Position: source_code.NewPosition(2, 4), Text: "** *"},
 		},
 		parseSnippets.Snippets(),
 		"parse error snippets",
@@ -428,8 +428,8 @@ func testGitIgnore_ConcurrentSiblingWarnings(h check.Harness) {
 	}
 	check.AssertSame(h,
 		map[string][]string{
-			"a": {fs.Root().Join(pathx.NewRelPath("a/.gitignore")).String()},
-			"b": {fs.Root().Join(pathx.NewRelPath("b/.gitignore")).String()},
+			"a": {fs.Root().Join(pathx.MustParseRelPath("a/.gitignore")).String()},
+			"b": {fs.Root().Join(pathx.MustParseRelPath("b/.gitignore")).String()},
 		},
 		got,
 		"parse warning paths",
