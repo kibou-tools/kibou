@@ -40,6 +40,10 @@ func (p AbsPath) String() string {
 	return p.value
 }
 
+func (p AbsPath) Compare(other AbsPath) int {
+	return strings.Compare(p.value, other.value)
+}
+
 // Dir returns the parent directory of p, or None if p is a filesystem root.
 func (p AbsPath) Dir() option.Option[AbsPath] {
 	rootLen := p.rootLen()
@@ -181,6 +185,10 @@ func NewRelPath(path string) RelPath {
 // String is guaranteed to be "." if a relative path for the current directory.
 func (p RelPath) String() string {
 	return p.value
+}
+
+func (p RelPath) Compare(other RelPath) int {
+	return strings.Compare(p.value, other.value)
 }
 
 // Dir returns the parent directory of p, or None if p is ".".
@@ -342,6 +350,13 @@ func NewRootRelPath(root AbsPath, subpath RelPath) RootRelPath {
 
 func (p RootRelPath) String() string {
 	return p.value.value
+}
+
+func (p RootRelPath) Compare(other RootRelPath) int {
+	if c := p.root.Compare(other.root); c != 0 {
+		return c
+	}
+	return p.value.Compare(other.value)
 }
 
 func (p RootRelPath) AsAbsPath() AbsPath {

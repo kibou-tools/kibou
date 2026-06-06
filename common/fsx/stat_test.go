@@ -82,14 +82,16 @@ func TestFSStat(t *testing.T) {
 			_, err := repoFS.Stat(rel, opts)
 			statErr := requireStatError(h, err, rel, opts)
 			check.AssertSame(h, rel, statErr.ShortestMissing(),
-				"ShortestMissing() with OnErrorTraverseParents=false")
+				"ShortestMissing() with OnErrorTraverseParents=false",
+				pathx_testkit.CompareOptions()...)
 
 			opts.OnErrorTraverseParents = true
 			_, err = repoFS.Stat(rel, opts)
 			statErr = requireStatError(h, err, rel, opts)
 			wantShortestMissing := joinedRelPath(components[:existingPrefixLen+1])
 			check.AssertSame(h, wantShortestMissing, statErr.ShortestMissing(),
-				"ShortestMissing() with OnErrorTraverseParents=true")
+				"ShortestMissing() with OnErrorTraverseParents=true",
+				pathx_testkit.CompareOptions()...)
 		})
 	})
 }
