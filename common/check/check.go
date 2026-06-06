@@ -13,7 +13,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"code.kibou.tools/common/assert"
-	"code.kibou.tools/common/core/pathx"
 )
 
 func init() {
@@ -139,11 +138,7 @@ func (h Harness) Close(c io.Closer) {
 // AssertSame compares want and got using cmp.Diff and fails with a diff if they differ.
 // Additional cmp options may be provided to customize comparison.
 func AssertSame[T any](h BasicHarness, want, got T, what string, opts ...cmp.Option) {
-	defaultOpts := cmp.Options{
-		cmp.AllowUnexported(pathx.AbsPath{}, pathx.RelPath{}, pathx.RootRelPath{}),
-	}
-	allOpts := append(defaultOpts, opts...)
-	if diff := cmp.Diff(want, got, allOpts...); diff != "" {
+	if diff := cmp.Diff(want, got, opts...); diff != "" {
 		h.Assertf(false, "%s mismatch (-want +got):\n%s", what, diff)
 	}
 }

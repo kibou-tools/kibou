@@ -9,10 +9,20 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/google/go-cmp/cmp"
 	"pgregory.net/rapid"
 
 	"code.kibou.tools/common/core/pathx"
 )
+
+// CompareOptions returns cmp options for comparing pathx values without accessing unexported fields.
+func CompareOptions() []cmp.Option {
+	return []cmp.Option{
+		cmp.Comparer(func(a, b pathx.AbsPath) bool { return a.Compare(b) == 0 }),
+		cmp.Comparer(func(a, b pathx.RelPath) bool { return a.Compare(b) == 0 }),
+		cmp.Comparer(func(a, b pathx.RootRelPath) bool { return a.Compare(b) == 0 }),
+	}
+}
 
 // ComponentGen generates a short, safe-looking path component.
 // It emits no separators or dot-only names, and on Unix it will not produce

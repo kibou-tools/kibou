@@ -18,6 +18,7 @@ import (
 	. "code.kibou.tools/common/check/prelude"
 	"code.kibou.tools/common/core/option"
 	"code.kibou.tools/common/core/pathx"
+	"code.kibou.tools/common/core/pathx/pathx_testkit"
 	"code.kibou.tools/common/core/result"
 	"code.kibou.tools/common/fsx/fsx_testkit"
 	"code.kibou.tools/common/fsx/fsx_walk"
@@ -140,7 +141,7 @@ ignored/
 
 		_, err := fsx_walk.WalkNonDet(fs, pathx.Dot(), fsx_walk.WalkOptions{RespectGitIgnore: true})
 		walkErr := requireWalkError(h, err, fsx_walk.WalkErrorKind_FSRootNotRepo)
-		check.AssertSame(h, fs.Root(), walkErr.Path(), "WalkError.Path()")
+		check.AssertSame(h, fs.Root(), walkErr.Path(), "WalkError.Path()", pathx_testkit.CompareOptions()...)
 		h.Assertf(strings.Contains(walkErr.Error(), "not a git repository root"),
 			"WalkError.Error() = %q, want repository-root message", walkErr.Error())
 		h.NoErrorf(walkErr.Unwrap(), "WalkError.Unwrap()")
@@ -165,7 +166,7 @@ func testFaults(h check.Harness) {
 
 		_, err := fsx_walk.WalkNonDet(fs, pathx.Dot(), fsx_walk.WalkOptions{RespectGitIgnore: false})
 		walkErr := requireWalkError(h, err, fsx_walk.WalkErrorKind_IOFailed)
-		check.AssertSame(h, fs.Root(), walkErr.Path(), "WalkError.Path()")
+		check.AssertSame(h, fs.Root(), walkErr.Path(), "WalkError.Path()", pathx_testkit.CompareOptions()...)
 		h.Assertf(walkErr.Unwrap() != nil, "WalkError.Unwrap() = nil, want underlying error")
 		h.Assertf(strings.Contains(walkErr.Error(), fs.Root().String()),
 			"got: WalkError.Error() = %q\nwant: root path %v to appear in it", walkErr.Error(), fs.Root())
@@ -255,7 +256,7 @@ blocked/
 			},
 			walkErr.GitIgnorePattern(),
 			"GitIgnorePattern()",
-			cmp.AllowUnexported(source_code.Position{}),
+			append(pathx_testkit.CompareOptions(), cmp.AllowUnexported(source_code.Position{}))...,
 		)
 		h.Assertf(strings.Contains(walkErr.Error(), "blocked/"),
 			"WalkError.Error() = %q, want ignored pattern", walkErr.Error())
@@ -363,7 +364,7 @@ func testGitIgnore_PreservesAllParseErrors(h check.Harness) {
 		},
 		parseSnippets.Snippets(),
 		"parse error snippets",
-		cmp.AllowUnexported(source_code.Position{}),
+		append(pathx_testkit.CompareOptions(), cmp.AllowUnexported(source_code.Position{}))...,
 	)
 }
 

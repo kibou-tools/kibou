@@ -17,6 +17,7 @@ import (
 	"code.kibou.tools/common/check"
 	. "code.kibou.tools/common/check/prelude"
 	"code.kibou.tools/common/core/pathx"
+	"code.kibou.tools/common/core/pathx/pathx_testkit"
 	"code.kibou.tools/common/envx"
 	"code.kibou.tools/common/envx/envx_path"
 	"code.kibou.tools/common/errorx"
@@ -56,7 +57,7 @@ func testFindExecutableHappyPath(h check.Harness) {
 			env := testEnv(envVars)
 
 			got := Do(envx_path.FindExecutable(fs, env, exe.LookupName))(h)
-			check.AssertSame(h, fs.Root().Join(exeRel), got, "FindExecutable")
+			check.AssertSame(h, fs.Root().Join(exeRel), got, "FindExecutable", pathx_testkit.CompareOptions()...)
 		})
 
 		h.Run("Missing candidates are skipped", func(h check.Harness) {
@@ -74,7 +75,7 @@ func testFindExecutableHappyPath(h check.Harness) {
 			env := testEnv(envVars)
 
 			got := Do(envx_path.FindExecutable(fs, env, exe.LookupName))(h)
-			check.AssertSame(h, fs.Root().Join(exeRel), got, "FindExecutable after missing candidate")
+			check.AssertSame(h, fs.Root().Join(exeRel), got, "FindExecutable after missing candidate", pathx_testkit.CompareOptions()...)
 		})
 	})
 
@@ -102,7 +103,7 @@ func testFindExecutableHappyPath(h check.Harness) {
 
 			env := testEnv(map[string]string{"PATH": binDir.String()})
 			gotPath := Do(envx_path.FindExecutable(fs, env, "tool"))(h)
-			check.AssertSame(h, exePath, gotPath, "FindExecutable path")
+			check.AssertSame(h, exePath, gotPath, "FindExecutable path", pathx_testkit.CompareOptions()...)
 		})
 
 		h.Run("Explicit extension matches exec.LookPath", func(h check.Harness) {
@@ -117,7 +118,7 @@ func testFindExecutableHappyPath(h check.Harness) {
 
 			env := testEnv(map[string]string{"PATH": binDir.String()})
 			gotPath := Do(envx_path.FindExecutable(fs, env, "tool.txt"))(h)
-			check.AssertSame(h, txtPath, gotPath, "FindExecutable path")
+			check.AssertSame(h, txtPath, gotPath, "FindExecutable path", pathx_testkit.CompareOptions()...)
 		})
 	})
 }
@@ -166,7 +167,7 @@ func testFindExecutableErrorCases(h check.Harness) {
 		h.Assertf(ok, "expected *ExeSearchError, got %T", err)
 		check.AssertSame(h, 1, len(searchErr.IgnoredPaths()), "IgnoredPaths count")
 		ignored := searchErr.IgnoredPaths()[0]
-		check.AssertSame(h, fs.Root().Join(exeRel), ignored.Path, "IgnoredPath.Path")
+		check.AssertSame(h, fs.Root().Join(exeRel), ignored.Path, "IgnoredPath.Path", pathx_testkit.CompareOptions()...)
 		h.Assertf(errorx.GetRootCauseAsValue(ignored.Err, envx_path.NotExecutableErr),
 			"expected not-executable error, got %v", ignored.Err)
 
@@ -216,7 +217,7 @@ func testFindExecutableErrorCases(h check.Harness) {
 			gotPath, gotErr := envx_path.FindExecutable(fs, env, exe.LookupName)
 			h.Assertf(errorx.GetRootCauseAsValue(gotErr, envx_path.ErrDot),
 				"expected FindExecutable error %v to wrap ErrDot", gotErr)
-			check.AssertSame(h, root.Join(exeRel), gotPath, "FindExecutable path")
+			check.AssertSame(h, root.Join(exeRel), gotPath, "FindExecutable path", pathx_testkit.CompareOptions()...)
 		})
 
 		h.Run("Stat errors are skipped", func(h check.Harness) {
@@ -244,7 +245,7 @@ func testFindExecutableErrorCases(h check.Harness) {
 			h.Assertf(ok, "expected *ExeSearchError, got %T", err)
 			check.AssertSame(h, 1, len(searchErr.IgnoredPaths()), "IgnoredPaths count")
 			ignored := searchErr.IgnoredPaths()[0]
-			check.AssertSame(h, binDir.JoinComponents(exe.Name), ignored.Path, "IgnoredPath.Path")
+			check.AssertSame(h, binDir.JoinComponents(exe.Name), ignored.Path, "IgnoredPath.Path", pathx_testkit.CompareOptions()...)
 			h.Assertf(errorx.GetRootCauseAsValue(ignored.Err, os.ErrPermission),
 				"expected permission error, got %v", ignored.Err)
 
