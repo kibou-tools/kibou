@@ -232,7 +232,7 @@ func (fs rootedFS) MkdirTemp(dir pathx.RelPath, pattern string) (pathx.RelPath, 
 	if err != nil {
 		return pathx.RelPath{}, err
 	}
-	return pathx.NewRelPath(tmpDir), nil
+	return pathx.MustParseRelPath(tmpDir), nil
 }
 
 // RemoveAll removes the file or directory at the given root-relative path

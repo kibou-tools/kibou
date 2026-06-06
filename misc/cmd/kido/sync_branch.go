@@ -177,7 +177,7 @@ func formatLease(branch string, remoteHead Option[remoteRef]) string {
 func createSyncWorktree(
 	ctx logx.LogCtx, runner cmdx.BaseRunner, repoFS fsx.FS, base string,
 ) (RelPath, func() error, error) {
-	tmpRoot := NewRelPath(".cache").JoinComponents("tmp")
+	tmpRoot := MustParseRelPath(".cache").JoinComponents("tmp")
 	if err := repoFS.MkdirAll(tmpRoot, 0o755); err != nil {
 		return RelPath{}, nil, errorx.Wrapf("+stacks", err, "create temp root %s", tmpRoot)
 	}

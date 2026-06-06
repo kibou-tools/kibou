@@ -45,7 +45,7 @@ func WorkingDirectory() (pathx.AbsPath, error) {
 	if err != nil {
 		return pathx.AbsPath{}, err
 	}
-	return pathx.NewAbsPath(wd), nil
+	return pathx.MustParseAbsPath(wd), nil
 }
 
 // FS returns a rooted filesystem backed by the host operating system.

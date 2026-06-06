@@ -27,10 +27,10 @@ type AbsPath struct {
 	value string
 }
 
-// NewAbsPath creates an AbsPath from an already-absolute path string.
+// MustParseAbsPath creates an AbsPath from an already-absolute path string.
 //
 // Pre-condition: path is non-empty and absolute per [filepath.IsAbs].
-func NewAbsPath(path string) AbsPath {
+func MustParseAbsPath(path string) AbsPath {
 	assert.Preconditionf(path != "", "path is empty")
 	assert.Preconditionf(filepath.IsAbs(path), "path is not absolute: %q", path)
 	return AbsPath{LexicallyNormalize(path)}
@@ -73,7 +73,7 @@ func (p AbsPath) rootLen() int {
 
 func (p AbsPath) Split() (AbsPath, fsx_name.Name) {
 	dir, file := filepath.Split(p.value)
-	return NewAbsPath(dir), fsx_name.New(file)
+	return MustParseAbsPath(dir), fsx_name.New(file)
 }
 
 // Ancestors returns an iterator over p's ancestor absolute paths,
@@ -114,7 +114,7 @@ func (p AbsPath) lexicallyContainsSlow(child RelPath) bool {
 }
 
 func (p AbsPath) Join(rel RelPath) AbsPath {
-	return NewAbsPath(filepath.Join(p.value, rel.value))
+	return MustParseAbsPath(filepath.Join(p.value, rel.value))
 }
 
 // AppendExtension returns p with ext appended.
@@ -130,7 +130,7 @@ func (p AbsPath) AppendExtension(ext string) AbsPath {
 		assert.Preconditionf(!HasPathSeparators(lastCharStr),
 			"path %q ends with a path separator; so it's not a valid file path", p.value)
 	}
-	return NewAbsPath(p.value + ext)
+	return MustParseAbsPath(p.value + ext)
 }
 
 // JoinComponents joins individual path components onto p.
@@ -143,7 +143,7 @@ func (p AbsPath) JoinComponents(pathElems ...string) AbsPath {
 		assert.Preconditionf(!HasPathSeparators(elem), "path element contains separator: %q", elem)
 		parts = append(parts, elem)
 	}
-	return NewAbsPath(filepath.Join(parts...))
+	return MustParseAbsPath(filepath.Join(parts...))
 }
 
 // MakeRelativeTo is the equivalent of filepath.Rel with typed paths.
@@ -158,7 +158,7 @@ func (p AbsPath) MakeRelativeTo(root AbsPath) option.Option[RootRelPath] {
 	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return option.None[RootRelPath]()
 	}
-	return option.Some(NewRootRelPath(root, NewRelPath(rel)))
+	return option.Some(NewRootRelPath(root, MustParseRelPath(rel)))
 }
 
 // RelPath carries a relative path that has gone through [LexicallyNormalize].
@@ -173,10 +173,10 @@ func Dot() RelPath {
 	return RelPath{"."}
 }
 
-// NewRelPath creates a RelPath from a relative path string.
+// MustParseRelPath creates a RelPath from a relative path string.
 //
 // Pre-condition: path is non-empty and not absolute per [filepath.IsAbs].
-func NewRelPath(path string) RelPath {
+func MustParseRelPath(path string) RelPath {
 	assert.Preconditionf(path != "", "path is empty")
 	assert.Preconditionf(!filepath.IsAbs(path), "path is not relative: %q", path)
 	return RelPath{LexicallyNormalize(path)}
@@ -197,11 +197,11 @@ func (p RelPath) Dir() option.Option[RelPath] {
 	if parent == p.value || parent == "." {
 		return option.None[RelPath]()
 	}
-	return option.Some(NewRelPath(parent))
+	return option.Some(MustParseRelPath(parent))
 }
 
 func (p RelPath) Join(rel RelPath) RelPath {
-	return NewRelPath(filepath.Join(p.value, rel.value))
+	return MustParseRelPath(filepath.Join(p.value, rel.value))
 }
 
 // RelativeTo returns p expressed as a relative path from base.
@@ -223,7 +223,7 @@ func (p RelPath) RelativeTo(base RelPath) RelPath {
 
 func (p RelPath) JoinOne(name fsx_name.Name) RelPath {
 	// TODO: Use an unchecked code path here, because we know the invariant can't be violated.
-	return NewRelPath(filepath.Join(p.value, name.String()))
+	return MustParseRelPath(filepath.Join(p.value, name.String()))
 }
 
 // JoinComponents joins individual path components onto p.
@@ -236,7 +236,7 @@ func (p RelPath) JoinComponents(pathElems ...string) RelPath {
 		assert.Preconditionf(!HasPathSeparators(elem), "path element contains separator: %q", elem)
 		parts = append(parts, elem)
 	}
-	return NewRelPath(filepath.Join(parts...))
+	return MustParseRelPath(filepath.Join(parts...))
 }
 
 // Ancestors returns an iterator over p's ancestor relative paths,

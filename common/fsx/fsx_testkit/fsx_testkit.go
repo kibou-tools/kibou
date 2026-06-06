@@ -22,7 +22,7 @@ import (
 // TempDirFS returns a host FS rooted at a new test temporary directory.
 func TempDirFS(h check.Harness) fsx.FS {
 	h.T().Helper()
-	fs, err := syscaps.FS(pathx.NewAbsPath(h.T().TempDir()))
+	fs, err := syscaps.FS(pathx.MustParseAbsPath(h.T().TempDir()))
 	h.NoErrorf(err, "FS(TempDir())")
 	return fs
 }
@@ -51,7 +51,7 @@ func WriteTree(h check.Harness, fs fsx.FS, tree map[string]string) {
 	h.T().Helper()
 	for path, content := range tree {
 		h.Assertf(path != "", "path must not be empty")
-		rel := pathx.NewRelPath(path)
+		rel := pathx.MustParseRelPath(path)
 		if strings.HasSuffix(path, "/") {
 			h.Assertf(content == "", "directory path %q must have empty content", path)
 			h.NoErrorf(fs.MkdirAll(rel, 0o755), "MkdirAll(%q)", rel)
@@ -137,7 +137,7 @@ func injectedFSError() error {
 
 func FakeRoot() pathx.AbsPath {
 	if runtime.GOOS == "windows" {
-		return pathx.NewAbsPath(`C:\virtual-root`)
+		return pathx.MustParseAbsPath(`C:\virtual-root`)
 	}
-	return pathx.NewAbsPath("/virtual-root")
+	return pathx.MustParseAbsPath("/virtual-root")
 }

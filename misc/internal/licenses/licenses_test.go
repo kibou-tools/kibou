@@ -82,7 +82,7 @@ func repoRootFromMiscDir(h check.Harness, workingDir AbsPath) AbsPath {
 func loadWorkspaceConfig(h check.Harness, repoFS fsx.FS) config.WorkspaceConfig {
 	h.T().Helper()
 
-	path := NewRelPath("misc/repo-configuration.json")
+	path := MustParseRelPath("misc/repo-configuration.json")
 	f := DoMsg(repoFS.Open(path, fsx.OpenOptions{Mode: fsx.OpenMode_ReadOnly}))(h, "opening %s", path)
 	defer h.Close(f)
 
@@ -110,7 +110,7 @@ func visitFirstPartyGoFiles[T any](
 		}()
 	}
 
-	for entryRes := range repoFS.ReadDir(NewRelPath(".")) {
+	for entryRes := range repoFS.ReadDir(MustParseRelPath(".")) {
 		entry := DoMsg(entryRes.Get())(h, "reading repository root %s", repoFS.Root())
 		if !entry.IsDir() {
 			continue
@@ -121,7 +121,7 @@ func visitFirstPartyGoFiles[T any](
 			continue
 		}
 
-		moduleRoot := NewRelPath(".").JoinComponents(name.String())
+		moduleRoot := MustParseRelPath(".").JoinComponents(name.String())
 		goModInfo, err := repoFS.Stat(moduleRoot.JoinComponents("go.mod"), fsx.StatOptions{
 			FollowFinalSymlink:     false,
 			OnErrorTraverseParents: false,

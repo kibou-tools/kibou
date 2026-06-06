@@ -42,7 +42,7 @@ func testFindExecutableHappyPath(h check.Harness) {
 
 	h.Run("PATH behavior", func(h check.Harness) {
 		fs := newMemFS(h, fakeRoot.JoinComponents("path-behavior"))
-		binRel := pathx.NewRelPath("bin")
+		binRel := pathx.MustParseRelPath("bin")
 		h.NoErrorf(fs.MkdirAll(binRel, 0o755), "MkdirAll(%q)", binRel)
 		exeRel := binRel.JoinComponents(exe.Name)
 		writeExecutable(h, fs, exeRel)
@@ -84,9 +84,9 @@ func testFindExecutableHappyPath(h check.Harness) {
 			h.T().Skip("Windows-specific exec.LookPath compatibility tests")
 		}
 
-		root := pathx.NewAbsPath(h.T().TempDir())
+		root := pathx.MustParseAbsPath(h.T().TempDir())
 		fs := Do(syscaps.FS(root))(h)
-		binRel := pathx.NewRelPath("bin")
+		binRel := pathx.MustParseRelPath("bin")
 		binDir := root.Join(binRel)
 		h.NoErrorf(fs.MkdirAll(binRel, 0o755), "MkdirAll(%q)", binRel)
 
@@ -154,7 +154,7 @@ func testFindExecutableErrorCases(h check.Harness) {
 		}
 
 		fs := newMemFS(h, fakeRoot.JoinComponents("non-executable-candidates"))
-		binRel := pathx.NewRelPath("bin")
+		binRel := pathx.MustParseRelPath("bin")
 		exeRel := binRel.JoinComponents(exe.Name)
 		fsx_testkit.WriteFile(h, fs, exeRel, "#!/bin/sh\n")
 
@@ -188,9 +188,9 @@ func testFindExecutableErrorCases(h check.Harness) {
 	})
 
 	h.Run("exec.LookPath compatibility", func(h check.Harness) {
-		root := pathx.NewAbsPath(h.T().TempDir())
+		root := pathx.MustParseAbsPath(h.T().TempDir())
 		fs := Do(syscaps.FS(root))(h)
-		binRel := pathx.NewRelPath("bin")
+		binRel := pathx.MustParseRelPath("bin")
 		binDir := root.Join(binRel)
 		h.NoErrorf(fs.MkdirAll(binRel, 0o755), "MkdirAll(%q)", binRel)
 		exeRel := binRel.JoinComponents(exe.Name)

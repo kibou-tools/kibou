@@ -38,7 +38,7 @@ func TestFSStat(t *testing.T) {
 			h.T().Skipf("symlinks not supported on this platform")
 		}
 
-		repoFS := Do(syscaps.FS(pathx.NewAbsPath(link)))(h)
+		repoFS := Do(syscaps.FS(pathx.MustParseAbsPath(link)))(h)
 
 		followed := Do(repoFS.Stat(pathx.Dot(), fsx.StatOptions{
 			FollowFinalSymlink:     true,
@@ -60,7 +60,7 @@ func TestFSStat(t *testing.T) {
 	h.Run("ShortestMissingProperties", func(h check.Harness) {
 		h.Parallel()
 
-		root := pathx.NewAbsPath(h.T().TempDir())
+		root := pathx.MustParseAbsPath(h.T().TempDir())
 		componentsGen := rapid.SliceOfN(pathx_testkit.ComponentGen(), 1, 6)
 		rapid.Check(h.T(), func(t *rapid.T) {
 			h := check.NewBasic(t)
@@ -100,7 +100,7 @@ func joinedRelPath(components []string) pathx.RelPath {
 	if len(components) == 0 {
 		return pathx.Dot()
 	}
-	return pathx.NewRelPath(filepath.Join(components...))
+	return pathx.MustParseRelPath(filepath.Join(components...))
 }
 
 func requireStatError(h check.BasicHarness, err error, rel pathx.RelPath, opts fsx.StatOptions) *fsx.StatError {

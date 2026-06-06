@@ -70,7 +70,7 @@ func NewSnapshotDirSet(subdirs ...string) *SnapshotDirSet {
 		logger:  logx.NewLogger(os.Stderr, logx.ColorSupport_AutoDetect),
 	}
 	for _, subdir := range subdirs {
-		rootRel := pathx.NewRelPath(subdir)
+		rootRel := pathx.MustParseRelPath(subdir)
 		dir := &snapshotDir{
 			pkgRelPath: rootRel,
 			mu:         sync.Mutex{},
@@ -115,7 +115,7 @@ func (dirSet *SnapshotDirSet) Run(m *testing.M) int {
 //  2. set.Run has initialized the snapshot directory set.
 func (dirSet *SnapshotDirSet) FS(h check.Harness, root string) SnapshotFS {
 	h.T().Helper()
-	rootRel := pathx.NewRelPath(root)
+	rootRel := pathx.MustParseRelPath(root)
 	dir, ok := dirSet.subdirs.Lookup(rootRel).Get()
 	h.Assertf(ok, "unknown snapshot directory %q", root)
 
