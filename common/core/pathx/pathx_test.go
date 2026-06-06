@@ -501,21 +501,55 @@ func TestPathFormatting(t *testing.T) {
 
 func TestRejectsEmptyPaths(t *testing.T) {
 	h := check.New(t)
-	want := assert.AssertionError{Fmt: "precondition violation: path is empty", Args: nil}
 
 	tests := []struct {
 		name string
+		want assert.AssertionError
 		call func()
 	}{
-		{name: "MustParseAbsPath", call: func() { _ = pathx.MustParseAbsPath("") }},
-		{name: "MustParseRelPath", call: func() { _ = pathx.MustParseRelPath("") }},
+		{
+			name: "MustParseAbsPath",
+			want: assert.AssertionError{Fmt: "precondition violation: MustParseAbsPath called with empty path", Args: nil},
+			call: func() { _ = pathx.MustParseAbsPath("") },
+		},
+		{
+			name: "MustParseRelPath",
+			want: assert.AssertionError{Fmt: "precondition violation: MustParseRelPath called with empty path", Args: nil},
+			call: func() { _ = pathx.MustParseRelPath("") },
+		},
 	}
 
 	for _, tt := range tests {
 		h.Run(tt.name, func(h check.Harness) {
-			h.AssertPanicsWith(want, tt.call)
+			h.AssertPanicsWith(tt.want, tt.call)
 		})
 	}
+}
+
+func TestPathParseErrorConstructors(t *testing.T) {
+	h := check.New(t)
+	h.Parallel()
+
+	absEmpty := pathx.NewAbsPathParseError(pathx.AbsPathParseErrorKind_Empty, "")
+	check.AssertSame(h, pathx.AbsPathParseErrorKind_Empty, absEmpty.Kind(), "AbsPathParseError.Kind()")
+	check.AssertSame(h, "", absEmpty.InputPath(), "AbsPathParseError.InputPath()")
+	check.AssertSame(h, "empty absolute path", absEmpty.Error(), "AbsPathParseError.Error()")
+
+	absNotAbsolute := pathx.NewAbsPathParseError(pathx.AbsPathParseErrorKind_NotAbsolute, "relative")
+	check.AssertSame(h, pathx.AbsPathParseErrorKind_NotAbsolute, absNotAbsolute.Kind(), "AbsPathParseError.Kind()")
+	check.AssertSame(h, "relative", absNotAbsolute.InputPath(), "AbsPathParseError.InputPath()")
+	check.AssertSame(h, `not an absolute path (input="relative")`, absNotAbsolute.Error(), "AbsPathParseError.Error()")
+
+	relEmpty := pathx.NewRelPathParseError(pathx.RelPathParseErrorKind_Empty, "")
+	check.AssertSame(h, pathx.RelPathParseErrorKind_Empty, relEmpty.Kind(), "RelPathParseError.Kind()")
+	check.AssertSame(h, "", relEmpty.InputPath(), "RelPathParseError.InputPath()")
+	check.AssertSame(h, "empty relative path", relEmpty.Error(), "RelPathParseError.Error()")
+
+	absPath := h.T().TempDir()
+	relNotRelative := pathx.NewRelPathParseError(pathx.RelPathParseErrorKind_NotRelative, absPath)
+	check.AssertSame(h, pathx.RelPathParseErrorKind_NotRelative, relNotRelative.Kind(), "RelPathParseError.Kind()")
+	check.AssertSame(h, absPath, relNotRelative.InputPath(), "RelPathParseError.InputPath()")
+	check.AssertSame(h, fmt.Sprintf("not a relative path (input=%q)", absPath), relNotRelative.Error(), "RelPathParseError.Error()")
 }
 
 func TestHasPathSeparators(t *testing.T) {
