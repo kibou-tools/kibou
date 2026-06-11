@@ -1129,6 +1129,8 @@ func makeStructArshaler(t reflect.Type) *arshaler {
 		once.Do(init)
 		if errInit != nil && !mo.Flags.Get(jsonflags.ReportErrorsWithLegacySemantics) {
 			return newMarshalErrorBefore(enc, errInit.GoType, errInit.Err)
+		} else if fields.errUnsupportedFormat != nil && !mo.Flags.Get(jsonflags.FormatTagSupported) {
+			return newMarshalErrorBefore(enc, fields.errUnsupportedFormat.GoType, fields.errUnsupportedFormat.Err)
 		}
 
 		if err := enc.WriteToken(jsontext.BeginObject); err != nil {
@@ -1305,6 +1307,8 @@ func makeStructArshaler(t reflect.Type) *arshaler {
 			once.Do(init)
 			if errInit != nil && !uo.Flags.Get(jsonflags.ReportErrorsWithLegacySemantics) {
 				return newUnmarshalErrorAfter(dec, errInit.GoType, errInit.Err)
+			} else if fields.errUnsupportedFormat != nil && !uo.Flags.Get(jsonflags.FormatTagSupported) {
+				return newUnmarshalErrorAfter(dec, fields.errUnsupportedFormat.GoType, fields.errUnsupportedFormat.Err)
 			}
 
 			var seenIdxs uintSet
@@ -1963,6 +1967,19 @@ func makeInvalidArshaler(t reflect.Type) *arshaler {
 		return newMarshalErrorBefore(enc, t, nil)
 	}
 	fncs.unmarshal = func(dec *jsontext.Decoder, va addressableValue, uo *jsonopts.Struct) error {
+		// Under legacy error semantics, unmarshal continues on even with errors.
+		// Thus, always consume the value first.
+		// As a special-case, null is permitted for unsupported types.
+		if uo.Flags.Get(jsonflags.ReportErrorsWithLegacySemantics) {
+			switch val, err := dec.ReadValue(); {
+			case err != nil:
+				return err
+			case val.Kind() == 'n':
+				return nil
+			default:
+				return newUnmarshalErrorAfter(dec, t, nil)
+			}
+		}
 		return newUnmarshalErrorBefore(dec, t, nil)
 	}
 	return &fncs
