@@ -38,3 +38,15 @@ func (s PlatformSupport) IsSupported() bool {
 func (s PlatformSupport) IsUnsupported() bool {
 	return !bool(s)
 }
+
+// Next indicates what to do next for a caller.
+type Next bool
+
+const (
+	// KeepGoing indicates that the caller should proceed
+	// with the operation it was attempting to do.
+	KeepGoing Next = true
+	// NoGo indicates that the caller should not proceed
+	// with the operation it was attempting to do.
+	NoGo Next = false
+)
