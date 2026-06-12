@@ -202,4 +202,8 @@ jobs:
             gotip)  export DELVE_TEST_GO="$PWD/gotip/bin/go" ;;
             head)   ;;
           esac
-          go test -C delve ./...
+          go test -C delve -list '^(Test|Fuzz|Example)' ./pkg/proc \
+            | grep -E '^(Test|Fuzz|Example)' \
+            | xargs -I {} -P 12 go test -C delve ./pkg/proc -run '^{}$'
+
+          go test -C delve $(go list -C delve ./... | grep -Ev '/pkg/proc$')
