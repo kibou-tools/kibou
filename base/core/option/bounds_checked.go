@@ -57,3 +57,15 @@ func (b BoundsChecked[T]) Unwrap() T {
 	}
 	return b.value
 }
+
+// Expect asserts that the value has not overflowed, and gets that value.
+//
+// Example message: "overflow checking during <type> construction guarantees that <field> should be within bounds"
+//
+// Pre-condition: The value must not have Overflowed.
+func (b BoundsChecked[T]) Expect(invariantMsg string) T {
+	if b.overflowed {
+		assert.Invariant(false, invariantMsg)
+	}
+	return b.value
+}
