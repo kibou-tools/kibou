@@ -1,0 +1,21 @@
+--- FAIL: TestPanic (Xs)
+panic: boom [recovered, repanicked]
+
+goroutine N [running]:
+testing.tRunner.func1.2({0xADDR, 0xADDR})
+	testing.go:N +0xADDR
+testing.tRunner.func1()
+	testing.go:N +0xADDR
+panic({0xADDR, 0xADDR})
+	panic.go:N +0xADDR
+example.test/jsonlfixture/panic.TestPanic(0xADDR)
+	fixture_test.go:N +0xADDR
+testing.tRunner(0xADDR, 0xADDR)
+	testing.go:N +0xADDR
+created by testing.(*T).Run in goroutine N
+	testing.go:N +0xADDR
+FAIL	example.test/jsonlfixture/panic	Xs
+
+# go test summary
+FAIL example.test/jsonlfixture/panic TestPanic (0.69s)
+FAIL example.test/jsonlfixture/panic (0.690s)

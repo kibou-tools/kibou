@@ -67,6 +67,9 @@ linters:
             - $all
             - "!**/base/timex/*.go"
             - "!**/base/syscaps/*.go"
+            # FIXME: Remove the line below after adding the necessary
+            # functionality in timex
+            - "!**/misc/cmd/jsonl/*_test.go"
           list-mode: lax
           deny:
             - pkg: "time"

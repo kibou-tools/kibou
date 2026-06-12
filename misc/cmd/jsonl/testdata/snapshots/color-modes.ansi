@@ -1,0 +1,8 @@
+[31m    foo_test.go:10: boom
+[0m--- FAIL: TestFoo (0.00s)
+
+# go test summary
+[31mFAIL example.test/pkg TestFoo (0.01s)[0m
+[31mFAIL example.test/pkg (0.040s)[0m
+[32m(1 passed)[0m
+[33m(1 skipped)[0m

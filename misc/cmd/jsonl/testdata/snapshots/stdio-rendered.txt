@@ -1,0 +1,4 @@
+ok  	example.test/jsonlfixture/stdio	Xs
+
+# go test summary
+(1 passed)
