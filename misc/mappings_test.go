@@ -32,7 +32,7 @@ func TestWorkspaceConfig(t *testing.T) {
 	h.Assertf(ok, "working directory %s must have a parent", workingDir)
 	repoFS := DoMsg(syscaps.FS(repoRoot))(h, "opening repo FS")
 
-	f := DoMsg(repoFS.Open(MustParseRelPath("misc/repo-configuration.json"), fsx.OpenOptions{Mode: fsx.OpenMode_ReadOnly}))(h, "opening repo-configuration.json")
+	f := DoMsg(fsx.OpenReadOnly(repoFS, MustParseRelPath("misc/repo-configuration.json")))(h, "opening repo-configuration.json")
 	t.Cleanup(func() { _ = f.Close() })
 
 	wsConfig := Do(config.Load(f))(h)

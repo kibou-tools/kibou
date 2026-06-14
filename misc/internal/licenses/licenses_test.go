@@ -83,7 +83,7 @@ func loadWorkspaceConfig(h check.Harness, repoFS fsx.FS) config.WorkspaceConfig 
 	h.T().Helper()
 
 	path := MustParseRelPath("misc/repo-configuration.json")
-	f := DoMsg(repoFS.Open(path, fsx.OpenOptions{Mode: fsx.OpenMode_ReadOnly}))(h, "opening %s", path)
+	f := DoMsg(fsx.OpenReadOnly(repoFS, path))(h, "opening %s", path)
 	defer h.Close(f)
 
 	return DoMsg(config.Load(f))(h, "loading %s", path)
@@ -174,11 +174,11 @@ func visitWalkEntries(
 
 // ensureLicenseHeader reports whether rel has the required header, updating it when -update is set.
 func ensureLicenseHeader(h check.Harness, repoFS fsx.FS, rel RelPath) bool {
-	mode := fsx.OpenMode_ReadOnly
+	mode := fsx.OpenRW_ReadOnly
 	if check.IsUpdateFlagSet() {
-		mode = fsx.OpenMode_ReadWrite
+		mode = fsx.OpenRW_ReadWrite
 	}
-	f := DoMsg(repoFS.Open(rel, fsx.OpenOptions{Mode: mode}))(h, "open %s", rel)
+	f := DoMsg(repoFS.OpenFile(rel, fsx.NewOpenOptions(mode).MustBuild()))(h, "open %s", rel)
 	defer h.Close(f)
 
 	var want bytes.Buffer
