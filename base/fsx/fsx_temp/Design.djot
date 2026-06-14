@@ -1,0 +1,61 @@
+::: metadata
+references:
+  packages:
+    - code.kibou.tools/base/fsx/fsx_temp
+    - code.kibou.tools/base/syscaps
+  declarations:
+    - fsx_temp.CreateFile
+:::
+
+# Design of the `fsx_temp` package
+
+The main API in this package is [CreateFile]{.sym}:
+
+```go
+func CreateFile(
+	fs fsx.FS, dir pathx.RelPath,
+	names iter.Seq[fsx.Name],
+	opts fsx_opt.OpenOptionsBuilder,
+) (fsx.File, *CreateFileError)
+```
+
+This is somewhat unusual as far as
+temporary file creation APIs go.
+There are a few reasons for this choice.
+
+1. Existing APIs in the Go stdlib, in [cap-tempfile][]
+   etc. usually own the control flow, instead of
+   leaving it up to the caller. The main control
+   flow decision here is about how many iterations
+   should be taken.
+
+   - The Go stdlib tries up to 10000 times, for
+     unclear reasons. Afero simply copies this limit.
+   - cap-tempfile retries an unbounded number of times.
+
+   In the Kibou base libraries, we generally try to
+   let callers control the flow. Deciding the limit for
+   how many iterations is appropriate likely depends
+   on the application.
+
+   Instead, we ship with a conservative default of 100
+   which lives at the [syscaps]{.sym} layer.
+
+2. Existing temporary file creation APIs in capability-safe
+   libraries, such as the
+   [Pony standard library](https://stdlib.ponylang.io/files-Path/#random)
+   and [cap-tempfile][] directly access RNGs, process
+   PIDs etc. and mix them into the name, which is
+   annoying for testing. For example, if you're creating a
+   bunch of temporary files for testing, it's nice for
+   you to be able to control the names _if needed_.
+
+   Capabilities in Kibou are primarily focused on enabling
+   determinism for testing, so it makes sense for the
+   most low-level API to be "pure" instead of coming
+   up with names based on global state.
+
+   For convenience, [syscaps]{.sym} exposes APIs which allow
+   easily plugging in a stream of names.
+
+[cap-tempfile]: https://docs.rs/cap-tempfile/latest/cap_tempfile/struct.TempFile.html
