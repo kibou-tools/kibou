@@ -28,8 +28,12 @@ import (
 	"code.kibou.tools/base/iterx"
 )
 
-// ErrNotExist is [fs.ErrNotExist], re-exported so callers need not import io/fs.
+// ErrNotExist indicates a "file does not exist" error.
 var ErrNotExist = iofs.ErrNotExist
+
+// ErrExist indicates that a "file already exists" error
+// when trying to create a file with [fsx.OpenMode_CreateNew].
+var ErrExist = iofs.ErrExist
 
 // File is an open file handle returned by [FS.OpenFile] and similar methods.
 type File interface {

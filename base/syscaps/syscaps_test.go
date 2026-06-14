@@ -6,6 +6,7 @@ package syscaps_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"pgregory.net/rapid"
@@ -17,7 +18,80 @@ import (
 	"code.kibou.tools/base/core/pathx"
 	"code.kibou.tools/base/fsx/fsx_testkit"
 	"code.kibou.tools/base/internal/constants"
+	"code.kibou.tools/base/syscaps"
 )
+
+func TestTempFileNames(t *testing.T) {
+	h := check.New(t)
+	h.Parallel()
+
+	h.Run("valid pattern", func(h check.Harness) {
+		h.Parallel()
+
+		var got string
+		for name := range syscaps.TempFileNames(`foo\*bar-*.txt`) {
+			got = name.String()
+			break
+		}
+		h.Assertf(strings.HasPrefix(got, "foo*bar-tmp"), "name %q does not have expected prefix", got)
+		h.Assertf(strings.HasSuffix(got, ".txt"), "name %q does not have expected suffix", got)
+	})
+
+	h.Run("preconditions", func(h check.Harness) {
+		h.Parallel()
+
+		type testCase struct {
+			name    string
+			pattern string
+			want    assert.AssertionError
+		}
+
+		testCases := []testCase{
+			{
+				name:    "no wildcard",
+				pattern: "foo.txt",
+				want: assert.AssertionError{
+					Fmt:  "precondition violation: temp file pattern %q does not contain a wildcard",
+					Args: []any{"foo.txt"},
+				},
+			},
+			{
+				name:    "multiple wildcards",
+				pattern: "***",
+				want: assert.AssertionError{
+					Fmt:  "precondition violation: temp file pattern %q contains more than one wildcard",
+					Args: []any{"***"},
+				},
+			},
+			{
+				name:    "trailing escape",
+				pattern: `foo-\`,
+				want: assert.AssertionError{
+					Fmt:  "precondition violation: temp file pattern %q has a trailing escape",
+					Args: []any{`foo-\`},
+				},
+			},
+			{
+				name:    "invalid escape sequence",
+				pattern: `foo-\x*`,
+				want: assert.AssertionError{
+					Fmt:  "precondition violation: temp file pattern %q contains invalid escape sequence",
+					Args: []any{`foo-\x*`},
+				},
+			},
+		}
+
+		for _, tc := range testCases {
+			h.Run(tc.name, func(h check.Harness) {
+				h.Parallel()
+
+				h.AssertPanicsWith(tc.want, func() {
+					_ = syscaps.TempFileNames(tc.pattern)
+				})
+			})
+		}
+	})
+}
 
 func TestFSReadDirBatched(t *testing.T) {
 	h := check.New(t)
