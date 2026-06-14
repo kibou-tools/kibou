@@ -103,11 +103,11 @@ func (fs *faultyFS) Stat(rel pathx.RelPath, opts fsx.StatOptions) (os.FileInfo, 
 	return fs.FS.Stat(rel, opts)
 }
 
-func (fs *faultyFS) Open(rel pathx.RelPath, opts fsx.OpenOptions) (fsx.File, error) {
+func (fs *faultyFS) OpenFile(rel pathx.RelPath, opts fsx.OpenOptions) (fsx.File, error) {
 	if fs.hasFault(FaultOp_Open, rel) {
 		return nil, injectedFSError()
 	}
-	return fs.FS.Open(rel, opts)
+	return fs.FS.OpenFile(rel, opts)
 }
 
 func (fs *faultyFS) ReadFile(rel pathx.RelPath) ([]byte, error) {
