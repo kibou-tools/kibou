@@ -16,13 +16,14 @@ import (
 	"iter"
 	"os"
 
-	"code.kibou.tools/base/fsx/fsx_name"
 	"github.com/spf13/afero" //nolint:depguard // fsx is the designated wrapper
 
 	"code.kibou.tools/base/assert"
 	"code.kibou.tools/base/core/pathx"
 	"code.kibou.tools/base/core/result"
 	"code.kibou.tools/base/errorx"
+	"code.kibou.tools/base/fsx/fsx_name"
+	"code.kibou.tools/base/fsx/fsx_opt"
 	"code.kibou.tools/base/internal/constants"
 	"code.kibou.tools/base/iterx"
 )
@@ -30,21 +31,27 @@ import (
 // ErrNotExist is [fs.ErrNotExist], re-exported so callers need not import io/fs.
 var ErrNotExist = iofs.ErrNotExist
 
-// File is an open file handle returned by [FS.Open] and similar methods.
+// File is an open file handle returned by [FS.OpenFile] and similar methods.
 // It is an alias for [afero.File] so callers need not import afero directly.
 type File = afero.File
 
-type OpenMode int
+type OpenRW = fsx_opt.OpenRW
 
 const (
-	OpenMode_ReadOnly OpenMode = iota + 1
-	OpenMode_WriteOnly
-	OpenMode_ReadWrite
+	OpenRW_ReadOnly  = fsx_opt.OpenRW_ReadOnly
+	OpenRW_WriteOnly = fsx_opt.OpenRW_WriteOnly
+	OpenRW_ReadWrite = fsx_opt.OpenRW_ReadWrite
 )
 
-type OpenOptions struct {
-	Mode OpenMode
-}
+type OpenMode = fsx_opt.OpenMode
+
+const (
+	OpenMode_Existing     = fsx_opt.OpenMode_Existing
+	OpenMode_CreateOrKeep = fsx_opt.OpenMode_CreateOrKeep
+	OpenMode_CreateNew    = fsx_opt.OpenMode_CreateNew
+)
+
+type OpenOptions = fsx_opt.OpenOptions
 
 // DirEntry is a single entry returned by [FS.ReadDir].
 type DirEntry interface {
@@ -81,7 +88,7 @@ type BaseFS interface {
 type FS interface {
 	Root() pathx.AbsPath
 	ReadDir(rel pathx.RelPath) iter.Seq[result.Result[DirEntry]]
-	Open(rel pathx.RelPath, opts OpenOptions) (File, error)
+	OpenFile(rel pathx.RelPath, opts OpenOptions) (File, error)
 	ReadFile(rel pathx.RelPath) ([]byte, error)
 	WriteFile(rel pathx.RelPath, data []byte, perm os.FileMode) error
 	MkdirAll(rel pathx.RelPath, perm os.FileMode) error
@@ -182,24 +189,6 @@ func (fs rootedFS) readDirBatches(rel pathx.RelPath) iter.Seq[result.Result[[]io
 				return
 			}
 		}
-	}
-}
-
-// Open opens the file at the given root-relative path.
-func (fs rootedFS) Open(rel pathx.RelPath, opts OpenOptions) (File, error) {
-	return fs.base.OpenFile(rel.String(), openFlags(opts.Mode), 0)
-}
-
-func openFlags(mode OpenMode) int {
-	switch mode {
-	case OpenMode_ReadOnly:
-		return os.O_RDONLY
-	case OpenMode_WriteOnly:
-		return os.O_WRONLY
-	case OpenMode_ReadWrite:
-		return os.O_RDWR
-	default:
-		return assert.PanicUnknownCase[int](mode)
 	}
 }
 

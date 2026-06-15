@@ -19,7 +19,7 @@ import (
 
 func loadWorkspaceConfig(repoFS fsx.FS) (_ config.WorkspaceConfig, retErr error) {
 	path := MustParseRelPath("misc/repo-configuration.json")
-	f, err := repoFS.Open(path, fsx.OpenOptions{Mode: fsx.OpenMode_ReadOnly})
+	f, err := fsx.OpenReadOnly(repoFS, path)
 	if err != nil {
 		return config.WorkspaceConfig{}, errorx.Wrapf("+stacks", err, "open %s", path)
 	}
