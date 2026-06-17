@@ -18,6 +18,7 @@ import (
 	"code.kibou.tools/base/assert"
 	"code.kibou.tools/base/core/option"
 	"code.kibou.tools/base/fsx/fsx_name"
+	internal_pathx "code.kibou.tools/base/internal/pathx"
 )
 
 // AbsPath carries an absolute path that has gone through [LexicallyNormalize].
@@ -306,44 +307,7 @@ func (p RelPath) Ancestors() iter.Seq[RelPath] {
 }
 
 func (p RelPath) Components() iter.Seq[string] {
-	if runtime.GOOS == "windows" {
-		return p.componentsWindows()
-	}
-	return p.componentsUnix()
-}
-
-func (p RelPath) componentsUnix() iter.Seq[string] {
-	return func(yield func(string) bool) {
-		start := 0
-		for i := 0; i <= len(p.value); i++ {
-			if i < len(p.value) && p.value[i] != '/' {
-				continue
-			}
-			if start < i {
-				if !yield(p.value[start:i]) {
-					return
-				}
-			}
-			start = i + 1
-		}
-	}
-}
-
-func (p RelPath) componentsWindows() iter.Seq[string] {
-	return func(yield func(string) bool) {
-		start := 0
-		for i := 0; i <= len(p.value); i++ {
-			if i < len(p.value) && p.value[i] != '/' && p.value[i] != '\\' {
-				continue
-			}
-			if start < i {
-				if !yield(p.value[start:i]) {
-					return
-				}
-			}
-			start = i + 1
-		}
-	}
+	return internal_pathx.Components(p.value).Components()
 }
 
 func (p RelPath) lexicallyContainsUnix() bool {

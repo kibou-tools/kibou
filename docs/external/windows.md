@@ -4,6 +4,7 @@
 
 ### Drive letters
 
+<!-- NOTE(id: windows-drive-letters) -->
 The [Microsoft documentation on file path formats][ms-file-path-formats]
 defines a traditional DOS path as starting with "a volume or drive letter
 followed by the volume separator (`:`)," but does not specify which characters
@@ -28,10 +29,13 @@ Tool support for non-ASCII drive letters is inconsistent: per
 PowerShell do not. The only hard constraint is that drive letters are
 restricted to a single WTF-16 code unit (u16, so <= U+FFFF).
 
-Not all absolute paths on Windows start with a drive letter. Windows also
-has UNC paths (`\\server\share\...`) and rooted paths (`\foo`); see the
-[file path formats documentation][ms-file-path-formats] for the full
-taxonomy.
+Not all absolute paths on Windows start with a drive letter.
+Chris Denton's [In-depth guide to Windows file paths][denton-windows-paths]
+describes the various kinds of paths in a readable manner.
+The authoritative source is (I think) the Windows
+[file path formats documentation][ms-file-path-formats],
+but that unfortunately mixes reference-level documentation
+with explanations, making it harder to understand.
 
 #### Policy
 
@@ -83,6 +87,9 @@ of case-insensitivity here.
   A-Z][liptak-drive-letters]."
   ([archived][liptak-drive-letters-a], 2026-03-27)
 
+- Chris Denton, "[In-depth guide to Windows file paths][denton-windows-paths]."
+  ([archived][denton-windows-paths-a], 2026-06-18)
+
 - Wikipedia, "[Drive letter assignment][wp-drive-letter-assignment]."
   (accessed 2026-03-29)
 
@@ -94,6 +101,8 @@ of case-insensitivity here.
 [ms-naming-files-a]: <https://archive.is/H34KB>
 [ms-changing-environment-variables]: <https://learn.microsoft.com/en-us/windows/win32/procthread/changing-environment-variables>
 [ms-changing-environment-variables-a]: <https://web.archive.org/web/20240910051217/https://learn.microsoft.com/en-us/windows/win32/procthread/changing-environment-variables>
+[denton-windows-paths]: <https://chrisdenton.github.io/omnipath/Overview.html>
+[denton-windows-paths-a]: <https://web.archive.org/web/20260618054908/https://chrisdenton.github.io/omnipath/Overview.html>
 [wp-drive-letter-assignment]: <https://en.wikipedia.org/wiki/Drive_letter_assignment>
 [liptak-drive-letters]: <https://www.ryanliptak.com/blog/windows-drive-letters-are-not-limited-to-a-z/>
 [liptak-drive-letters-a]: <https://archive.is/Scqo0>
