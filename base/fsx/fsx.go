@@ -32,8 +32,18 @@ import (
 var ErrNotExist = iofs.ErrNotExist
 
 // File is an open file handle returned by [FS.OpenFile] and similar methods.
-// It is an alias for [afero.File] so callers need not import afero directly.
-type File = afero.File
+type File interface {
+	io.Closer
+	io.Reader
+	io.ReaderAt
+	io.Seeker
+	io.Writer
+	io.WriterAt
+
+	// Name returns the file's basename.
+	Name() Name
+	Truncate(size int64) error
+}
 
 type OpenRW = fsx_opt.OpenRW
 

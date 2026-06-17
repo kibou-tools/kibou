@@ -27,6 +27,7 @@ func TestFSOpenOptions(t *testing.T) {
 		WithMode(fsx.OpenMode_CreateNew).
 		MustBuild()
 	f := Do(repoFS.OpenFile(rel, createNewOpts))(h)
+	check.AssertSame(h, "capture.jsonl", f.Name().String(), "file name")
 	_ = Do(io.WriteString(f, "first\n"))(h)
 	h.Close(f)
 
