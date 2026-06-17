@@ -14,6 +14,8 @@ package pathx
 import (
 	"path/filepath"
 	"runtime"
+
+	internal_pathx "code.kibou.tools/base/internal/pathx"
 )
 
 // LexicallyNormalize is like [filepath.Clean], but preserves a trailing path
@@ -187,8 +189,5 @@ func hasTrailingPathSeparator(path string) bool {
 }
 
 func IsPathSeparator(c byte) bool {
-	if runtime.GOOS == "windows" {
-		return c == '\\' || c == '/'
-	}
-	return c == filepath.Separator
+	return internal_pathx.IsPathSeparator(c)
 }
