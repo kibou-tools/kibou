@@ -14,6 +14,10 @@ type AssertionError struct {
 	Args []any
 }
 
+func NewError(format string, args ...any) AssertionError {
+	return AssertionError{Fmt: format, Args: args}
+}
+
 func (e AssertionError) String() string {
 	return fmt.Sprintf(e.Fmt, e.Args...)
 }
