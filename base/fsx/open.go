@@ -22,7 +22,11 @@ func OpenReadOnly(fs FS, rel pathx.RelPath) (File, error) {
 
 // OpenFile opens the file at the given root-relative path.
 func (fs rootedFS) OpenFile(rel pathx.RelPath, opts OpenOptions) (File, error) {
-	return fs.base.OpenFile(rel.String(), openFlags(opts), openPerm(opts))
+	f, err := fs.base.OpenFile(rel.String(), openFlags(opts), openPerm(opts))
+	if err != nil {
+		return nil, err
+	}
+	return wrapFile(f), nil
 }
 
 func openFlags(opts OpenOptions) int {
