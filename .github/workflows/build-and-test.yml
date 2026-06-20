@@ -202,6 +202,10 @@ jobs:
         env:
           STABLE_GO_ROOT: ${{ steps.stable-goroot.outputs.path }}
         run: |
+          # NOTE(id: delve-compilation): Delve itself should be compiled
+          # with the HEAD toolchain only. Fixtures are compiled with
+          # alternate toolchains, to check that Delve can debug binaries
+          # built by other toolchains.
           export GOROOT="$PWD/go"
           export PATH="$GOROOT/bin:$PATH"
           # Use a custom go tool when building fixtures for stable/gotip.

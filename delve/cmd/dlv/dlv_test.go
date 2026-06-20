@@ -417,13 +417,13 @@ func TestGeneratedDoc(t *testing.T) {
 	}
 
 	checkAutogenDoc(t, "Documentation/backend_test_health.md", "go run _scripts/gen-backend_test_health.go", runScript("_scripts/gen-backend_test_health.go", "-"))
-	checkAutogenDoc(t, "pkg/terminal/starbind/starlark_mapping.go", "'go generate' inside pkg/terminal/starbind", runScript("github.com/go-delve/build-tools/cmd/gen-starlark-bindings@latest", "go", "-"))
-	checkAutogenDoc(t, "Documentation/cli/starlark.md", "'go generate' inside pkg/terminal/starbind", runScript("github.com/go-delve/build-tools/cmd/gen-starlark-bindings@latest", "doc/dummy", "Documentation/cli/starlark.md"))
+	checkAutogenDoc(t, "pkg/terminal/starbind/starlark_mapping.go", "'go generate' inside pkg/terminal/starbind", runScript("github.com/go-delve/build-tools/cmd/gen-starlark-bindings", "go", "-"))
+	checkAutogenDoc(t, "Documentation/cli/starlark.md", "'go generate' inside pkg/terminal/starbind", runScript("github.com/go-delve/build-tools/cmd/gen-starlark-bindings", "doc/dummy", "Documentation/cli/starlark.md"))
 	checkAutogenDoc(t, "Documentation/faq.md", "'go run _scripts/gen-faq-toc.go Documentation/faq.md Documentation/faq.md'", runScript("_scripts/gen-faq-toc.go", "Documentation/faq.md", "-"))
-	checkAutogenDoc(t, "service/rpccommon/suitablemethods.go", "'go generate' inside service/rpccommon", runScript("github.com/go-delve/build-tools/cmd/gen-suitablemethods@latest", "-"))
+	checkAutogenDoc(t, "service/rpccommon/suitablemethods.go", "'go generate' inside service/rpccommon", runScript("github.com/go-delve/build-tools/cmd/gen-suitablemethods", "-"))
 	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 18) {
-		checkAutogenDoc(t, "_scripts/rtype-out.txt", "go run github.com/go-delve/build-tools/cmd/rtype@latest report _scripts/rtype-out.txt", runScript("github.com/go-delve/build-tools/cmd/rtype@latest", "report"))
-		runScript("github.com/go-delve/build-tools/cmd/rtype@latest", "check")
+		checkAutogenDoc(t, "_scripts/rtype-out.txt", "go run github.com/go-delve/build-tools/cmd/rtype report _scripts/rtype-out.txt", runScript("github.com/go-delve/build-tools/cmd/rtype", "report"))
+		runScript("github.com/go-delve/build-tools/cmd/rtype", "check")
 	}
 }
 
@@ -449,7 +449,7 @@ func TestTypecheckRPC(t *testing.T) {
 	if !isLatestMinor(t) {
 		t.Skip("N/A")
 	}
-	cmd := exec.Command("go", "run", "github.com/go-delve/build-tools/cmd/typecheck-rpc@latest")
+	cmd := exec.Command("go", "run", "github.com/go-delve/build-tools/cmd/typecheck-rpc")
 	buf, err := cmd.CombinedOutput()
 	t.Logf("output: %s", string(buf))
 	if err != nil {
@@ -1901,6 +1901,16 @@ func TestDeadcodeEliminated(t *testing.T) {
 
 func isLatestMinor(t *testing.T) bool {
 	t.Helper()
+	// IIFE to minimize diff size without unreachable code warnings.
+	if func() bool { return true }() {
+		// NOTE(kibou): We always compile Delve itself using the HEAD
+		// toolchain, never with older toolchains. See NOTE(id: delve-compilation).
+		// So it doesn't make sense to do network requests in the test
+		// to check whether Delve is compiled with the latest minor
+		// version or not.
+		return true
+	}
+
 	resp, err := http.Get("https://go.dev/dl/?mode=json&include=all")
 	if err != nil {
 		t.Logf("Error fetching versions: %v\n", err)
