@@ -13,8 +13,8 @@ import (
 	"code.kibou.tools/base/assert"
 	"code.kibou.tools/base/cmdx"
 	. "code.kibou.tools/base/core"
+	"code.kibou.tools/base/core/pathx"
 	"code.kibou.tools/base/errorx"
-	"code.kibou.tools/base/fsx"
 	"code.kibou.tools/base/logx"
 	"code.kibou.tools/base/timex"
 )
@@ -39,14 +39,14 @@ const (
 // Parent 1 is the local pre-sync commit, and parent 2 is the upstream subtree
 // commit that was pulled. We persist these values in mergebot-* trailers.
 type parsedSubtreeMetadata struct {
-	Dir            Option[fsx.Name]
+	Dir            Option[pathx.RelPath]
 	LocalCommit    Option[string]
 	UpstreamCommit Option[string]
 }
 
 // subtreeMetadata is a validated parsedSubtreeMetadata with all fields guaranteed non-empty.
 type subtreeMetadata struct {
-	Dir            fsx.Name
+	Dir            pathx.RelPath
 	LocalCommit    string
 	UpstreamCommit string
 }
@@ -63,7 +63,7 @@ func (p parsedSubtreeMetadata) validate() (subtreeMetadata, error) {
 	return subtreeMetadata{Dir: dir, LocalCommit: local, UpstreamCommit: upstream}, nil
 }
 
-func (ws Workspace) runSyncPR(ctx logx.LogCtx, clock timex.TimestampClock, projects []fsx.Name, options RunSyncPROptions) error {
+func (ws Workspace) runSyncPR(ctx logx.LogCtx, clock timex.TimestampClock, projects []RelPath, options RunSyncPROptions) error {
 	assert.Precondition(len(projects) > 0, "must sync 1+ projects")
 	base := options.Base.ValueOr("main")
 	for _, project := range projects {
@@ -80,7 +80,7 @@ func prTitleDatePattern() timex.Pattern {
 
 func runSyncPRProject(
 	ctx logx.LogCtx, runner cmdx.BaseRunner, clock timex.TimestampClock,
-	repoRoot AbsPath, project fsx.Name, base string,
+	repoRoot AbsPath, project RelPath, base string,
 ) error {
 	syncBranch := syncBranchPrefix + project.String()
 	fetchCmd := cmdx.New("git", "fetch", "origin", syncBranch).In(repoRoot)
@@ -197,7 +197,7 @@ func findOpenPR(
 
 func subtreeMetadataForSyncHead(
 	ctx logx.LogCtx, runner cmdx.BaseRunner,
-	repoRoot AbsPath, project fsx.Name, headSHA string,
+	repoRoot AbsPath, project pathx.RelPath, headSHA string,
 ) (subtreeMetadata, error) {
 	assert.Precondition(headSHA != "", "headSHA must be non-empty")
 

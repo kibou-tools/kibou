@@ -117,7 +117,7 @@ func visitFirstPartyGoFiles[T any](
 		}
 
 		name := entry.BaseName()
-		if _, isForked := wsConfig.ForkedFolders[name]; isForked {
+		if _, isForked := wsConfig.ForkedFolders[MustParseRelPath(name.String())]; isForked {
 			continue
 		}
 

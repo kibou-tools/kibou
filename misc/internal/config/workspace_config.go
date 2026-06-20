@@ -8,14 +8,14 @@ import (
 	"encoding/json"
 	"io"
 
+	"code.kibou.tools/base/core/pathx"
 	"code.kibou.tools/base/errorx"
-	"code.kibou.tools/base/fsx"
 )
 
 // WorkspaceConfig is the validated in-memory repository configuration.
 type WorkspaceConfig struct {
-	// ForkedFolders maps folder name to forked folder metadata. Always non-empty.
-	ForkedFolders map[fsx.Name]ForkedFolder
+	// ForkedFolders maps a repo-relative folder path to forked folder metadata. Always non-empty.
+	ForkedFolders map[pathx.RelPath]ForkedFolder
 	// BranchMappings is the validated in-memory branch mapping representation.
 	BranchMappings BranchMappings
 }
@@ -34,7 +34,7 @@ func Load(r io.Reader) (WorkspaceConfig, error) {
 }
 
 // UpstreamForProject resolves the upstream repo and branch config for one project on a local branch.
-func (wc WorkspaceConfig) UpstreamForProject(localBranch string, project fsx.Name) (UpstreamRepo, error) {
+func (wc WorkspaceConfig) UpstreamForProject(localBranch string, project pathx.RelPath) (UpstreamRepo, error) {
 	mapping, ok := wc.BranchMappings.ByLocalBranch[localBranch]
 	if !ok {
 		return UpstreamRepo{}, errorx.Newf("nostack", "no branch mapping configured for branch %q", localBranch)

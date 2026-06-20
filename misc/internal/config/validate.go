@@ -6,9 +6,8 @@ package config
 
 import (
 	"code.kibou.tools/base/collections"
+	"code.kibou.tools/base/core/pathx"
 	"code.kibou.tools/base/errorx"
-	"code.kibou.tools/base/fsx"
-	"code.kibou.tools/base/fsx/fsx_name"
 )
 
 // Validate checks structural invariants for JSON workspace configuration and builds validated config.
@@ -24,8 +23,8 @@ func (wcJSON WorkspaceConfigJSON) Validate() (WorkspaceConfig, error) {
 	return WorkspaceConfig{ForkedFolders: forkedFolders, BranchMappings: branchMappings}, nil
 }
 
-func validateForkedFolders(forkedFoldersJSON []ForkedFolderJSON) (map[fsx.Name]ForkedFolder, collections.Set[GitHubRepo], error) {
-	forkedFolders := map[fsx.Name]ForkedFolder{}
+func validateForkedFolders(forkedFoldersJSON []ForkedFolderJSON) (map[pathx.RelPath]ForkedFolder, collections.Set[GitHubRepo], error) {
+	forkedFolders := map[pathx.RelPath]ForkedFolder{}
 	forkedRepos := collections.NewSet[GitHubRepo]()
 	var err error
 
@@ -34,9 +33,9 @@ func validateForkedFolders(forkedFoldersJSON []ForkedFolderJSON) (map[fsx.Name]F
 	}
 
 	for _, forkedFolderJSON := range forkedFoldersJSON {
-		folder, parseErr := fsx_name.Parse(forkedFolderJSON.Folder)
-		if parseErr != nil {
-			err = errorx.Join(err, errorx.Newf("nostack", "invalid folder value in forked_folders: %v", parseErr))
+		folder, folderErr := pathx.ParseRelPath(forkedFolderJSON.Folder)
+		if folderErr != nil {
+			err = errorx.Join(err, errorx.Newf("nostack", "invalid folder value in forked_folders: %v", folderErr))
 		}
 		if _, ok := forkedFolders[folder]; ok {
 			err = errorx.Join(err, errorx.Newf("nostack", "forked_folders has duplicate folder %q", forkedFolderJSON.Folder))
@@ -56,6 +55,7 @@ func validateForkedFolders(forkedFoldersJSON []ForkedFolderJSON) (map[fsx.Name]F
 		forkedFolders[folder] = ForkedFolder{
 			Folder:     forkedFolderJSON.Folder,
 			GitHubRepo: githubRepo,
+			AutoSync:   forkedFolderJSON.AutoSync.ValueOr(true),
 		}
 	}
 

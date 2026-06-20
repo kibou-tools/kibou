@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"code.kibou.tools/base/check"
-	"code.kibou.tools/base/fsx"
+	"code.kibou.tools/base/core/pathx"
 )
 
 func TestSyncMergeBodyAllTrailers(t *testing.T) {
@@ -17,7 +17,7 @@ func TestSyncMergeBodyAllTrailers(t *testing.T) {
 	h.Parallel()
 
 	metadata := subtreeMetadata{
-		Dir:            fsx.NewName("go"),
+		Dir:            pathx.MustParseRelPath("go"),
 		LocalCommit:    "abc123",
 		UpstreamCommit: "def456",
 	}

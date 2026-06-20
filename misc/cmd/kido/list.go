@@ -96,7 +96,7 @@ func (w Workspace) goModules(logger logx.Logger, provenance ListProvenance) ([]f
 			}
 			continue
 		}
-		_, isForked := w.Config.ForkedFolders[name]
+		_, isForked := w.Config.ForkedFolders[pathx.MustParseRelPath(name.String())]
 		switch provenance {
 		case ListProvenance_All:
 			folders = append(folders, name)

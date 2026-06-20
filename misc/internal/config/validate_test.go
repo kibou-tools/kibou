@@ -10,13 +10,14 @@ import (
 
 	"code.kibou.tools/base/check"
 	. "code.kibou.tools/base/check/prelude"
+	. "code.kibou.tools/base/core"
 )
 
 func validConfig() WorkspaceConfigJSON {
 	return WorkspaceConfigJSON{
 		ForkedFolders: []ForkedFolderJSON{
-			{Folder: "go", GitHubProject: "golang/go"},
-			{Folder: "tools", GitHubProject: "golang/tools"},
+			{Folder: "go", GitHubProject: "golang/go", AutoSync: None[bool]()},
+			{Folder: "tools", GitHubProject: "golang/tools", AutoSync: None[bool]()},
 		},
 		BranchMappings: []BranchMappingJSON{
 			{
@@ -54,7 +55,7 @@ func TestValidateErrors(t *testing.T) {
 		{
 			name: "duplicate folder",
 			modify: func(c *WorkspaceConfigJSON) {
-				c.ForkedFolders = append(c.ForkedFolders, ForkedFolderJSON{Folder: "go", GitHubProject: "other/repo"})
+				c.ForkedFolders = append(c.ForkedFolders, ForkedFolderJSON{Folder: "go", GitHubProject: "other/repo", AutoSync: None[bool]()})
 			},
 			wantErr: "duplicate folder",
 		},

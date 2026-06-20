@@ -37,8 +37,15 @@ func TestWorkspaceConfig(t *testing.T) {
 
 	wsConfig := Do(config.Load(f))(h)
 
-	configFolders := iterx.Collect(iterx.Map(maps.Keys(wsConfig.ForkedFolders), fsx.Name.String))
+	var configFolders, syncableFolders []string
+	for folder, forked := range wsConfig.ForkedFolders {
+		configFolders = append(configFolders, folder.String())
+		if forked.AutoSync {
+			syncableFolders = append(syncableFolders, folder.String())
+		}
+	}
 	slices.Sort(configFolders)
+	slices.Sort(syncableFolders)
 
 	forkedProjects := map[string]config.GitHubRepo{
 		"go":    "golang/go",
@@ -50,7 +57,7 @@ func TestWorkspaceConfig(t *testing.T) {
 		h.Parallel()
 
 		for folder, repo := range forkedProjects {
-			forked, ok := wsConfig.ForkedFolders[fsx.NewName(folder)]
+			forked, ok := wsConfig.ForkedFolders[MustParseRelPath(folder)]
 			h.Assertf(ok, "forked folder %q must be present in repo-configuration.json", folder)
 			h.Assertf(forked.GitHubRepo == repo,
 				"forked folder %q has repo %q, want %q", folder, forked.GitHubRepo, repo)
@@ -88,8 +95,8 @@ func TestWorkspaceConfig(t *testing.T) {
 		yamlFolders := collections.FilterSlice(yamlChoices, func(s string) bool { return s != "all" })
 		sort.Strings(yamlFolders)
 
-		check.AssertSame(h, configFolders, yamlFolders,
-			"each forked project must be listed as a choice in GHA workflow dispatch")
+		check.AssertSame(h, syncableFolders, yamlFolders,
+			"each auto-synced forked project must be listed as a choice in GHA workflow dispatch")
 	})
 
 	// See SYNC(id: linter-exclusions).
