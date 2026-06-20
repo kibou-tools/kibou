@@ -23,9 +23,14 @@
 │  Tracking golang/tools. Supplementary tools such as gopls,
 │  gofmt etc.
 │
-└─ misc/
-   Our own internal tools etc. The top-level tools/ is already
-   taken so. :/
+├─ misc/
+│  Our own internal tools etc. The top-level tools/ is already
+│  taken so. :/
+│
+└─ third_party/
+   Forks of third-party code where we don't have any plans
+   for feature work, but we potentially need them to fix
+   build issues.
 ```
 
 ## Testing

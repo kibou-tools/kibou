@@ -7,7 +7,9 @@
 package option
 
 import (
+	"bytes"
 	"cmp"
+	"encoding/json"
 
 	"code.kibou.tools/base/assert"
 	"code.kibou.tools/base/cmpx"
@@ -73,6 +75,31 @@ func (o Option[T]) ValueOr(fallback T) T {
 		return o.value
 	}
 	return fallback
+}
+
+// MarshalJSON encodes Some(v) as v and None as JSON null.
+func (o Option[T]) MarshalJSON() ([]byte, error) {
+	if !o.valid {
+		return []byte("null"), nil
+	}
+	return json.Marshal(o.value)
+}
+
+// UnmarshalJSON decodes JSON null as None and any other value as Some.
+//
+// An absent JSON field leaves the Option as its zero value (None), because
+// encoding/json does not invoke UnmarshalJSON for missing keys.
+func (o *Option[T]) UnmarshalJSON(data []byte) error {
+	if bytes.Equal(data, []byte("null")) {
+		*o = None[T]()
+		return nil
+	}
+	var v T
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+	*o = Some(v)
+	return nil
 }
 
 // Compare o1 o2 ensures the following ordering:

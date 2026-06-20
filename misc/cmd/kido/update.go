@@ -9,11 +9,11 @@ import (
 
 	"code.kibou.tools/base/cmdx"
 	. "code.kibou.tools/base/core"
-	"code.kibou.tools/base/fsx"
+	"code.kibou.tools/base/core/pathx"
 	"code.kibou.tools/base/logx"
 )
 
-func (ws Workspace) runUpdate(ctx logx.LogCtx, dir AbsPath, localBranch string, projects []fsx.Name) error {
+func (ws Workspace) runUpdate(ctx logx.LogCtx, dir AbsPath, localBranch string, projects []pathx.RelPath) error {
 	for _, project := range projects {
 		upstream, err := ws.Config.UpstreamForProject(localBranch, project)
 		if err != nil {

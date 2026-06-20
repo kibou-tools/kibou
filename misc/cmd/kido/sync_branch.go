@@ -10,6 +10,7 @@ import (
 	"code.kibou.tools/base/assert"
 	"code.kibou.tools/base/cmdx"
 	. "code.kibou.tools/base/core"
+	"code.kibou.tools/base/core/pathx"
 	"code.kibou.tools/base/errorx"
 	"code.kibou.tools/base/fsx"
 	"code.kibou.tools/base/logx"
@@ -27,7 +28,7 @@ type remoteRef struct {
 }
 
 func (ws Workspace) runSyncBranch(
-	ctx logx.LogCtx, projects []fsx.Name, options RunSyncBranchOptions,
+	ctx logx.LogCtx, projects []pathx.RelPath, options RunSyncBranchOptions,
 ) (err error) {
 	assert.Precondition(len(projects) > 0, "must sync 1+ projects")
 	baseBranch := options.Base.ValueOr("main")
@@ -60,7 +61,7 @@ func (ws Workspace) runSyncBranch(
 
 func runSyncBranchProject(
 	ctx logx.LogCtx, ws Workspace,
-	project fsx.Name, worktreeDir RelPath, baseBranch string, push bool,
+	project pathx.RelPath, worktreeDir RelPath, baseBranch string, push bool,
 ) error {
 	worktreeAbs := ws.FS.Root().Join(worktreeDir)
 	syncBranch := syncBranchPrefix + project.String()
@@ -79,7 +80,7 @@ func runSyncBranchProject(
 	if _, err := ws.Runner.Run(ctx, checkoutCmd, cmdx.RunOptionsDefault()); err != nil {
 		return err
 	}
-	if err := ws.runUpdate(ctx, worktreeAbs, baseBranch, []fsx.Name{project}); err != nil {
+	if err := ws.runUpdate(ctx, worktreeAbs, baseBranch, []pathx.RelPath{project}); err != nil {
 		return err
 	}
 	if !push {

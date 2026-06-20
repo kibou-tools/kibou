@@ -7,6 +7,7 @@ package config
 import (
 	"strings"
 
+	"code.kibou.tools/base/core/option"
 	"code.kibou.tools/base/errorx"
 )
 
@@ -20,10 +21,15 @@ type WorkspaceConfigJSON struct {
 
 // ForkedFolderJSON describes one forked upstream folder.
 type ForkedFolderJSON struct {
-	// Folder is the top-level folder name (for example, "go"). Always non-empty.
+	// Folder is the forked folder path relative to the repo root (for example,
+	// "go" or "third_party/build-tools"). Always non-empty.
 	Folder string `json:"folder"`
 	// GitHubProject is the upstream repository in "<owner>/<repo>" form (for example, "golang/go"). Always non-empty.
 	GitHubProject string `json:"gh_project"`
+	// AutoSync reports whether the upstream-sync automation should pull this
+	// folder. Absent means true; set false to record a fork that is carried
+	// but only updated manually.
+	AutoSync option.Option[bool] `json:"auto_sync"`
 }
 
 // BranchMappingJSON describes one local branch and upstream project list in JSON input.
@@ -44,10 +50,16 @@ type UpstreamRepoJSON struct {
 
 // ForkedFolder describes one validated forked folder mapping.
 type ForkedFolder struct {
-	// Folder is the top-level folder name (for example, "go"). Always non-empty.
+	// Folder is the forked folder path relative to the repo root (for example,
+	// "go" or "third_party/build-tools"). Always non-empty.
 	Folder string
 	// GitHubRepo is the upstream repository in "<owner>/<repo>" form. Always non-empty.
 	GitHubRepo GitHubRepo
+	// AutoSync controls whether automation should update this folder
+	// based on changes to upstream.
+	//
+	// Defaults to true when unspecified in JSON.
+	AutoSync bool
 }
 
 // BranchMappings is the validated in-memory branch mapping representation.

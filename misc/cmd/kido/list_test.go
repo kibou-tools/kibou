@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"code.kibou.tools/base/check"
+	"code.kibou.tools/base/core/pathx"
 	"code.kibou.tools/base/envx"
-	"code.kibou.tools/base/fsx"
 	"code.kibou.tools/base/fsx/fsx_testkit"
 	"code.kibou.tools/base/logx"
 	"code.kibou.tools/base/syscaps"
@@ -35,8 +35,8 @@ func TestList(t *testing.T) {
 		FS:     repoFS,
 		Runner: syscaps.CmdRunner{Env: envx.Empty()},
 		Config: config.WorkspaceConfig{
-			ForkedFolders: map[fsx.Name]config.ForkedFolder{
-				fsx.NewName("beta"): {Folder: "beta", GitHubRepo: "example/beta"},
+			ForkedFolders: map[pathx.RelPath]config.ForkedFolder{
+				pathx.MustParseRelPath("beta"): {Folder: "beta", GitHubRepo: "example/beta", AutoSync: true},
 			},
 			BranchMappings: config.BranchMappings{ByLocalBranch: nil},
 		},

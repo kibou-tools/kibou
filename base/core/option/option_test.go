@@ -5,6 +5,7 @@
 package option_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"code.kibou.tools/base/assert"
@@ -87,5 +88,48 @@ func TestOption(t *testing.T) {
 		h.Assertf(some.IsSome(), "NewOption with ok=true should be Some")
 		none := NewOption("hello", false)
 		h.Assertf(none.IsNone(), "NewOption with ok=false should be None")
+	})
+
+	h.Run("JSON", func(h check.Harness) {
+		h.Parallel()
+
+		// Each case round-trips: Some encodes its inner value, None encodes
+		// as null, and decoding inverts both.
+		testCases := []struct {
+			name string
+			opt  Option[int]
+			json string
+		}{
+			{name: "some", opt: Some(42), json: "42"},
+			{name: "some zero", opt: Some(0), json: "0"},
+			{name: "none", opt: None[int](), json: "null"},
+		}
+		for _, tc := range testCases {
+			h.Run(tc.name, func(h check.Harness) {
+				h.Parallel()
+
+				got, err := json.Marshal(tc.opt)
+				h.NoErrorf(err, "marshal %v", tc.opt)
+				h.Assertf(string(got) == tc.json, "marshal %v = %s, want %s", tc.opt, got, tc.json)
+
+				var decoded Option[int]
+				h.NoErrorf(json.Unmarshal([]byte(tc.json), &decoded), "unmarshal %s", tc.json)
+				h.Assertf(Compare(decoded, tc.opt) == 0, "unmarshal %s = %v, want %v", tc.json, decoded, tc.opt)
+			})
+		}
+
+		// An absent field decodes to None, because encoding/json does not call
+		// UnmarshalJSON for missing keys.
+		h.Run("absent field", func(h check.Harness) {
+			h.Parallel()
+
+			var s struct {
+				A Option[int] `json:"a"`
+				B Option[int] `json:"b"`
+			}
+			h.NoErrorf(json.Unmarshal([]byte(`{"a":7}`), &s), "unmarshal struct")
+			h.Assertf(Compare(s.A, Some(7)) == 0, "present field a = %v, want Some(7)", s.A)
+			h.Assertf(s.B.IsNone(), "absent field b => None")
+		})
 	})
 }

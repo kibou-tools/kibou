@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"code.kibou.tools/base/core/pathx"
 	"github.com/urfave/cli/v3"
 
 	"code.kibou.tools/base/cancel"
@@ -20,7 +21,6 @@ import (
 	. "code.kibou.tools/base/core"
 	"code.kibou.tools/base/errorx"
 	"code.kibou.tools/base/fsx"
-	"code.kibou.tools/base/fsx/fsx_name"
 	"code.kibou.tools/base/logx"
 	"code.kibou.tools/base/syscaps"
 	"code.kibou.tools/base/timex"
@@ -73,9 +73,9 @@ func main() {
 					&cli.BoolFlag{Name: "persist"},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					projectArg, err := fsx_name.Parse(cmd.String("project"))
-					if err != nil {
-						return errorx.Wrapf("nostack", err, "in argument for --project")
+					projectArg, parseErr := pathx.ParseRelPath(cmd.String("project"))
+					if parseErr != nil {
+						return errorx.Wrapf("nostack", parseErr, "in argument for --project")
 					}
 
 					tok, cancel := withTimeout(cancel_bridge.Extract(ctx), 5*timex.Minute, cmd.Name)
@@ -101,9 +101,9 @@ func main() {
 					&cli.StringFlag{Name: "base"},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					projectArg, err := fsx_name.Parse(cmd.String("project"))
-					if err != nil {
-						return errorx.Wrapf("nostack", err, "in argument for --project")
+					projectArg, parseErr := pathx.ParseRelPath(cmd.String("project"))
+					if parseErr != nil {
+						return errorx.Wrapf("nostack", parseErr, "in argument for --project")
 					}
 
 					tok, cancel := withTimeout(cancel_bridge.Extract(ctx), 5*timex.Minute, cmd.Name)
@@ -173,18 +173,18 @@ func main() {
 
 // resolveProjects maps "all" to the full forked folder list from workspace config,
 // or validates that a single project name exists in the config.
-func resolveProjects(getWorkspace func() (Workspace, error), project fsx.Name) (Workspace, []fsx.Name, error) {
+func resolveProjects(getWorkspace func() (Workspace, error), project pathx.RelPath) (Workspace, []pathx.RelPath, error) {
 	ws, err := getWorkspace()
 	if err != nil {
 		return Workspace{}, nil, err
 	}
 	if project.String() == "all" {
-		return ws, collections.SortedMapKeysFunc(ws.Config.ForkedFolders, fsx.Name.Compare), nil
+		return ws, collections.SortedMapKeysFunc(ws.Config.ForkedFolders, pathx.RelPath.Compare), nil
 	}
 	if _, ok := ws.Config.ForkedFolders[project]; !ok {
 		return Workspace{}, nil, errorx.Newf("nostack", "invalid --project %q, not a forked folder", project)
 	}
-	return ws, []fsx.Name{project}, nil
+	return ws, []pathx.RelPath{project}, nil
 }
 
 func withTimeout(parent cancel.Token, duration timex.Duration, cmdName string) (cancel.ChildClockToken, func()) {
