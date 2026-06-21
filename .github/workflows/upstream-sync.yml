@@ -88,12 +88,38 @@ jobs:
         shell: python
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          GIT_CONFIG_COUNT: 1
-          # actions/checkout uses `persist-credentials: false` based on
-          # zizmor's recommendation, so pass the token via an env var
-          # for the push operation.
-          GIT_CONFIG_KEY_0: http.https://github.com/.extraheader
-          GIT_CONFIG_VALUE_0: "AUTHORIZATION: bearer ${{ steps.app-token.outputs.token }}"
+          # Copies the pattern from gh CLI's logic of adding a
+          # empty string helper first, then gh CLI helper.
+          # https://github.com/cli/cli/blob/0274077b56a/git/client.go#L153-L157
+          #
+          # The empty string helper has special semantics:
+          #
+          # > If credential.helper is configured to the empty string,
+          # > this resets the helper list to empty (so you may override
+          # > a helper set by a lower-priority config file by configuring
+          # > the empty-string helper, followed by whatever set of helpers
+          # > you would like).
+          #
+          # https://git-scm.com/docs/gitcredentials#Documentation/gitcredentials.txt-helper
+          #
+          # This means that no other helpers will be used.
+          GIT_CONFIG_COUNT: 2
+          GIT_CONFIG_KEY_0: credential.https://github.com.helper
+          GIT_CONFIG_VALUE_0: ""
+          # The 'persist-credentials: false' setting from earlier is
+          # based on a zizmor recommendation to avoid credentials
+          # being used after steps that they're meant to be used in.
+          #
+          # `gh auth git-credential` does not persist credentials,
+          # it just passes them to `git`. Looking at gh CLI's code,
+          # "store" is a no-op for the credential helper code path:
+          # https://github.com/cli/cli/blob/0274077b56a/pkg/cmd/auth/gitcredential/helper.go#L58-L66
+          #
+          # Unfortunately, the 'gh auth git-credential' subcommand is not
+          # documented in the manual. https://cli.github.com/manual
+          # I'm assuming this behavior will not change in the future.
+          GIT_CONFIG_KEY_1: credential.https://github.com.helper
+          GIT_CONFIG_VALUE_1: "!gh auth git-credential"
           DISPATCH_PROJECT: ${{ github.event.inputs.project }}
           DISPATCH_BASE: ${{ github.event.inputs.base }}
           DISPATCH_PUSH: ${{ github.event.inputs.push }}
