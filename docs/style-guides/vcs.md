@@ -42,6 +42,39 @@ BREAKING CHANGE: <description>
 Hard-wrap commit messages to a reasonable width (for example, 80-100 chars).
 URLs, SHAs, and auto-generated messages may exceed that width.
 
+### Commit trailers
+
+Commit trailers should be added after a `---` line.
+
+The following commit trailers are recommended for fixes.
+
+```
+Introduced-By: <shortened SHA> ('<original commit msg title>')
+Labels: rca/abc, factor/xyz
+Related: <links>
+```
+
+For links to other GitHub issues, use `gh://<org>/<repo>#<number>`.
+
+Example commits using these trailers:
+
+- `5f63cafff354` (`fix(ci): Fix borked upstream-sync workflow`)
+- `767ee7c4f615` (`fix(delve): Point delve to use our go-delve/build-tools`)
+
+Example trailer blocks:
+
+```text
+Introduced-By: 435c1b69bc37 ('chore(ci): Upgrade setup-go to v6.4.0')
+Labels: rca/dep-version-bump/major, factor/unclear-docs
+Related: https://github.com/actions/setup-go/releases/tag/v6.0.0
+```
+
+```text
+Introduced-By: 11f0d00c4ddd ('feat(meta): Add periodic syncing with upstream (#14)')
+Labels: rca/3p-tooling-assumption, factor/ast-change, factor/lang-feature
+Related: gh://dominikh/go-tools#1718, gh://golang/go#78553
+```
+
 ## PR descriptions
 
 Keep PR descriptions concise and focused on what changed and why.
