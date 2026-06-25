@@ -1,0 +1,73 @@
+# Funding work on Kibou
+
+In [The Economics of Programming Languages](https://www.youtube.com/watch?v=XZ3w_jec1v8),
+Evan Czaplicki describes the following grouping
+for the 
+ the following different
+mechanisms for funding the development of languages:
+
+1. Corporate languages:
+   - Company-specific platform: Swift, C#
+   - Corporate alliance: JavaScript, Rust
+   - Rewarding talent: Dart, Go
+2. Independent languages:
+   - Patronage/Recruiting: Python, OCaml, Elm
+   - Consulting: Clojure, Elixir, Scala, Julia
+   - Research grants: Haskell, OCaml, Scala
+   - Editor licenses: Kotlin
+   - Usage licenses: Wolfram Language/Mathematica, Stata
+   - Hosting: Clojure (potentially)
+   - Donations: Gleam and Zig (neither mentioned in the talk)
+
+I don't quite agree with the breakdown 100%,
+but this seems directionally correct.
+
+Kibou falls under the second group as an
+independent language.
+
+Out of these, I would rule out the following:
+
+- Patronage/Recruiting: This seems to largely rely on factors
+  outside one's own control.
+- Research grants: Being a research vehicle is a non-goal
+  for Kibou. The focus is on practical use, even if that
+  means that the ideas are not novel.
+- Editor licenses: I don't have any editor to sell.
+- Donations: Overall, this seems to lead to languages
+  being severely underfunded compared to the impact
+  that they're having, even when there are a few wealthy
+  and well-meaning individuals/organizations around.
+
+This leaves Consulting, Usage Licenses and Hosting
+(i.e. providing some other service, and funding
+the development of the language based on the funds
+from the other service).
+
+Out of these, Consulting and Hosting allow for open-source
+licensing of the language and surrounding libraries.
+
+Hosting seems the hardest out of these, as it means
+that some other service needs to be built that people
+are willing to pay for, and the language's development
+can be paid for using that. This works well for database
+products as there's a service involved. There are
+fewer companies offering platforms like build systems,
+CI/CD etc. as well.
+
+Consulting seems like a more common route for languages.
+For example, much of the recent progress on Haskell (GHC)
+has come from folks at Well-Typed and Tweag.
+
+On the topic of Consulting companies vs Product companies,
+there's a fairly large amount of writing online which
+leans one way or the other.
+
+From my POV, I think one of the main challenges of operating
+as a consultancy would be that it would be difficult
+to make fundamental changes, long-term bets,
+as well as bets which are net-negative in the short-term.
+
+This only really leaves Usage Licenses as the option.
+Unfortunately, the implication of this is that the language
+cannot be permissively open-sourced, as most companies
+would be unwilling to pay for a tool that's available for free.
