@@ -1,0 +1,6 @@
+panic: boom
+
+# go test summary
+FAIL example.test/pkg TestPanic (0.01s)
+FAIL example.test/pkg (0.020s)
+FAIL example.test/dep (0.000s) [build failed: example.test/dep]
