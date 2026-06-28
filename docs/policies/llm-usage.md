@@ -38,23 +38,66 @@ This policy applies to the kibou repository,
 including comments, discussions, submitted code changes in PRs,
 issue descriptions and so on.
 
-If an LLM authors any of the following disallowed items
-in local development, that should be generally before
-redone from scratch before submission, especially
-if it exceeds 2 sentences.
+This policy does not apply to personal usage locally.
+Some of the rules are enforced using the LLM configuration
+in the repository. You may override them locally
+for personal use.
 
-For example, using LLMs to add brief TODO comments in local development
-flow is fine. However, using LLMs to write long comments
-during local development is strongly discouraged,
-because it's likely to lead to a false sense of complacency
-about the comment being good enough, and only doing
-minor touch-ups before submission.
+## Rules
+
+The following usages of LLMs are permitted:
+
+- Background research.
+- Investigating and debugging issues.
+- Using autocomplete for code, comments,
+  simple vector art, or technical diagrams.
+
+When citing LLM-generated text in an issue description
+or PR, specify the model used, and clearly identify
+said text using blockquotes or annotated code blocks.
+
+All other usages are forbidden in shared contexts.
+For example, LLMs must not be used for:
+
+- Authoring code for merging.
+- Authoring code comments for merging.
+- Authoring commit messages or PR descriptions.
+- Creating illustrations/bitmap images.
+
+If you personally use LLMs locally for these purposes,
+you must redo the work by hand or not submit it.
 
 Responsibility and judgment lie with people, not with LLMs.
 
-### LLMs must not author code comments
+## Q&A
 
-This covers both doc comments and code comments.
+### Why is agentic LLM usage forbidden for shared code?
+
+Over the period of December 2025 to June 2026,
+I've used LLMs for generating a fair bit of code.
+Generally, LLM-generated code requires many more
+rounds of code review compared to human-written code.
+
+After a few rounds of review,
+it's easy to accidentally fall into
+a false sense of complacency when reviewing changes,
+and assume that certain "basic" changes are correct
+without careful review.
+However, the jagged nature of LLM capabilities
+means that they can fail at doing basic tasks,
+while succeeding at trickier tasks.
+
+Additionally, it's easy to lull oneself into thinking
+that one has understood the domain and the solution,
+but when the code actually falls over later,
+you end up realizing that you didn't actually understand either.
+
+From the point-of-view of a language toolchain
+that is meant to be core infrastructure,
+it doesn't make sense to trade off the increased risk of bugs
+for speed of implementation.
+
+### Why is agentic LLM usage forbidden for code comments?
 
 Writing comments is a form of explaining things to yourself
 and to other people. If you cannot explain something simply,
@@ -64,13 +107,7 @@ generally, that means one or more of:
 - The piece of code is doing too much.
 - There is a bug.
 
-Exception: Writing comments which are basically a copy
-of some comment elsewhere.
-Sometimes these are needed for forwarding aliases
-from other packages, where one package provides
-a more consolidated API from multiple sub-packages.
-
-## LLM must not author commit messages and PRs
+### Why is agentic LLM usage forbidden for commit messages and PRs?
 
 Commit messages should be authored by people.
 LLMs can predict the Why, but LLMs cannot understand the Why.
@@ -78,13 +115,7 @@ It is the responsibility of the submitter to work through
 their thought process when authoring a commit message
 or PR description.
 
-As of May 10 2027, LLM-generated PR descriptions are typically
-a lot more verbose than human-written descriptions, and tend
-to focus on the What a lot more.
-This may change in the future.
-That is one more reason to avoiding 
-
-## LLMs must not make illustrations
+### Why is LLM usage forbidden for illustrations?
 
 LLM generated illustrations are built upon training data
 that was not freely licensed to the relevant companies.
@@ -94,14 +125,12 @@ If you want to share an illustration,
 please draw one yourself.
 It's fine if it "doesn't look pretty."
 
-Exception: Vector images with simple geometric shapes.
-
-## LLMs must not author technical diagrams
+### Why is LLM usage forbidden for technical diagrams?
 
 (This applies to diagrams made using deterministic tools
 like Mermaid, GraphViz etc.)
 
-As of May 10 2027, LLM-generated diagrams generally suffer from
+As of May 10 2026, LLM-generated diagrams generally suffer from
 poor layout choices, excessive focus on details and
 unclear emphasis. 
 

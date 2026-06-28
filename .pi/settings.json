@@ -1,0 +1,8 @@
+{
+  "extensions": [
+    "extensions/tool-allowlist.ts",
+    "extensions/tool-write.ts",
+    "extensions/readonly-vcs.ts",
+    "extensions/readonly-gh.ts"
+  ]
+}

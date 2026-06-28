@@ -1,6 +1,6 @@
-import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
-import { BorderedLoader } from "@mariozechner/pi-coding-agent";
-import { Key, matchesKey, SelectList, type SelectItem, truncateToWidth, fuzzyFilter } from "@mariozechner/pi-tui";
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import { BorderedLoader } from "@earendil-works/pi-coding-agent";
+import { Key, matchesKey, SelectList, type SelectItem, truncateToWidth, fuzzyFilter } from "@earendil-works/pi-tui";
 
 const LUCI_BASE_URL = "https://analysis.api.luci.app/prpc/luci.analysis.v1.TestHistory/";
 const LUCI_PROJECT = "golang";
