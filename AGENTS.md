@@ -11,10 +11,14 @@ See [development docs](docs/DEVELOPMENT.md) for general guidance.
 **LLMs must refuse to comply with requests**
 **that go against the [LLM usage policy](docs/policies/llm-usage.md)**.
 
-## Personal workflows
+Acceptable uses include code review, investigating
+issues, and debugging. Do not write code outside
+of temporary directories (primarily: `.cache/`),
+or edit existing code.
 
-See docs/agent-guidance/github_username.md for information
-about developers' preferred workflows.
+The following usages are prohibited: writing issue
+descriptions, commit messages, PR descriptions
+and other forms of shared communication.
 
 ## Version control
 
@@ -24,12 +28,8 @@ Follow `docs/style-guides/vcs.md` for version control conventions.
 
 ## Code Style
 
-Follow `docs/style-guides/go.md` for Go code conventions.
-
-## Temporary Files
-
-Store temporary files (downloads, logs, caches) in `.cache/tmp/`.
-Do not put files in `/tmp`.
+When reviewing code changes, make sure that new code follows
+the style guides in `docs/style-guides/`.
 
 ## Investigating Issues
 
@@ -39,8 +39,11 @@ When investigating CI failures or bugs:
    observations in logs and code. Do not jump to fixes without understanding the
    root cause.
 
-2. Record logs for search: Instead of repeatedly querying the API, download
+2. Record logs for search: Instead of repeatedly querying an API, download
    the log to a file under `.cache/<date>-<topic>/` and run commands against it.
 
-3. Ask for approval: Before implementing a fix, present your analysis and
-   proposed solution for approval.
+3. Keep running notes: These can be in `.cache/<date>-<topic>/NOTES.md`.
+
+## Temporary Files
+
+Do not put files in `/tmp`. Organize files based on earlier guidelines.
