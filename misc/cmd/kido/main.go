@@ -160,6 +160,89 @@ func main() {
 					return ws.List(logger, os.Stdout, ListOptions{Type: type_, Provenance: provenance})
 				},
 			},
+			{
+				Name:  "benchmark",
+				Usage: "Run some benchmark for the workspace",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name: "name", Required: true,
+						Usage: "Possible values: make.bash",
+					},
+					&cli.IntFlag{
+						Name: "iters", Required: false,
+						Usage: "Number of iterations. 0 implies automatic selection.",
+					},
+					&cli.StringSliceFlag{
+						Name: "config", Required: false,
+						Usage: "Benchmark specific config option as key=value (repeatable).",
+					},
+					&cli.StringFlag{
+						Name: "baseline-rev", Required: false,
+						Usage: "jj:<revset> or git:<sha>",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					ws, err := getWorkspace()
+					if err != nil {
+						return err
+					}
+					var name BenchmarkName
+					switch cmd.String("name") {
+					case "make.bash":
+						name = "make.bash"
+					default:
+						return errorx.Newf("nostack",
+							"unknown --name %q, want one of %v", cmd.String("name"),
+							AllBenchmarks())
+					}
+					var iters Option[int]
+					if cmd.IsSet("iters") {
+						val := cmd.Int("iters")
+						if val < 0 {
+							return errorx.Newf("nostack", "negative --iters %d, wanted value >= 0", val)
+						}
+						if val > 0 {
+							iters = Some(val)
+						}
+					}
+					config := NewBenchmarkConfig(name)
+					for _, kv := range cmd.StringSlice("config") {
+						before, after, ok := strings.Cut(kv, "=")
+						if !ok {
+							return errorx.Newf("nostack", "invalid --config %q; missing = separator", kv)
+						}
+						if before == "" {
+							return errorx.Newf("nostack", "invalid --config %q; missing key before =", kv)
+						}
+						if after == "" {
+							return errorx.Newf("nostack", "invalid --config %q; missing value after =", kv)
+						}
+						if err := config.Add(before, after); err != nil {
+							return err
+						}
+					}
+					var baseline Option[RevSet]
+					if cmd.IsSet("baseline-rev") {
+						val := cmd.String("baseline-rev")
+						before, after, ok := strings.Cut(val, ":")
+						if !ok {
+							return errorx.Newf("nostack", "invalid --baseline-rev %q; missing : separator", val)
+						}
+						if before != "jj" && before != "git" {
+							return errorx.Newf("nostack", "invalid --baseline-rev %q; expected jj: or git: prefix", val)
+						}
+						if after == "" {
+							return errorx.Newf("nostack", "invalid --baseline-rev %q; missing rev spec after :", val)
+						}
+						baseline = Some(NewRevSet(VCS(before), after))
+					}
+					tok, cancel := withTimeout(cancel.Never(), 10*timex.Minute, cmd.Name)
+					defer cancel()
+					logCtx := logx.NewLogCtx(tok, logger)
+					clock := syscaps.MonotonicClock()
+					return ws.Benchmark(logCtx, clock, os.Stdout, BenchmarkOptions{iters, config, baseline})
+				},
+			},
 		},
 	}
 

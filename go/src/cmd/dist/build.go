@@ -50,9 +50,9 @@ var (
 	goexperiment     string
 	gofips140        string
 	workdir          string
+	// The directory GOROOT/pkg/tool/GOOS_GOARCH
+	// for the host platform.
 	tooldir          string
-	oldgoos          string
-	oldgoarch        string
 	oldgocache       string
 	exe              string
 	defaultcc        map[string]string
@@ -1509,8 +1509,8 @@ func cmdbootstrap() {
 	}
 
 	// For the main bootstrap, building for host os/arch.
-	oldgoos = goos
-	oldgoarch = goarch
+	oldgoos := goos
+	oldgoarch := goarch
 	goos = gohostos
 	goarch = gohostarch
 	os.Setenv("GOHOSTARCH", gohostarch)
@@ -1560,46 +1560,56 @@ func cmdbootstrap() {
 	os.Setenv("CC", compilerEnvLookup("CC", defaultcc, goos, goarch))
 	// Now that cmd/go is in charge of the build process, enable GOEXPERIMENT.
 	os.Setenv("GOEXPERIMENT", goexperiment)
-	// No need to enable PGO for toolchain2.
-	goInstall(toolenv(), goBootstrap, append([]string{"-pgo=off"}, toolchain...)...)
+	// NOTE(kibou): Upstream disables PGO here using -pgo=off. We keep PGO turned
+	// on, because:
+	//
+	// 1. Below, we want to build std+cmd using toolchain2, not toolchain3,
+	//    to unlock more parallelism in the build graph.
+	// 2. The build performs a check that the cache has no stale entries for
+	//    std+cmd based on toolchain3's build ID.
+	// 3. If toolchain3 is built with PGO and toolchain2 isn't, then they
+	//    end up having separate build IDs.
+	goInstall(toolenv(), goBootstrap, toolchain...)
 	if debug {
 		run("", ShowOutput|CheckExit, pathf("%s/compile", tooldir), "-V=full")
 		copyfile(pathf("%s/compile2", tooldir), pathf("%s/compile", tooldir), writeExec)
 	}
 
-	// Toolchain2 should be semantically equivalent to toolchain1,
-	// but it was built using the newly built compiler instead of the Go bootstrap compiler,
-	// so it should at the least run faster. Also, toolchain1 had no build IDs
-	// in the binaries, while toolchain2 does. In non-release builds, the
-	// toolchain's build IDs feed into constructing the build IDs of built targets,
-	// so in non-release builds, everything now looks out-of-date due to
-	// toolchain2 having build IDs - that is, due to the go command seeing
-	// that there are new compilers. In release builds, the toolchain's reported
-	// version is used in place of the build ID, and the go command does not
-	// see that change from toolchain1 to toolchain2, so in release builds,
-	// nothing looks out of date.
-	// To keep the behavior the same in both non-release and release builds,
-	// we force-install everything here.
+	// NOTE(kibou): toolchain2 should be semantically equivalent to toolchain1.
+	// Additionally, it should have the build IDs
 	//
-	//	toolchain3 = mk(new toolchain, toolchain2, go_bootstrap)
+	// - In release builds, the tool IDs for toolchain2 will report
+	//   something like `compile version go1.27.0`. So they've already
+	//   converged/further rebuilds don't buy anything.
+	// - In development builds, the tool IDs will report the content ID for
+	//   the binary. So if we recompile a new toolchain3 with the same set of
+	//   flags:
+	//   - The content IDs for toolchain3 binaries should be the same as toolchain2
+	//     (same flags, same toolchain source).
+	//   - The action IDs for toolchain3 binaries will be different because
+	//     toolchain3's actionIDs will take toolchain2's tool IDs into account,
+	//     toolchain2's actionIDs will take toolchain1's tool IDs into account.
 	//
-	timelog("build", "toolchain3")
+	// For consistency between release and development builds, build a separate
+	// toolchain3 using toolchain2.
+	timelog("build", "toolchain3+std+cmd")
 	if vflag > 0 {
 		xprintf("\n")
 	}
-	xprintf("Building Go toolchain3 using go_bootstrap and Go toolchain2.\n")
-	goInstall(toolenv(), goBootstrap, append([]string{"-a"}, toolchain...)...)
-	if debug {
-		run("", ShowOutput|CheckExit, pathf("%s/compile", tooldir), "-V=full")
-		copyfile(pathf("%s/compile3", tooldir), pathf("%s/compile", tooldir), writeExec)
+	isCrossCompiling := goos != oldgoos || goarch != oldgoarch
+	if isCrossCompiling {
+		goos = oldgoos
+		goarch = oldgoarch
+		os.Setenv("GOOS", goos)
+		os.Setenv("GOARCH", goarch)
+		os.Setenv("CC", compilerEnvLookup("CC", defaultcc, goos, goarch))
 	}
+	xprintf("Building Go toolchain3+std+cmd for %s/%s using go_bootstrap and Go toolchain2.\n",
+		goos, goarch)
 
-	// Now that toolchain3 has been built from scratch, its compiler and linker
-	// should have accurate build IDs suitable for caching.
-	// Now prime the build cache with the rest of the standard library for
-	// testing, and so that the user can run 'go install std cmd' to quickly
-	// iterate on local changes without waiting for a full rebuild.
-	if _, err := os.Stat(pathf("%s/VERSION", goroot)); err == nil {
+	if _, err := os.Stat(pathf("%s/VERSION", goroot)); os.IsNotExist(err) {
+		os.Setenv("GOCACHE", oldgocache)
+	} else if err == nil {
 		// If we have a VERSION file, then we use the Go version
 		// instead of build IDs as a cache key, and there is no guarantee
 		// that code hasn't changed since the last time we ran a build
@@ -1607,42 +1617,76 @@ func cmdbootstrap() {
 		// on a release branch). We must not fall back to the shared build cache
 		// in this case. Leave $GOCACHE alone.
 	} else {
-		os.Setenv("GOCACHE", oldgocache)
+		fatalf("error on accessing %s/VERSION: %v", goroot, err)
 	}
 
-	if goos == oldgoos && goarch == oldgoarch {
-		// Common case - not setting up for cross-compilation.
-		timelog("build", "toolchain")
-		if vflag > 0 {
-			xprintf("\n")
-		}
-		xprintf("Building packages and commands for %s/%s.\n", goos, goarch)
-	} else {
-		// GOOS/GOARCH does not match GOHOSTOS/GOHOSTARCH.
-		// Finish GOHOSTOS/GOHOSTARCH installation and then
-		// run GOOS/GOARCH installation.
-		timelog("build", "host toolchain")
-		if vflag > 0 {
-			xprintf("\n")
-		}
-		xprintf("Building commands for host, %s/%s.\n", goos, goarch)
-		goInstall(toolenv(), goBootstrap, toolsToInstall...)
-		checkNotStale(toolenv(), goBootstrap, toolsToInstall...)
-		checkNotStale(toolenv(), gorootBinGo, toolsToInstall...)
-
-		timelog("build", "target toolchain")
-		if vflag > 0 {
-			xprintf("\n")
-		}
-		goos = oldgoos
-		goarch = oldgoarch
-		os.Setenv("GOOS", goos)
-		os.Setenv("GOARCH", goarch)
-		os.Setenv("CC", compilerEnvLookup("CC", defaultcc, goos, goarch))
-		xprintf("Building packages and commands for target, %s/%s.\n", goos, goarch)
+	var wg sync.WaitGroup
+	var toolchain3TmpDir string
+	defer func() { os.RemoveAll(toolchain3TmpDir) }()
+	if isCrossCompiling {
+		wg.Go(func() {
+			// HACK: Also build cmd/go for the host anyway because:
+			//
+			// 1. clean.bash expects bin/go to be present.
+			// 2. We have some sanity checks below for staleness similar to
+			//    upstream. Upstream builds the full toolchain for the host,
+			//    but technically only cmd/go is needed.
+			hostToolEnv := append(toolenv(),
+				fmt.Sprintf("GOOS=%s", gohostos),
+				fmt.Sprintf("GOARCH=%s", gohostarch),
+				fmt.Sprintf("CC=%s", compilerEnvLookup("CC", defaultcc, gohostos, gohostarch)))
+			goInstall(hostToolEnv, goBootstrap, "cmd/go")
+		})
 	}
-	goInstall(nil, goBootstrap, "std")
-	goInstall(toolenv(), goBootstrap, toolsToInstall...)
+	wg.Go(func() {
+		// When toolchain3 is compiled for the host, if we did goInstall,
+		// that would lead to this goroutine overwriting binaries in use
+		// by other goroutines.
+		//
+		// For simplicity, always write the binaries to a separate directory.
+		toolchain3TmpDir, err = os.MkdirTemp(tooldir, "toolchain3")
+		if err != nil {
+			fatalf("error creating tempdir: %v", err)
+		}
+		goCmd(toolenv(), goBootstrap, "build",
+			append([]string{"-o", toolchain3TmpDir + "/", "-a"}, toolchain...)...)
+	})
+	wg.Go(func() {
+		goInstall(nil, goBootstrap, "std")
+	})
+	wg.Go(func() {
+		var nonSeedTools []string
+		for _, t := range toolsToInstall {
+			if !slices.Contains(toolchain, t) {
+				nonSeedTools = append(nonSeedTools, t)
+			}
+		}
+		goInstall(toolenv(), goBootstrap, nonSeedTools...)
+	})
+	wg.Wait()
+	for _, t := range toolchain {
+		name := filepath.Base(t) + exe
+		tmpBinPath := pathf("%s/%s", toolchain3TmpDir, name)
+		var finalBinPath string
+		if isCrossCompiling {
+			finalBinPath = pathf("%s/pkg/tool/%s_%s/%s", goroot, goos, goarch, name)
+		} else { // tooldir only applies for the host
+			finalBinPath = pathf("%s/%s", tooldir, name)
+		}
+		if err := os.Rename(tmpBinPath, finalBinPath); err != nil {
+			fatalf("when copying back toolchain binary from %s to %s: %v", tmpBinPath, finalBinPath, err)
+		}
+	}
+
+	if debug {
+		if !isCrossCompiling {
+			run("", ShowOutput|CheckExit, pathf("%s/compile", tooldir), "-V=full")
+		}
+		copyfile(pathf("%s/compile3", tooldir), pathf("%s/compile", tooldir), writeExec)
+	}
+
+	// NOTE(kibou): This line is technically redundant with the toolsToInstall
+	// one below, as the latter is a superset of toolchain.
 	checkNotStale(toolenv(), goBootstrap, toolchain...)
 	checkNotStale(nil, goBootstrap, "std")
 	checkNotStale(toolenv(), goBootstrap, toolsToInstall...)
