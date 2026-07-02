@@ -23,6 +23,7 @@ import (
 	"cmd/internal/telemetry/counter"
 )
 
+// NOTE(id: buildID-official-docs):
 // Build IDs
 //
 // Go packages and binaries are stamped with build IDs that record both

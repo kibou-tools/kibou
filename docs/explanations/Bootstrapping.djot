@@ -1,0 +1,202 @@
+:::
+references:
+  packages:
+    - cmd/dist
+:::
+
+# The Bootstrapping Process for the Go toolchain
+
+This document describes how the Go toolchain is bootstrapped.
+The corresponding code is in [cmd/dist/boostrap.go](/go/src/cmd/dist/boostrap.go).
+
+This doc is meant to describe both the original upstream
+process and the changes we've made to it.
+
+## Prerequisites
+
+First read the [Build Caching docs][build-caching] to make
+sure you have a good understanding of action IDs, content IDs
+and build IDs.
+This page uses some of the same notation to explain things.
+
+## Terminology
+
+- (Distributable) _Toolchain_: An archive or set of directories
+  consisting of:
+
+  - Low-level binaries such as `cmd/compile` (the gc compiler),
+    `cmd/link` etc. (see [dist.toolsIncludedInDistpack]{.sym}
+    for the full list).[^>not-all-cmd-bins]
+  - High-level binaries (meant to be invoked directly by users)
+    such as `cmd/go` (the compiler driver) and `cmd/gofmt`.
+  - The source code for the standard library and the runtime.
+  - Headers with C and assembly - These are used by the
+    assembly code in the runtime, and by CGO-generated code.
+  - (Optional) A VERSION file describing the toolchain version.
+
+- _Seed toolchain_: The minimal set of low-level binaries
+  required to compile Go code. As of July 2026, the list
+  consists of `cmd/compile`, `cmd/asm`, `cmd/cgo`, `cmd/link`
+  and `cmd/preprofile`. (see [dist.toolchain]{.sym} for
+  the up-to-date list).
+
+  Depending on the compiler toolchain (gccgo or gc),
+  the codegen toolchain will be different,
+  but the driver is shared.
+
+- `go_bootstrap`: A slimmed down version of `cmd/go`,
+  with reduced features based on the build tag `cmd_go_bootstrap`.
+
+  This acts as the compiler driver for several build phases.
+- _Baseline toolchain_: The distributable toolchain used to kick-start
+  the build process. This must generally be within 2 major
+  versions of the tree itself (i.e. 1.27-devel needs 1.25+).
+
+  In `cmd/dist`, this is also called the "bootstrap toolchain",
+  and it is placed under `GOROOT_BOOSTRAP`, but I've chosen
+  to avoid that term here since "bootstrap" is easily confused
+  with `go_bootstrap`.
+
+[^>not-all-cmd-bins]: Not all binaries in `cmd/` are part of this list.
+For example, `cmd/pprof` and `cmd/addr2line` are currently not built
+for distribution. Instead, they are compiled from source on first use.
+
+Confusingly, the term "toolchain" too is overloaded in the source code
+and docs. In `cmd/dist`, "toolchain" generally means "seed toolchain"
+not "distributable toolchain". For the sake of this document,
+we'll use "toolchain" to consistently mean "distributable toolchain"
+and specify "seed toolchain" where it applies.
+
+## Assumptions
+
+The baseline toolchain is assumed to have correct
+caching behavior, as well as no miscompiles affecting
+the build itself.
+
+The source tree is assumed to not have bugs leading
+to non-deterministic compilation contents.
+
+Standard assumptions about the filesystem being correct,
+not have other concurrent writes etc. also apply.
+
+## Goals
+
+The goal of the bootstrapping process is to start from
+a baseline Go toolchain[^>bootstrap-toolchain-confusion],
+and to produce a new Go toolchain
+corresponding to the source tree that is up-to-date.
+
+By up-to-date, we mean that a full build T followed
+by `$GOROOT=$T_DIR $T_DIR/bin/go install t`
+for any of the tools in T should not lead to rebuilds.
+
+### No rebuilds needs build ID convergence
+
+Consider that tool `T.t` has a build ID of the
+form `a_link/a_compile(t.a)/c_compile(t.a)/c_link`.[^>notation-confusion]
+Let's denote the prior toolchain which built T as P.
+Here, `a_link` will take `P.link`'s tool ID into account,
+and `a_compile(t.a)` will take `P.compile`'s tool ID into account.[^>other-toolIDs]
+
+[^>notation-confusion]: If you don't understand this notation,
+please read the [Build Caching docs][build-caching] first.
+
+[^>other-toolIDs]: Depending on the pipeline, other tool IDs may also be involved here.
+
+Let's say we were to trigger a build of a separate toolchain Z using T.
+The "no rebuilds" condition means that we must get
+cache hits for `a_link` and `a_compile`, which in
+turn means that we need `T.link.toolID == P.link.toolID`
+and `T.compile.toolID == P.compile.toolID`.
+
+So the convergence of tool ID convergence is necessary
+but not sufficient to ensure no-rebuilds. We also
+need to make sure that the rest of the environment
+is identical.
+
+### The cross-compilation complication
+
+Earlier in the doc, we defined up-to-date as:
+
+> By up-to-date, we mean that a full build T followed
+> by `$GOROOT=$T_DIR $T_DIR/bin/go install t`
+> for any of the tools in T should not lead to rebuilds.
+
+However, if the final toolchain T is for a target platform
+distinct from the host platform, this check cannot be
+run without using an emulator.
+
+So for the cross-compilation case, the final staleness
+check has to be done relative to the prior host toolchain P.
+However, this staleness check doesn't really buy much,
+because when T is copied over to a target machine,
+then the tools will be considered out-of-date
+when a "should this be rebuilt" check is done using T.
+
+## The actual bootstrapping flow
+
+When the upstream toolchain is built,
+the flow looks like: ([source code](https://github.com/golang/go/blob/master/src/cmd/dist/build.go#:~:text=cmdbootstrap))
+
+|Step | Toolchain | Build Driver | Produces | Other info |
+|---:|:---|:--|:---|:---|
+| 1 | Baseline | Baseline `cmd/go` | Seed toolchain 1 (Host) | |
+| 2 | Seed toolchain 1 | `cmd/dist` | `go_bootstrap` | |
+| 3 | Seed toolchain 1 | `go_bootstrap` | Seed toolchain 2 (Host) | No PGO |
+| 4 | Seed toolchain 2 | `go_bootstrap` | Seed toolchain 3 (Host) | With PGO |
+| 5 | Seed toolchain 3 | `go_bootstrap` | Stdlib (Target) | |
+| 6 | Seed toolchain 3 | `go_bootstrap`  | Full toolchain (Target) | |
+
+This is entirely serial as a pipeline. If we ignore build IDs, building stdlib
+or the full toolchain with seed toolchain 2 and 3 should lead to identical
+contents (assuming no non-determinism bugs in the compiler).
+
+Upstream code currently has the contract that the final stdlib and
+full toolchain are up-to-date relative to seed toolchain 3.
+To maintain the same contract when the stdlib and full toolchain
+are built by seed toolchain 2, we need to ensure that the tool IDs
+for seed toolchain 2 are identical to the tool IDs
+for seed toolchain 3. There are four cases here:
+
+1. Non-cross compilation × development build: In this case,
+   tool ID = content IDs for the tools. For the content IDs
+   to be equal, we need to turn on PGO for seed toolchain 2's build.
+2. Non-cross compilation × release build: In this case,
+   tool ID = Go version, so it will be equal for all of
+   seed toolchains 1, 2, and 3.
+3. Cross-compilation: Here, we can't assert convergence
+   of the stdlib or target-native full toolchain relative to itself,
+   and asserting convergence relative to seed toolchain 3
+   is not useful, because the tools will still appear outdated
+   from the POV of the target-native full toolchain anyway.
+
+So we make the following changes:
+
+| Step | Toolchain | Build Driver | Produces | Other info |
+|---:|:---|:--|:---|:---|
+| 1 | Baseline | Baseline `cmd/go` | Seed toolchain 1 | |
+| 2 | Seed toolchain 1 | `cmd/dist` | `go_bootstrap` | |
+| 3 | Seed toolchain 1 | `go_bootstrap` | Seed toolchain 2 (Host) | With PGO |
+| 4 | Seed toolchain 2 | `go_bootstrap` | Seed toolchain 3 (Target) | With PGO |
+| 4 | Seed toolchain 2 | `go_bootstrap` | Stdlib (Target) | |
+| 4 | Seed toolchain 2 | `go_bootstrap` | Non-seed tools (Target) | |
+| 4 | Seed toolchain 2 | `go_bootstrap` | cmd/go (Host) | |
+
+Few points worth noting:
+
+- For the cross-compilation case, this essentially avoids
+  a whole toolchain build: only `cmd/go` is needed.
+  (That too could be removed, at the cost of some more
+  complexity and fewer checks. See code comments for details.)
+- For the non-cross-compilation case, we have to be careful
+  to write the seed toolchain 3 to a separate directory
+  to avoid writing to paths where the binary is being used
+  to compile the stdlib and non-seed tools.
+
+After step 4, like upstream, we can check that the stdlib
+and the various non-seed tools are up-to-date relative to:
+
+- Seed toolchain 3's cmd/go (for the non-cross compilation case)
+- Host cmd/go (for the cross-compilation case)
+
+[build-caching]: ./build-caching
