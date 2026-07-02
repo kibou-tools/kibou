@@ -1,0 +1,280 @@
+::: metadata
+references:
+  packages:
+    - cmd/go/internal/cache
+    - cmd/go/internal/work
+    - cmd/internal/buildid
+:::
+
+## How Go's build caching works
+
+Conceptually, a caching system needs to work as follows:
+
+1. There are some set of inputs `I1, ..., In`.
+2. There is a transformation function `f(I1, ..., In) -> O`.
+3. If the operation `g(J1, ..., Jn)` is equivalent to `f(I1, ..., In)`,
+   and `f` and `I1, ..., In`'s identity can be derived from
+   seeing the computation request for `g(J1, ..., Jn)`,
+   then the result `O` can be returned directly from the cache.
+
+For the Go build system, these terms map as follows:
+
+- [cache.ActionID]{.sym} is the hash of the inputs
+  to an action.
+- `contentID` represents the hash of the _normalized_
+  output of an action, where normalization excludes:
+
+  - The embedded build ID in the artifact for which
+    the `contentID` is being computed.
+  - Mach-O code signatures/UUIDs and ELF GNU build IDs.
+
+- [cache.OutputID]{.sym} is the hash of the output of an action,
+  without normalization (i.e. the bytes as-is).
+- The `buildID` is a string embedded in a build artifact
+  which allows cheaply checking whether a build artifact is up-to-date
+  or not.[^>buildID-override] Its structure is described in more detail below.
+
+  - Notably, this build ID does _not_ embed full action IDs
+    or content IDs; they are truncated using [buildid.HashToString]{.sym}.
+
+- [work.Builder.toolID]{.sym} defines the identity of a tool.
+  It is obtained by examining the output of running the tool
+  with `-V=full`. There are two main cases here:
+
+  - If the tool is part of a release, then it will report a
+    version like `compile version go1.25.0` or `asm version go1.27.0 X:framepointer`
+    (based on `GOEXPERIMENT` during compilation).
+    In this case, the whole string is used as the tool ID.
+  - If the tool is built as a development version, it will report
+    a version like:
+
+    ```
+    compile version go1.27-devel_cd6970a5e1 Sun Jun 28 15:31:19 2026 +0200 buildID=EMJIkBdphOqcdYoMp2F8/CsO6dtk5tn1Z-U_NZ4Hm/gTpHahJ6gUj2EkzBWqLn/PI7Gypt81MOSYWZ8r6Xg
+    ```
+
+    Out of this, the content ID of the binary is the last fragment
+    `PI7Gypt81MOSYWZ8r6Xg`, so that is used.
+
+[^>buildID-override]: It's possible to set an entirely custom build ID using the linker flag `-buildid`.
+Passing custom values here can break build caching,
+so we assume that build IDs are only set using the scheme described here.
+
+## Notation
+
+In the following sections:
+
+- `A256` denotes a (full) action ID.
+- `a` denotes a truncated action ID.
+- `C256` denotes a (full) content ID.
+- `c` denotes a truncated content ID.
+- `O256` denotes a (full) output ID.
+
+## Build caching for a library package
+
+When a library package is to be built
+(e.g. using `go build ./mylib`),
+the output of the build action
+is a `mylib.a` archive file.
+
+First, the dependencies are resolved,
+say `myauth.a` and `mydb.a`. Each of these
+will have embedded build IDs of the form
+`a/c` with their truncated action IDs
+and truncated content IDs.
+
+{.info}
+:::
+For a built library package archive, the embedded build ID
+is of the form `a/c`, with the truncated action ID,
+a `/` separator, and the truncated content ID.
+:::
+
+The full action ID A256 is computed for `mylib.a` using:[^>actionID-computation]
+
+[^>actionID-computation]: See [work.Builder.buildActionID]{.sym} for the implementation.
+
+- Hashes of source files.
+- The truncated dependency content IDs.
+- Various compiler flags and env vars.
+- The compiler's tool ID (see [work.Builder.toolID]{.sym}).
+- And other info (e.g. specific to cgo, PGO, etc.)
+
+A256 is used as a lookup key for the key-value cache
+stored in the `GOCACHE` directory.
+
+- If there's a cache hit, the `mylib.a` is
+  returned, and its embedded build ID is
+  stored in-memory, in case it's needed by
+  downstream computations.
+- If there's a cache miss, then:
+
+  1. `mylib.a` is compiled with a temporary build ID
+     of the form: `a/a`.
+  2. Once the artifact is written, the C256 is computed,
+     and the embedded build ID is rewritten
+     to `a/c`.
+  3. The artifact is stored as two entries (in logically
+     separate namespaces):
+     - A256 → (O256, size, timestamp)
+     - O256 → final `mylib.a` (with build ID = a/c).
+
+## Build caching for a binary package
+
+{.info}
+:::
+For a binary `mybin`, the embedded build ID is of the form
+`a_link(mybin)/a_compile(main.a)/c_compile(main.a)/c_link(mybin)`
+with separate truncated action IDs
+and truncated content IDs for the linking action
+and the compilation action.
+:::
+
+Similar to the library package case,
+the full action ID A256 is computed
+based on the results of dependency
+discovery and other inputs for the
+binary package archive `main.a`.
+
+Unlike a library package, binary packages
+are often installed using `go install`.
+So this introduces an extra case
+of the binary already being present
+at the target installation path (`$GOBIN/mybin`).
+
+If `mybin` is already present at the
+target installation path, the embedded build ID
+is extracted.
+
+Compiling a binary is done in two steps:
+
+1. The binary archive `main.a` is built.
+2. `main.a` is linked to various dependencies,
+   including the Go runtime.
+
+If `mybin` was available, it's possible to
+compute `A256_compile` (relatively) cheaply using:
+
+- Hashes of source files.
+- The truncated dependency content IDs.
+- Various compiler flags and env vars.
+- The compiler's tool ID.
+- And other info (e.g. specific to cgo, PGO, etc.)
+
+Using this, one can check `if a_compile(main.a) == truncate(A256_compile)`.
+(Yes, this is a 120-bit comparison, not the full SHA256).
+If that's true, continuing on the possibly warm cache path:
+
+1. Pretend that `main.a` has build ID `a_compile(main.a)/c_compile(main.a)`
+   obtained from `mybin`.
+2. Compute `A256_link` similar to above, but
+   also including `a_compile` and `c_compile`, as
+   well as the linker's tool ID instead
+   of the compiler's.
+3. Check `if a_link(mybin) == truncate(A256_link)`.
+   If there's a match, assume the binary is up-to-date.
+
+If the relevant action caches the executable
+(see [work.Action.CacheExecutable]{.sym}),
+then the cache is looked up for `A256_link`.
+If the lookup succeeds, the executable is returned from cache.
+
+Otherwise, if the action doesn't apply executable
+caching, or there was a cache miss,
+if the dependencies are up-to-date, those are re-linked.
+If one or more dependencies are stale,
+they are rebuilt before linking.
+
+## Potential FAQs
+
+{.note}
+:::
+This section is more subjective than preceding sections.
+:::
+
+There are a handful of slightly unusual things about this scheme.
+You might be wondering:
+
+1. Why is _build metadata_ about binaries stored in
+   the binaries themselves, instead of somewhere else?
+   For example, the mutation/rewriting complicates
+   the process of hashing, because two hashes need
+   to be computed (the full content ID first, then
+   the output ID after that), instead of just one.
+2. Why aren't binaries always cached? It feels like if
+   they were consistently cached, then the special-case
+   build IDs wouldn't be needed.
+3. Why do binaries have special-cased build IDs?
+   Is this strictly necessary?
+
+### Storing metadata in a sidecar vs in the binaries
+
+Storing build metadata in individual binaries makes
+copying them around easier. I'm not really sure
+what workflow involves copying around individual
+binaries instead of the whole toolchain, but you
+could potentially argue that this reduces the
+number of moving parts.
+
+Note that this is a separate concern from wanting
+to be able to inject metadata like a build commit SHA
+into a binary.
+
+### Conditional caching of binaries
+
+Caching generally makes the most sense for things
+which you expect to be rebuilding frequently.
+If you're installing a tool globally (using `go install`),
+it's less likely that this is the case.
+
+### The special structure of binary build IDs
+
+For the special-cased build IDs for binaries,
+yes, those are strictly speaking, not necessary.
+They only speed up the case when the binary
+is already available. However, today,
+for the cases where the binary is expected
+to be relatively frequently rebuilt/updated
+(e.g. `go tool`, but not `go install`),
+if `main.a` is already cached, `c_compile(main.a)`
+can be computed from relatively cheaply.
+
+So the question boils down to: are there realistic
+situations where `main.a` is not cached, but the
+binary is, and the binary is frequently being rebuilt?
+As far as I can tell, the answer is No,
+unless you're aggressively (and/or accidentally)
+clearing the cache, in which case,
+well, that's a problem you should fix.
+
+Historically, it appears that the patch
+introducing more complex build IDs for binaries
+was authored on Oct 11 2017 ([gh://golang/go@7dea509]{.commit})
+and the change for package-artifact caching
+(covering `mylib.a` and `main.a`) was authored
+on Oct 31 2017.
+
+Between then and Oct 29 2022 ([gh://golang/go@b726b0c]{.commit})
+(before Go 1.20), if you did `go install` for a standard command
+like `cmd/gofmt`:
+
+- The binary was installed in `$GOROOT/bin` (same as today).
+- Standard library archives (`.a` files) for dependencies were
+  _also_ installed under `$GOROOT/pkg`.
+- The binary package's `main.a` was _not_ installed.
+
+In that case, if your cache wiped out, the extra build IDs
+related to `main.a` embedded inside the binary could've
+plausibly been useful for avoiding rebuilds in some cases.
+However, after the archives for dependencies stopped being
+installed, it seems like `main.a` is on equal footing
+with other dependencies, so there's relatively little value
+in special-casing it.
+
+These non-main package archives are also applicable for the case
+of GOPATH-mode (`GO111MODULE=off`), in which case archives
+are stored under `$GOPATH/pkg/`. However, this is rarely
+used today.
+
+## Further reading
+
+- [NOTE(id: buildID-official-docs)]{.note} in the source code.
