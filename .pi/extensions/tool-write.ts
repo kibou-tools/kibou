@@ -3,7 +3,8 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 function writablePath(filePath: string, cwd: string): boolean {
 	const relative = path.relative(cwd, path.resolve(cwd, filePath)).split(path.sep).join("/");
-	return relative.startsWith(".pi/extensions/") && relative.endsWith(".ts") && relative !== ".pi/extensions/tool-allowlist.ts";
+	return (relative.startsWith(".pi/extensions/") && relative.endsWith(".ts") && relative !== ".pi/extensions/tool-allowlist.ts")
+		|| (relative.startsWith(".cache/"));
 }
 
 export default function (pi: ExtensionAPI) {

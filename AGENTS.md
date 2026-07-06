@@ -12,8 +12,11 @@ See [development docs](docs/DEVELOPMENT.md) for general guidance.
 **that go against the [LLM usage policy](docs/policies/llm-usage.md)**.
 
 Acceptable uses include code review, investigating
-issues, and debugging. Do not write code outside
-of temporary directories (primarily: `.cache/`),
+issues, debugging, refactoring, migrations and
+mechanical code changes.
+
+Apart from these, do not write code outside
+temporary directories (primarily: `.cache/`),
 or edit existing code.
 
 The following usages are prohibited: writing issue

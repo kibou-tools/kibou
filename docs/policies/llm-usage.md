@@ -51,6 +51,9 @@ The following usages of LLMs are permitted:
 - Investigating and debugging issues.
 - Using autocomplete for code, comments,
   simple vector art, or technical diagrams.
+- Refactoring, migrations, and other more mechanical changes
+  which do not involve major API-design decisions,
+  but reuse existing decisions.
 
 When citing LLM-generated text in an issue description
 or PR, specify the model used, and clearly identify

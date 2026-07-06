@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 
-package pathx
+package windows
 
 import (
 	"slices"
@@ -12,31 +12,6 @@ import (
 	"code.kibou.tools/base/core/option"
 	"code.kibou.tools/base/iterx"
 )
-
-func TestComponentsUnix(t *testing.T) {
-	h := check.New(t)
-	h.Parallel()
-
-	testCases := []struct {
-		name string
-		path string
-		want []string
-	}{
-		{name: "relative", path: "foo/bar", want: []string{"foo", "bar"}},
-		{name: "repeated separators", path: "foo///bar", want: []string{"foo", "bar"}},
-		{name: "rooted", path: "/foo/bar", want: []string{"foo", "bar"}},
-		{name: "root", path: "/", want: nil},
-	}
-
-	for _, tc := range testCases {
-		h.Run(tc.name, func(h check.Harness) {
-			h.Parallel()
-
-			got := iterx.Collect(ComponentsUnix(tc.path))
-			check.AssertSame(h, tc.want, got, "components")
-		})
-	}
-}
 
 func TestComponentsWindows(t *testing.T) {
 	h := check.New(t)
@@ -53,7 +28,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "relative",
 			path:              `foo\bar`,
-			wantKind:          WindowsPathKind_Relative,
+			wantKind:          PathKind_Relative,
 			wantPrefix:        option.None[string](),
 			want:              []string{"foo", "bar"},
 			wantDOSDeviceName: "",
@@ -61,7 +36,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "repeated separators",
 			path:              `foo\\\bar`,
-			wantKind:          WindowsPathKind_Relative,
+			wantKind:          PathKind_Relative,
 			wantPrefix:        option.None[string](),
 			want:              []string{"foo", "bar"},
 			wantDOSDeviceName: "",
@@ -69,7 +44,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "root relative",
 			path:              `\foo\bar`,
-			wantKind:          WindowsPathKind_RootRelative,
+			wantKind:          PathKind_RootRelative,
 			wantPrefix:        option.None[string](),
 			want:              []string{"foo", "bar"},
 			wantDOSDeviceName: "",
@@ -77,7 +52,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "root",
 			path:              `\`,
-			wantKind:          WindowsPathKind_RootRelative,
+			wantKind:          PathKind_RootRelative,
 			wantPrefix:        option.None[string](),
 			want:              nil,
 			wantDOSDeviceName: "",
@@ -85,7 +60,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "drive relative",
 			path:              `C:foo\bar`,
-			wantKind:          WindowsPathKind_DriveRelative,
+			wantKind:          PathKind_DriveRelative,
 			wantPrefix:        option.Some("C:"),
 			want:              []string{"foo", "bar"},
 			wantDOSDeviceName: "",
@@ -93,7 +68,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "drive absolute",
 			path:              `C:\foo\bar`,
-			wantKind:          WindowsPathKind_DriveAbsolute,
+			wantKind:          PathKind_DriveAbsolute,
 			wantPrefix:        option.Some("C:"),
 			want:              []string{"foo", "bar"},
 			wantDOSDeviceName: "",
@@ -101,7 +76,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "drive root",
 			path:              `C:\`,
-			wantKind:          WindowsPathKind_DriveAbsolute,
+			wantKind:          PathKind_DriveAbsolute,
 			wantPrefix:        option.Some("C:"),
 			want:              nil,
 			wantDOSDeviceName: "",
@@ -109,7 +84,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "incomplete UNC",
 			path:              `\\server`,
-			wantKind:          WindowsPathKind_UNC,
+			wantKind:          PathKind_UNC,
 			wantPrefix:        option.Some(`\\server`),
 			want:              nil,
 			wantDOSDeviceName: "",
@@ -117,7 +92,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "UNC root",
 			path:              `\\server\share`,
-			wantKind:          WindowsPathKind_UNC,
+			wantKind:          PathKind_UNC,
 			wantPrefix:        option.Some(`\\server\share`),
 			want:              nil,
 			wantDOSDeviceName: "",
@@ -125,7 +100,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "UNC path",
 			path:              `\\server\share\foo`,
-			wantKind:          WindowsPathKind_UNC,
+			wantKind:          PathKind_UNC,
 			wantPrefix:        option.Some(`\\server\share`),
 			want:              []string{"foo"},
 			wantDOSDeviceName: "",
@@ -133,7 +108,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "verbatim drive path",
 			path:              `\\?\C:\foo`,
-			wantKind:          WindowsPathKind_VerbatimDrive,
+			wantKind:          PathKind_VerbatimDrive,
 			wantPrefix:        option.Some(`\\?\C:`),
 			want:              []string{"foo"},
 			wantDOSDeviceName: "",
@@ -141,7 +116,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "verbatim UNC path",
 			path:              `\\?\UNC\server\share\foo`,
-			wantKind:          WindowsPathKind_VerbatimUNC,
+			wantKind:          PathKind_VerbatimUNC,
 			wantPrefix:        option.Some(`\\?\UNC\server\share`),
 			want:              []string{"foo"},
 			wantDOSDeviceName: "",
@@ -149,7 +124,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "verbatim fallback path",
 			path:              `\\?\GLOBALROOT\Device\HarddiskVolume1`,
-			wantKind:          WindowsPathKind_Verbatim,
+			wantKind:          PathKind_Verbatim,
 			wantPrefix:        option.Some(`\\?\GLOBALROOT`),
 			want:              []string{"Device", "HarddiskVolume1"},
 			wantDOSDeviceName: "",
@@ -157,7 +132,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "relative DOS device name",
 			path:              `cOm1.. ..`,
-			wantKind:          WindowsPathKind_Relative,
+			wantKind:          PathKind_Relative,
 			wantPrefix:        option.None[string](),
 			want:              []string{`cOm1.. ..`},
 			wantDOSDeviceName: "COM1",
@@ -165,7 +140,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "relative nested NUL",
 			path:              `foo\NUL.. ..`,
-			wantKind:          WindowsPathKind_Relative,
+			wantKind:          PathKind_Relative,
 			wantPrefix:        option.None[string](),
 			want:              []string{"foo", "NUL.. .."},
 			wantDOSDeviceName: "NUL",
@@ -173,7 +148,7 @@ func TestComponentsWindows(t *testing.T) {
 		{
 			name:              "explicit device path",
 			path:              `\\.\NUL`,
-			wantKind:          WindowsPathKind_Device,
+			wantKind:          PathKind_Device,
 			wantPrefix:        option.Some(`\\.\NUL`),
 			want:              nil,
 			wantDOSDeviceName: "NUL",
