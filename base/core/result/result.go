@@ -52,3 +52,22 @@ func (r Result[T]) Get() (T, error) {
 func (r Result[T]) ErrOrNil() error {
 	return r.err
 }
+
+// Status is the outcome of an operation, without an associated value or error.
+//
+// Use it where a caller must tell a callee whether the surrounding work
+// succeeded so the callee can finalize accordingly (for example, committing
+// versus discarding a partially written file).
+type Status uint8
+
+const (
+	Status_Success Status = iota + 1
+	Status_Failure
+)
+
+func NewStatusFromError(err error) Status {
+	if err != nil {
+		return Status_Failure
+	}
+	return Status_Success
+}

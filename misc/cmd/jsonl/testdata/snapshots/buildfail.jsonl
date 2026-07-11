@@ -1,0 +1,6 @@
+{"Action":"build-output","ImportPath":"example.test/jsonlfixture/buildfail [example.test/jsonlfixture/buildfail.test]","Output":"# example.test/jsonlfixture/buildfail [example.test/jsonlfixture/buildfail.test]\n"}
+{"Action":"build-output","ImportPath":"example.test/jsonlfixture/buildfail [example.test/jsonlfixture/buildfail.test]","Output":"fixture_test.go:N: undefined: thisSymbolDoesNotExist\n"}
+{"Action":"build-fail","ImportPath":"example.test/jsonlfixture/buildfail [example.test/jsonlfixture/buildfail.test]"}
+{"Action":"start","Package":"example.test/jsonlfixture/buildfail","Time":"2026-01-02T03:04:08Z"}
+{"Action":"output","Output":"FAIL\texample.test/jsonlfixture/buildfail [build failed]\n","Package":"example.test/jsonlfixture/buildfail","Time":"2026-01-02T03:04:09Z"}
+{"Action":"fail","Elapsed":0.69,"FailedBuild":"example.test/jsonlfixture/buildfail [example.test/jsonlfixture/buildfail.test]","Package":"example.test/jsonlfixture/buildfail","Time":"2026-01-02T03:04:10Z"}

@@ -1,0 +1,6 @@
+{"Time":"2025-10-23T12:36:35.439236-04:00","Action":"start","Package":"crypto:gofips140"}
+{"Time":"2025-10-23T12:36:35.443492-04:00","Action":"start","Package":"crypto/aes:gofips140"}
+{"Time":"2025-10-23T12:36:35.445535-04:00","Action":"start","Package":"crypto/cipher:gofips140"}
+?   	crypto/internal/boring/bbig	[no test files]
+?   	crypto/internal/boring/sig	[no test files]
+?   	crypto/internal/cryptotest	[no test files]

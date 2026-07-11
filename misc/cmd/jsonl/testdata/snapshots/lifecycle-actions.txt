@@ -1,0 +1,10 @@
+start	example.test/jsonlfixture/lifecycle
+run	TestLifecycle
+run	TestLifecycle/pass
+pass	TestLifecycle/pass
+run	TestLifecycle/skip
+skip	TestLifecycle/skip
+run	TestLifecycle/fail
+fail	TestLifecycle/fail
+fail	TestLifecycle
+fail	example.test/jsonlfixture/lifecycle

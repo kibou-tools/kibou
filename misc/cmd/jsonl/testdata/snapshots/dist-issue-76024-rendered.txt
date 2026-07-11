@@ -1,0 +1,6 @@
+?   	crypto/internal/boring/bbig	[no test files]
+?   	crypto/internal/boring/sig	[no test files]
+?   	crypto/internal/cryptotest	[no test files]
+
+jsonl warnings:
+- Non-JSON lines (logged: 3/3)
