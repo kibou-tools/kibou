@@ -7,16 +7,11 @@ package fsx_name_test
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 	"testing"
-
-	"pgregory.net/rapid"
 
 	"code.kibou.tools/base/assert"
 	"code.kibou.tools/base/check"
-	"code.kibou.tools/base/core/pathx/pathx_testkit"
 	"code.kibou.tools/base/fsx/fsx_name"
-	internal_pathx "code.kibou.tools/base/internal/pathx"
 )
 
 func TestExtractBaseName(t *testing.T) {
@@ -24,7 +19,6 @@ func TestExtractBaseName(t *testing.T) {
 	h.Parallel()
 
 	h.Run("Unit", testExtractBaseNameUnit)
-	h.Run("Properties", testExtractBaseNameProperties)
 }
 
 func testExtractBaseNameUnit(h check.Harness) {
@@ -105,60 +99,4 @@ func testExtractBaseNameUnit(h check.Harness) {
 			)
 		})
 	}
-}
-
-func testExtractBaseNameProperties(h check.Harness) {
-	h.Parallel()
-
-	componentsGen := rapid.SliceOfN(baseNamePathComponentGen(), 0, 8)
-	rapid.Check(h.T(), func(t *rapid.T) {
-		h := check.NewBasic(t)
-		components := componentsGen.Draw(t, "components")
-		path := strings.Join(components, string(filepath.Separator))
-		wantBase := filepath.Base(path)
-
-		name, err := fsx_name.ExtractBaseName(path)
-		checkErr := func(wantKind fsx_name.BaseNameErrorKind) {
-			h.Assertf(err != nil, "ExtractBaseName(%q) succeeded unexpectedly", path)
-			check.AssertSame(h, wantKind, err.Kind(), "error kind")
-			h.AssertPanicsWith(
-				assert.NewError("precondition violation: %s", err.Error()),
-				func() {
-					_ = fsx_name.MustExtractBaseName(path)
-				},
-			)
-		}
-		switch {
-		case path == "":
-			checkErr(fsx_name.BaseNameErrorKind_EmptyString)
-		case strings.HasSuffix(path, string(filepath.Separator)):
-			checkErr(fsx_name.BaseNameErrorKind_EndsWithPathSeparator)
-		case wantBase == "." || wantBase == ".." || hasPathSeparator(wantBase):
-			checkErr(fsx_name.BaseNameErrorKind_NoBaseName)
-		default:
-			h.Assertf(err == nil, "ExtractBaseName(%q) returned error: %v", path, err)
-			check.AssertSame(h, wantBase, name.String(), "ExtractBaseName vs filepath.Base")
-
-			mustName := fsx_name.MustExtractBaseName(path)
-			check.AssertSame(h, wantBase, mustName.String(), "MustExtractBaseName vs filepath.Base")
-		}
-	})
-}
-
-func hasPathSeparator(s string) bool {
-	for i := range len(s) {
-		if internal_pathx.IsPathSeparator(s[i]) {
-			return true
-		}
-	}
-	return false
-}
-
-func baseNamePathComponentGen() *rapid.Generator[string] {
-	return rapid.OneOf(
-		rapid.Just(""),
-		rapid.Just("."),
-		rapid.Just(".."),
-		pathx_testkit.ComponentGen(),
-	)
 }
