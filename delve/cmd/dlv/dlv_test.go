@@ -91,6 +91,16 @@ func filterProcessExitLines(output []byte) []byte {
 	return bytes.Join(filtered, []byte("\n"))
 }
 
+func parseListenAddr(t *testing.T, text string) string {
+	t.Helper()
+	const marker = " server listening at: "
+	if idx := strings.Index(text, marker); idx >= 0 {
+		return text[idx+len(marker):]
+	}
+	t.Fatalf("could not parse listen address from %q", text)
+	return ""
+}
+
 func TestBuild(t *testing.T) {
 	t.Parallel()
 
@@ -100,12 +110,10 @@ func TestBuild(t *testing.T) {
 
 	buildtestdir := filepath.Join(fixtures, "buildtest")
 
-	// NOTE(kibou): Use :0 to let the OS pick a free port. kibou runs
-	// Delve tests with plain `go test ./...` (concurrent packages), so
-	// hard-coded ports cause bind collisions.
 	cmd := exec.Command(dlvbin, "debug", "--headless=true", "--listen=127.0.0.1:0", "--api-version=2", "--backend="+testBackend, "--log", "--log-output=debugger,rpc")
 	cmd.Dir = buildtestdir
-	stdout := protest.NewDlvStdout(t, cmd)
+	stdout, err := cmd.StdoutPipe()
+	assertNoError(err, t, "stdout pipe")
 	defer stdout.Close()
 	stderr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
@@ -113,7 +121,14 @@ func TestBuild(t *testing.T) {
 
 	assertNoError(cmd.Start(), t, "dlv debug")
 
-	listenAddr := stdout.ReadPort(t)
+	scanOut := bufio.NewScanner(stdout)
+	scanOut.Scan()
+	listenAddr := parseListenAddr(t, scanOut.Text())
+	go func() {
+		for scanOut.Scan() {
+			// drain stdout
+		}
+	}()
 
 	scan := bufio.NewScanner(stderr)
 	// wait for the debugger to start
@@ -232,7 +247,8 @@ func TestOutput(t *testing.T) {
 func TestUnattendedBreakpoint(t *testing.T) {
 	fixturePath := filepath.Join(protest.FindFixturesDir(), "panic.go")
 	cmd := exec.Command(protest.GetDlvBinary(t), "debug", "--continue", "--headless", "--accept-multiclient", "--listen", "127.0.0.1:0", fixturePath)
-	stdout := protest.NewDlvStdout(t, cmd)
+	stdout, err := cmd.StdoutPipe()
+	assertNoError(err, t, "stdout pipe")
 	defer stdout.Close()
 	stderr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
@@ -240,7 +256,14 @@ func TestUnattendedBreakpoint(t *testing.T) {
 
 	assertNoError(cmd.Start(), t, "start headless instance")
 
-	listenAddr := stdout.ReadPort(t)
+	scanOut := bufio.NewScanner(stdout)
+	scanOut.Scan()
+	listenAddr := parseListenAddr(t, scanOut.Text())
+	go func() {
+		for scanOut.Scan() {
+			// drain stdout
+		}
+	}()
 
 	scan := bufio.NewScanner(stderr)
 	for scan.Scan() {
@@ -267,16 +290,19 @@ func TestContinue(t *testing.T) {
 	buildtestdir := filepath.Join(protest.FindFixturesDir(), "buildtest")
 	cmd := exec.Command(dlvbin, "debug", "--headless", "--continue", "--accept-multiclient", "--listen", "127.0.0.1:0")
 	cmd.Dir = buildtestdir
-	stdout := protest.NewDlvStdout(t, cmd)
+	stdout, err := cmd.StdoutPipe()
+	assertNoError(err, t, "stdout pipe")
 	defer stdout.Close()
 
 	assertNoError(cmd.Start(), t, "start headless instance")
 
-	listenAddr := stdout.ReadPort(t)
-	for stdout.Scanner.Scan() {
-		line := stdout.Scanner.Text()
-		t.Log(line)
-		if line == "hello world!" {
+	scan := bufio.NewScanner(stdout)
+	scan.Scan()
+	listenAddr := parseListenAddr(t, scan.Text())
+	// wait for the program to finish
+	for scan.Scan() {
+		t.Log(scan.Text())
+		if scan.Text() == "hello world!" {
 			break
 		}
 	}
@@ -297,16 +323,19 @@ func TestRedirect(t *testing.T) {
 
 	catfixture := filepath.Join(protest.FindFixturesDir(), "cat.go")
 	cmd := exec.Command(dlvbin, "debug", "--headless", "--continue", "--accept-multiclient", "--listen", "127.0.0.1:0", "-r", catfixture, catfixture)
-	stdout := protest.NewDlvStdout(t, cmd)
+	stdout, err := cmd.StdoutPipe()
+	assertNoError(err, t, "stdout pipe")
 	defer stdout.Close()
 
 	assertNoError(cmd.Start(), t, "start headless instance")
 
-	listenAddr := stdout.ReadPort(t)
-	for stdout.Scanner.Scan() {
-		line := stdout.Scanner.Text()
-		t.Log(line)
-		if line == "read \"}\"" {
+	scan := bufio.NewScanner(stdout)
+	scan.Scan()
+	listenAddr := parseListenAddr(t, scan.Text())
+	// wait for the program to finish
+	for scan.Scan() {
+		t.Log(scan.Text())
+		if scan.Text() == "read \"}\"" {
 			break
 		}
 	}
@@ -385,7 +414,7 @@ func TestGeneratedDoc(t *testing.T) {
 	checkAutogenDoc(t, "Documentation/cli/config.md", "_scripts/gen-cli-docs.go", generatedBuf.Bytes())
 
 	// Checks gen-usage-docs.go
-	if runtime.GOARCH != "ppc64le" && runtime.GOARCH != "riscv64" {
+	if runtime.GOARCH != "ppc64le" && runtime.GOARCH != "riscv64" && !(runtime.GOOS == "windows" && runtime.GOARCH == "arm64") {
 		tempDir := t.TempDir()
 		cmd := exec.Command("go", "run", "_scripts/gen-usage-docs.go", tempDir)
 		cmd.Dir = protest.ProjectRoot()
@@ -464,7 +493,8 @@ func TestDAPCmd(t *testing.T) {
 	dlvbin := protest.GetDlvBinary(t)
 
 	cmd := exec.Command(dlvbin, "dap", "--log-output=dap", "--log", "--listen", "127.0.0.1:0")
-	stdout := protest.NewDlvStdout(t, cmd)
+	stdout, err := cmd.StdoutPipe()
+	assertNoError(err, t, "stdout pipe")
 	defer stdout.Close()
 	stderr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
@@ -472,8 +502,15 @@ func TestDAPCmd(t *testing.T) {
 
 	assertNoError(cmd.Start(), t, "start dap instance")
 
-	listenAddr := stdout.ReadPort(t)
+	scanOut := bufio.NewScanner(stdout)
 	scanErr := bufio.NewScanner(stderr)
+	// Wait for the debug server to start
+	scanOut.Scan()
+	if !strings.Contains(scanOut.Text(), "DAP server listening at: ") {
+		cmd.Process.Kill() // release the port
+		t.Fatalf("Unexpected stdout: %q", scanOut.Text())
+	}
+	listenAddr := parseListenAddr(t, scanOut.Text())
 	go func() {
 		for scanErr.Scan() {
 			t.Log(scanErr.Text())
@@ -521,15 +558,21 @@ func TestRemoteDAPClient(t *testing.T) {
 	buildtestdir := filepath.Join(protest.FindFixturesDir(), "buildtest")
 	cmd := exec.Command(dlvbin, "debug", "--headless", "--log-output=dap", "--log", "--listen", "127.0.0.1:0")
 	cmd.Dir = buildtestdir
-	stdout := protest.NewDlvStdout(t, cmd)
+	stdout, err := cmd.StdoutPipe()
+	assertNoError(err, t, "stdout pipe")
 	defer stdout.Close()
 	stderr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
 	defer stderr.Close()
 	assertNoError(cmd.Start(), t, "start headless instance")
 
-	listenAddr := stdout.ReadPort(t)
+	scanOut := bufio.NewScanner(stdout)
 	scanErr := bufio.NewScanner(stderr)
+	// Wait for the debug server to start
+	scanOut.Scan()
+	firstLine := scanOut.Text()
+	t.Log(firstLine)
+	listenAddr := parseListenAddr(t, firstLine)
 	go func() { // Capture logging
 		for scanErr.Scan() {
 			t.Log(scanErr.Text())
@@ -539,6 +582,10 @@ func TestRemoteDAPClient(t *testing.T) {
 	client := newDAPRemoteClient(t, listenAddr, false, false)
 	client.ContinueRequest(1)
 	client.ExpectContinueResponse(t)
+	ee := client.ExpectExitedEvent(t)
+	if ee.Body.ExitCode != 0 {
+		t.Errorf("\ngot ExitCode=%d, want 0", ee.Body.ExitCode)
+	}
 	client.ExpectTerminatedEvent(t)
 
 	client.DisconnectRequest()
@@ -557,6 +604,9 @@ func closeDAPRemoteMultiClient(t *testing.T, c *daptest.Client, expectStatus str
 	c.DisconnectRequest()
 	c.ExpectOutputEventClosingClient(t, expectStatus)
 	c.ExpectDisconnectResponse(t)
+	if expectStatus == "exited" {
+		c.ExpectExitedEvent(t)
+	}
 	c.ExpectTerminatedEvent(t)
 	c.Close()
 	time.Sleep(10 * time.Millisecond)
@@ -570,15 +620,21 @@ func TestRemoteDAPClientMulti(t *testing.T) {
 	buildtestdir := filepath.Join(protest.FindFixturesDir(), "buildtest")
 	cmd := exec.Command(dlvbin, "debug", "--headless", "--accept-multiclient", "--log-output=debugger", "--log", "--listen", "127.0.0.1:0")
 	cmd.Dir = buildtestdir
-	stdout := protest.NewDlvStdout(t, cmd)
+	stdout, err := cmd.StdoutPipe()
+	assertNoError(err, t, "stdout pipe")
 	defer stdout.Close()
 	stderr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
 	defer stderr.Close()
 	assertNoError(cmd.Start(), t, "start headless instance")
 
-	listenAddr := stdout.ReadPort(t)
+	scanOut := bufio.NewScanner(stdout)
 	scanErr := bufio.NewScanner(stderr)
+	// Wait for the debug server to start
+	scanOut.Scan()
+	firstLine := scanOut.Text()
+	t.Log(firstLine)
+	listenAddr := parseListenAddr(t, firstLine)
 	go func() { // Capture logging
 		for scanErr.Scan() {
 			t.Log(scanErr.Text())
@@ -605,6 +661,10 @@ func TestRemoteDAPClientMulti(t *testing.T) {
 	dapclient2.CheckStopLocation(t, 1, "main.main", 5)
 	dapclient2.ContinueRequest(1)
 	dapclient2.ExpectContinueResponse(t)
+	ee := dapclient2.ExpectExitedEvent(t)
+	if ee.Body.ExitCode != 0 {
+		t.Errorf("\ngot ExitCode=%d, want 0", ee.Body.ExitCode)
+	}
 	dapclient2.ExpectTerminatedEvent(t)
 	closeDAPRemoteMultiClient(t, dapclient2, "exited")
 
@@ -632,19 +692,25 @@ func TestRemoteDAPClientAfterContinue(t *testing.T) {
 
 	fixture := protest.BuildFixture(t, "loopprog", 0)
 	cmd := exec.Command(dlvbin, "exec", fixture.Path, "--headless", "--continue", "--accept-multiclient", "--log-output=debugger,dap", "--log", "--listen", "127.0.0.1:0")
-	stdout := protest.NewDlvStdout(t, cmd)
+	stdout, err := cmd.StdoutPipe()
+	assertNoError(err, t, "stdout pipe")
 	defer stdout.Close()
 	stderr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
 	defer stderr.Close()
 	assertNoError(cmd.Start(), t, "start headless instance")
 
-	listenAddr := stdout.ReadPort(t)
-	// Wait for the program to start
-	stdout.Scanner.Scan() // "past main"
-	t.Log(stdout.Scanner.Text())
-
+	scanOut := bufio.NewScanner(stdout)
 	scanErr := bufio.NewScanner(stderr)
+	// Wait for the debug server to start
+	scanOut.Scan()
+	firstLine := scanOut.Text()
+	t.Log(firstLine)
+	listenAddr := parseListenAddr(t, firstLine)
+	// Wait for the program to start
+	scanOut.Scan() // "past main"
+	t.Log(scanOut.Text())
+
 	go func() { // Capture logging
 		for scanErr.Scan() {
 			text := scanErr.Text()
@@ -1756,6 +1822,12 @@ func TestStaticcheck(t *testing.T) {
 }
 
 func TestCapsLock(t *testing.T) {
+	// TODO: Remove this skip once capslock supports Go 1.27+
+	// capslock v0.3.2 uses golang.org/x/tools v0.43.0 which panics on Go 1.27 syntax.
+	// The test will run on older stable Go versions in CI.
+	if ver, ok := goversion.Parse(runtime.Version()); ok && ver.Major == 1 && ver.Minor >= 27 && ver.Rev < 0 {
+		t.Skip("capslock not compatible with Go 1.27 development/RC builds (golang.org/x/tools issue)")
+	}
 	_, err := exec.LookPath("capslock")
 	if err != nil {
 		t.Skip("capslock not installed")

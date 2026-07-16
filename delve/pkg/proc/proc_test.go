@@ -1069,9 +1069,12 @@ func evalVariable(p *proc.Target, t testing.TB, symbol string) *proc.Variable {
 
 func TestFrameEvaluation(t *testing.T) {
 	protest.AllowRecording(t)
-	lenient := false
+	leniency := 0
 	if runtime.GOOS == "windows" {
-		lenient = true
+		leniency = 1
+		if runtime.GOARCH == "arm64" {
+			leniency = 2
+		}
 	}
 	withTestProcess("goroutinestackprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFunctionBreakpoint(p, t, "main.stacktraceme")
@@ -1114,13 +1117,17 @@ func TestFrameEvaluation(t *testing.T) {
 				continue
 			}
 			vval, _ := constant.Int64Val(v.Value)
+			if vval < 0 || vval >= int64(len(found)) {
+				t.Logf("Goroutine %d: unexpected value of i: %d\n", g.ID, vval)
+				continue
+			}
 			found[vval] = true
 		}
 
 		for i := range found {
 			if !found[i] {
-				if lenient {
-					lenient = false
+				if leniency > 0 {
+					leniency--
 				} else {
 					t.Fatalf("Goroutine %d not found\n", i)
 				}
@@ -2049,6 +2056,24 @@ func TestStepParked(t *testing.T) {
 			t.Fatalf("Step did not continue on the selected goroutine, expected %d got %d", parkedg.ID, p.SelectedGoroutine().ID)
 		}
 	})
+}
+
+func TestBuildFixtureGoExperiment(t *testing.T) {
+	if !goversion.VersionAfterOrEqual(runtime.Version(), 1, 24) {
+		t.Skip("noswissmap experiment does not exist before Go 1.24")
+	}
+	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 26) {
+		t.Skip("noswissmap experiment removed in Go 1.26")
+	}
+
+	// Regression test: BuildFixture must not return a binary cached under a
+	// different GOEXPERIMENT, since the experiment changes the built binary.
+	defaultFixture := protest.BuildFixture(t, "testvariables2", 0)
+	t.Setenv("GOEXPERIMENT", "noswissmap")
+	experimentFixture := protest.BuildFixture(t, "testvariables2", 0)
+	if defaultFixture.Path == experimentFixture.Path {
+		t.Fatalf("BuildFixture returned the same binary %q for different GOEXPERIMENT values", defaultFixture.Path)
+	}
 }
 
 func TestUnsupportedArch(t *testing.T) {

@@ -288,6 +288,10 @@ type launchAttachArgs struct {
 	stopOnEntry bool
 	// StackTraceDepth is the maximum length of the returned list of stack frames.
 	StackTraceDepth int `cfgName:"stackTraceDepth"`
+	// MaxStringLen is the maximum number of bytes loaded for strings.
+	MaxStringLen int `cfgName:"maxStringLen"`
+	// MaxArrayValues is the maximum number of array, slice and map elements loaded.
+	MaxArrayValues int `cfgName:"maxArrayValues"`
 	// ShowGlobalVariables indicates if global package variables should be loaded.
 	ShowGlobalVariables bool `cfgName:"showGlobalVariables"`
 	// ShowRegisters indicates if register values should be loaded.
@@ -316,8 +320,12 @@ type launchAttachArgs struct {
 // TODO(polinasok): clean up this and its reference (Server.args)
 // in favor of default*Config variables defined in types.go.
 var defaultArgs = launchAttachArgs{
-	stopOnEntry:                  false,
-	StackTraceDepth:              50,
+	stopOnEntry:     false,
+	StackTraceDepth: 50,
+	// A zero MaxStringLen or MaxArrayValues means the corresponding
+	// DefaultLoadConfig limit applies until the client sets one explicitly.
+	MaxStringLen:                 0,
+	MaxArrayValues:               0,
 	ShowGlobalVariables:          false,
 	HideSystemGoroutines:         false,
 	ShowRegisters:                false,
@@ -337,6 +345,8 @@ type dapClientCapabilities struct {
 	supportsRunInTerminalRequest bool
 	supportsMemoryReferences     bool
 	supportsProgressReporting    bool
+	supportsMemoryEvent          bool
+	supportsInvalidatedEvent     bool
 }
 
 // DefaultLoadConfig controls how variables are loaded from the target's memory.
@@ -353,6 +363,20 @@ var DefaultLoadConfig = proc.LoadConfig{
 	MaxStringLen:    512,
 	MaxArrayValues:  64,
 	MaxStructFields: -1,
+}
+
+// loadConfig returns the load configuration for this session:
+// DefaultLoadConfig with the string and array limits configured through
+// the launch/attach request or a config evaluation request.
+func (s *Session) loadConfig() proc.LoadConfig {
+	cfg := DefaultLoadConfig
+	if n := s.args.MaxStringLen; n > 0 {
+		cfg.MaxStringLen = n
+	}
+	if n := s.args.MaxArrayValues; n > 0 {
+		cfg.MaxArrayValues = n
+	}
+	return cfg
 }
 
 const (
@@ -435,6 +459,12 @@ func (s *Session) setLaunchAttachArgs(args LaunchAttachCommonConfig) {
 	s.args.stopOnEntry = args.StopOnEntry
 	if depth := args.StackTraceDepth; depth > 0 {
 		s.args.StackTraceDepth = depth
+	}
+	if n := args.MaxStringLen; n > 0 {
+		s.args.MaxStringLen = n
+	}
+	if n := args.MaxArrayValues; n > 0 {
+		s.args.MaxArrayValues = n
 	}
 	s.args.ShowGlobalVariables = args.ShowGlobalVariables
 	s.args.ShowRegisters = args.ShowRegisters
@@ -856,6 +886,8 @@ func (s *Session) handleRequest(request dap.Message) {
 		s.onDisassembleRequest(request)
 	case *dap.ReadMemoryRequest: // Optional (capability 'supportsReadMemoryRequest')
 		s.onReadMemoryRequest(request)
+	case *dap.WriteMemoryRequest: // Optional (capability 'supportsWriteMemoryRequest')
+		s.onWriteMemoryRequest(request)
 	case *dap.DataBreakpointInfoRequest: // Optional (capability 'supportsDataBreakpoints')
 		s.onDataBreakpointInfoRequest(request)
 	case *dap.SetDataBreakpointsRequest: // Optional (capability 'supportsDataBreakpoints')
@@ -970,6 +1002,7 @@ func (s *Session) onInitializeRequest(request *dap.InitializeRequest) {
 	response.Body.SupportsSetExpression = false
 	response.Body.SupportsLoadedSourcesRequest = false
 	response.Body.SupportsReadMemoryRequest = true
+	response.Body.SupportsWriteMemoryRequest = true
 	response.Body.SupportsCancelRequest = false
 	response.Body.ExceptionBreakpointFilters = []dap.ExceptionBreakpointsFilter{
 		{Filter: proc.UnrecoveredPanic, Label: "Unrecovered Panics", Default: true},
@@ -991,6 +1024,8 @@ func (s *Session) setClientCapabilities(args dap.InitializeRequestArguments) {
 	s.clientCapabilities.supportsRunInTerminalRequest = args.SupportsRunInTerminalRequest
 	s.clientCapabilities.supportsVariablePaging = args.SupportsVariablePaging
 	s.clientCapabilities.supportsVariableType = args.SupportsVariableType
+	s.clientCapabilities.supportsMemoryEvent = args.SupportsMemoryEvent
+	s.clientCapabilities.supportsInvalidatedEvent = args.SupportsInvalidatedEvent
 }
 
 func cleanExeName(name string) string {
@@ -1253,6 +1288,10 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 
 			close(s.noDebugProcess.exited)
 			s.logToConsole(proc.ErrProcessExited{Pid: cmd.ProcessState.Pid(), Status: cmd.ProcessState.ExitCode()}.Error())
+			s.send(&dap.ExitedEvent{
+				Event: *s.newEvent("exited"),
+				Body:  dap.ExitedEventBody{ExitCode: cmd.ProcessState.ExitCode()},
+			})
 			s.send(&dap.TerminatedEvent{Event: *s.newEvent("terminated")})
 		}()
 		return
@@ -1463,15 +1502,22 @@ func (s *Session) onDisconnectRequest(request *dap.DisconnectRequest) {
 		// terminate the debuggee should clean up only the client connection and pointer to debugger,
 		// but not the entire server.
 		status := "halted"
+		var exitState *api.DebuggerState
+		var exitErr error
 		if s.isRunningCmd() {
 			status = "running"
 		} else if state, err := s.debugger.State(false); processExited(state, err) {
 			status = "exited"
+			exitState = state
+			exitErr = err
 			s.preTerminatedWG.Wait()
 		}
 
 		s.logToConsole(fmt.Sprintf("Closing client session, but leaving multi-client DAP server at %s with debuggee %s", s.config.Listener.Addr().String(), status))
 		s.send(&dap.DisconnectResponse{Response: *s.newResponse(request.Request)})
+		if status == "exited" {
+			s.sendExitedEvent(exitState, exitErr)
+		}
 		s.send(&dap.TerminatedEvent{Event: *s.newEvent("terminated")})
 		s.conn.Close()
 		s.disconnected = true
@@ -2627,14 +2673,14 @@ func (s *Session) onScopesRequest(request *dap.ScopesRequest) {
 		suffix = " (warning: optimized function)"
 	}
 	// Retrieve arguments
-	args, err := s.debugger.FunctionArguments(int64(goid), frame, 0, DefaultLoadConfig)
+	args, err := s.debugger.FunctionArguments(int64(goid), frame, 0, s.loadConfig())
 	if err != nil {
 		s.sendErrorResponse(request.Request, UnableToListArgs, "Unable to list args", err.Error())
 		return
 	}
 
 	// Retrieve local variables
-	locals, err := s.debugger.LocalVariables(int64(goid), frame, 0, DefaultLoadConfig)
+	locals, err := s.debugger.LocalVariables(int64(goid), frame, 0, s.loadConfig())
 	if err != nil {
 		s.sendErrorResponse(request.Request, UnableToListLocals, "Unable to list locals", err.Error())
 		return
@@ -2659,7 +2705,7 @@ func (s *Session) onScopesRequest(request *dap.ScopesRequest) {
 			return
 		}
 		currPkgFilter := fmt.Sprintf("^%s\\.", currPkg)
-		globals, err := s.debugger.PackageVariables(currPkgFilter, DefaultLoadConfig)
+		globals, err := s.debugger.PackageVariables(currPkgFilter, s.loadConfig())
 		if err != nil {
 			s.sendErrorResponse(request.Request, UnableToListGlobals, "Unable to list globals", err.Error())
 			return
@@ -2768,7 +2814,7 @@ func (s *Session) maybeLoadResliced(v *fullyQualifiedVariable, start, count int)
 			return v, nil
 		}
 	}
-	indexedLoadConfig := DefaultLoadConfig
+	indexedLoadConfig := s.loadConfig()
 	indexedLoadConfig.MaxArrayValues = count
 	newV, err := s.debugger.LoadResliced(v.Variable, start, indexedLoadConfig)
 	if err != nil {
@@ -2904,7 +2950,7 @@ func (s *Session) childrenToDAPVariables(v *fullyQualifiedVariable) []dap.Variab
 				cfqname = ""
 			case v.Kind == reflect.Interface:
 				cfqname = fmt.Sprintf("%s.(%s)", v.fullyQualifiedNameOrExpr, c.Name) // c is data
-			case v.Kind == reflect.Ptr:
+			case v.Kind == reflect.Pointer:
 				cfqname = fmt.Sprintf("(*%v)", v.fullyQualifiedNameOrExpr) // c is the nameless pointer value
 			case v.Kind == reflect.Complex64 || v.Kind == reflect.Complex128:
 				cfqname = "" // complex children are not struct fields and can't be accessed directly
@@ -2981,7 +3027,7 @@ func (s *Session) metadataToDAPVariables(v *fullyQualifiedVariable) ([]dap.Varia
 
 		s.config.log.Debugf("loading %s (type %s) with %s", v.fullyQualifiedNameOrExpr, typeName, loadExpr)
 		// We know that this is an array/slice of Uint8 or Int32, so we will load up to MaxStringLen.
-		config := DefaultLoadConfig
+		config := s.loadConfig()
 		config.MaxArrayValues = config.MaxStringLen
 		vLoaded, err := s.debugger.EvalVariableInScope(-1, 0, 0, loadExpr, config)
 		if err == nil {
@@ -3090,7 +3136,7 @@ func (s *Session) convertVariableWithOpts(v *proc.Variable, qualifiedNameOrExpr 
 		s.config.log.Debugf("loading %s (type %s) with %s", qualifiedNameOrExpr, typeName, loadExpr)
 		// Make sure we can load the pointers directly, not by updating just the child
 		// This is not really necessary now because users have no way of setting FollowPointers to false.
-		config := DefaultLoadConfig
+		config := s.loadConfig()
 		config.FollowPointers = true
 		vLoaded, err := s.debugger.EvalVariableInScope(-1, 0, 0, loadExpr, config)
 		if err != nil {
@@ -3109,7 +3155,7 @@ func (s *Session) convertVariableWithOpts(v *proc.Variable, qualifiedNameOrExpr 
 		value = fmt.Sprintf("%s = %#x", value, n)
 	case reflect.UnsafePointer:
 		// Skip child reference
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if v.DwarfType != nil && len(v.Children) > 0 && v.Children[0].Addr != 0 && v.Children[0].Kind != reflect.Invalid {
 			if v.Children[0].OnlyAddr { // Not loaded
 				if v.Addr == 0 {
@@ -3124,7 +3170,7 @@ func (s *Session) convertVariableWithOpts(v *proc.Variable, qualifiedNameOrExpr 
 					cTypeName := api.PrettyTypeName(v.Children[0].DwarfType)
 					cLoadExpr := fmt.Sprintf("*(*%q)(%#x)", cTypeName, v.Children[0].Addr)
 					s.config.log.Debugf("loading *(%s) (type %s) with %s", qualifiedNameOrExpr, cTypeName, cLoadExpr)
-					cLoaded, err := s.debugger.EvalVariableInScope(-1, 0, 0, cLoadExpr, DefaultLoadConfig)
+					cLoaded, err := s.debugger.EvalVariableInScope(-1, 0, 0, cLoadExpr, s.loadConfig())
 					if err != nil {
 						value += fmt.Sprintf(" - FAILED TO LOAD: %s", err)
 					} else {
@@ -3276,7 +3322,7 @@ func (s *Session) onEvaluateRequest(request *dap.EvaluateRequest) {
 			}
 		}
 	} else { // {expression}
-		exprVar, err := s.debugger.EvalVariableInScope(int64(goid), frame, 0, expr, DefaultLoadConfig)
+		exprVar, err := s.debugger.EvalVariableInScope(int64(goid), frame, 0, expr, s.loadConfig())
 		if err != nil {
 			s.sendErrorResponseWithOpts(request.Request, UnableToEvaluateExpression, "Unable to evaluate expression", err.Error(), showErrorToUser)
 			return
@@ -3288,7 +3334,7 @@ func (s *Session) onEvaluateRequest(request *dap.EvaluateRequest) {
 			if exprVar.Kind == reflect.String && exprVar.Unreadable == nil {
 				if strVal := constant.StringVal(exprVar.Value); exprVar.Len > int64(len(strVal)) {
 					// Reload the string value with a bigger limit.
-					loadCfg := DefaultLoadConfig
+					loadCfg := s.loadConfig()
 					loadCfg.MaxStringLen = maxSingleStringLen
 					if v, err := s.debugger.EvalVariableInScope(int64(goid), frame, 0, request.Arguments.Expression, loadCfg); err != nil {
 						s.config.log.Debugf("Failed to load more for %v: %v", request.Arguments.Expression, err)
@@ -3329,7 +3375,7 @@ func (s *Session) doCall(goid, frame int, expr string) (*api.DebuggerState, []*p
 	// TODO: investigate whether we need to increase other limits. For example,
 	// the return value is a pointer to a temporary object, which can become
 	// invalid by other injected function calls. Do we care about such use cases?
-	loadCfg := DefaultLoadConfig
+	loadCfg := s.loadConfig()
 	loadCfg.MaxStringLen = maxStringLenInCallRetVars
 
 	// TODO(polina): since call will resume execution of all goroutines,
@@ -3345,8 +3391,8 @@ func (s *Session) doCall(goid, frame int, expr string) (*api.DebuggerState, []*p
 	}, nil, s.conn.closedChan, s.convertDebuggerEvent)
 	if processExited(state, err) {
 		s.preTerminatedWG.Wait()
-		e := &dap.TerminatedEvent{Event: *s.newEvent("terminated")}
-		s.send(e)
+		s.sendExitedEvent(state, err)
+		s.send(&dap.TerminatedEvent{Event: *s.newEvent("terminated")})
 		return nil, nil, errors.New("terminated")
 	}
 	if err != nil {
@@ -3500,7 +3546,10 @@ func (s *Session) onRestartRequest(request *dap.RestartRequest) {
 	discardedBreakpoints, err := s.debugger.Restart(false, "", resetArgs, newArgs, [3]string{}, rebuild)
 	if err != nil {
 		s.sendErrorResponse(request.Request, FailedToLaunch, "Failed to restart", err.Error())
-		if _, err := s.debugger.State(false); validBefore && err != nil {
+		if state, err := s.debugger.State(false); validBefore && err != nil {
+			if processExited(state, err) {
+				s.sendExitedEvent(state, err)
+			}
 			s.send(&dap.TerminatedEvent{Event: *s.newEvent("terminated")})
 		}
 		return
@@ -3565,7 +3614,7 @@ func (s *Session) onSetVariableRequest(request *dap.SetVariableRequest) {
 	// trying to update is valid and accessible from the top most frame & the
 	// current goroutine.
 	goid, frame := -1, 0
-	evaluated, err := s.debugger.EvalVariableInScope(int64(goid), frame, 0, evaluateName, DefaultLoadConfig)
+	evaluated, err := s.debugger.EvalVariableInScope(int64(goid), frame, 0, evaluateName, s.loadConfig())
 	if err != nil {
 		s.sendErrorResponse(request.Request, UnableToSetVariable, "Unable to lookup variable", err.Error())
 		return
@@ -3635,6 +3684,17 @@ func (s *Session) onSetVariableRequest(request *dap.SetVariableRequest) {
 	// TODO(hyangah): instead of arg.Value, reload the variable and return
 	// the presentation of the new value.
 	s.send(response)
+
+	if s.clientCapabilities.supportsInvalidatedEvent {
+		// Enforce editors to reload full state after successfull variable update
+		// to fix problem described above
+		s.send(&dap.InvalidatedEvent{
+			Event: *s.newEvent("invalidated"),
+			Body: dap.InvalidatedEventBody{
+				Areas: []dap.InvalidatedAreas{"all"},
+			},
+		})
+	}
 }
 
 // onSetExpressionRequest sends a not-yet-implemented error response.
@@ -3735,6 +3795,68 @@ func (s *Session) makeReadMemoryResponse(req dap.Request, addr uint64, data []by
 			UnreadableBytes: unreadable,
 		},
 	}
+}
+
+// onWriteMemoryRequest handles DAP write memory requests
+func (s *Session) onWriteMemoryRequest(request *dap.WriteMemoryRequest) {
+	args := request.Arguments
+
+	if args.Data == "" {
+		s.sendErrorResponse(request.Request, UnableToWriteMemory, "Unable to write memory", "empty data")
+		return
+	}
+
+	ref, ok := s.referencesCollection.get(args.MemoryReference)
+	if !ok {
+		s.sendErrorResponse(request.Request, UnableToWriteMemory, "Unable to write memory", "unknown memoryReference")
+		return
+	}
+
+	data, err := base64.StdEncoding.DecodeString(args.Data)
+	if err != nil {
+		s.sendErrorResponse(request.Request, UnableToWriteMemory, "Unable to write memory", err.Error())
+		return
+	}
+
+	addr := uint64(int(ref.addr) + args.Offset)
+	n, err := s.writeTargetMemory(addr, data)
+	if err != nil {
+		s.sendErrorResponse(request.Request, UnableToWriteMemory, "Unable to write memory", err.Error())
+		return
+	}
+
+	s.send(&dap.WriteMemoryResponse{
+		Response: *s.newResponse(request.Request),
+		Body: dap.WriteMemoryResponseBody{
+			BytesWritten: n,
+		},
+	})
+
+	if s.clientCapabilities.supportsInvalidatedEvent {
+		// Inform editor to refetch variables after changes
+		s.send(&dap.InvalidatedEvent{
+			Event: *s.newEvent("invalidated"),
+			Body: dap.InvalidatedEventBody{
+				Areas: []dap.InvalidatedAreas{"variables"},
+			},
+		})
+	}
+}
+
+func (s *Session) writeTargetMemory(addr uint64, data []byte) (int, error) {
+	if len(data) == 0 {
+		return 0, nil
+	}
+
+	tgrp, unlock := s.debugger.LockTargetGroup()
+	defer unlock()
+
+	n, err := tgrp.Selected.Memory().WriteMemory(addr, data)
+	if err != nil {
+		return 0, err
+	}
+
+	return n, nil
 }
 
 var invalidInstruction = dap.DisassembledInstruction{
@@ -4093,7 +4215,7 @@ func (s *Session) panicReason(goroutineID int64) (string, error) {
 }
 
 func (s *Session) getExprString(expr string, goroutineID int64, frame int) (string, error) {
-	exprVar, err := s.debugger.EvalVariableInScope(goroutineID, frame, 0, expr, DefaultLoadConfig)
+	exprVar, err := s.debugger.EvalVariableInScope(goroutineID, frame, 0, expr, s.loadConfig())
 	if err != nil {
 		return "", err
 	}
@@ -4202,6 +4324,24 @@ func processExited(state *api.DebuggerState, err error) bool {
 	return isexited || err == nil && state.Exited
 }
 
+func exitCode(state *api.DebuggerState, err error) int {
+	var errProcessExited proc.ErrProcessExited
+	if errors.As(err, &errProcessExited) {
+		return errProcessExited.Status
+	}
+	if state != nil {
+		return state.ExitStatus
+	}
+	return 0
+}
+
+func (s *Session) sendExitedEvent(state *api.DebuggerState, err error) {
+	s.send(&dap.ExitedEvent{
+		Event: *s.newEvent("exited"),
+		Body:  dap.ExitedEventBody{ExitCode: exitCode(state, err)},
+	})
+}
+
 func (s *Session) setRunningCmd(running bool) {
 	s.runningMu.Lock()
 	defer s.runningMu.Unlock()
@@ -4268,6 +4408,7 @@ func (s *Session) runUntilStopAndNotify(command string, allowNextStateChange *sy
 
 	if processExited(state, err) {
 		s.preTerminatedWG.Wait()
+		s.sendExitedEvent(state, err)
 		s.send(&dap.TerminatedEvent{Event: *s.newEvent("terminated")})
 		return
 	}
@@ -4490,7 +4631,7 @@ func (s *Session) logBreakpointMessage(bp *api.Breakpoint, goid int64) bool {
 func (msg *logMessage) evaluate(s *Session, goid int64) string {
 	evaluated := make([]any, len(msg.args))
 	for i := range msg.args {
-		exprVar, err := s.debugger.EvalVariableInScope(goid, 0, 0, msg.args[i], DefaultLoadConfig)
+		exprVar, err := s.debugger.EvalVariableInScope(goid, 0, 0, msg.args[i], s.loadConfig())
 		if err != nil {
 			evaluated[i] = fmt.Sprintf("{eval err: %e}", err)
 			continue

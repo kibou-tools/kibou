@@ -1,6 +1,8 @@
 package debugdetect
 
 import (
+	"bufio"
+	"bytes"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -10,6 +12,19 @@ import (
 	protest "github.com/go-delve/delve/pkg/proc/test"
 	"github.com/go-delve/delve/service/rpc2"
 )
+
+func scanForListenAddr(t *testing.T, scanner *bufio.Scanner, stderr *bytes.Buffer) string {
+	t.Helper()
+	const marker = " server listening at: "
+	for scanner.Scan() {
+		line := scanner.Text()
+		if idx := strings.Index(line, marker); idx >= 0 {
+			return line[idx+len(marker):]
+		}
+	}
+	t.Fatalf("dlv exited without printing listen address (stderr: %s)", stderr.String())
+	return ""
+}
 
 func TestIntegration_NotAttached(t *testing.T) {
 	// Build the fixture
@@ -48,21 +63,25 @@ func TestIntegration_WaitForDebugger(t *testing.T) {
 	fixturesDir := protest.FindFixturesDir()
 	fixtureSrc := filepath.Join(fixturesDir, "waitfordebugger.go")
 
-	// NOTE(kibou): Use :0 to let the OS pick a free port. kibou runs
-	// Delve tests with plain `go test ./...` (concurrent packages), so
-	// hard-coded ports cause bind collisions.
 	cmd := exec.Command(dlvbin, "debug", fixtureSrc, "--headless", "--continue", "--accept-multiclient", "--listen", "127.0.0.1:0")
-	stdout := protest.NewDlvStdout(t, cmd)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer stdout.Close()
 
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
 
-	listenAddr := stdout.ReadPort(t)
+	scanner := bufio.NewScanner(stdout)
+	listenAddr := scanForListenAddr(t, scanner, &stderr)
+
 	foundOutput := false
-	for stdout.Scanner.Scan() {
-		line := stdout.Scanner.Text()
+	for scanner.Scan() {
+		line := scanner.Text()
 		t.Log(line)
 		if strings.Contains(line, "DEBUGGER_FOUND") {
 			foundOutput = true
@@ -93,17 +112,24 @@ func TestIntegration_Attached(t *testing.T) {
 	// Run the fixture under dlv debug with --headless --continue
 	// This will attach the debugger, compile and run the program
 	cmd := exec.Command(dlvbin, "debug", fixtureSrc, "--headless", "--continue", "--accept-multiclient", "--listen", "127.0.0.1:0")
-	stdout := protest.NewDlvStdout(t, cmd)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer stdout.Close()
 
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
 
-	listenAddr := stdout.ReadPort(t)
+	scanner := bufio.NewScanner(stdout)
+	listenAddr := scanForListenAddr(t, scanner, &stderr)
+
 	foundOutput := false
-	for stdout.Scanner.Scan() {
-		line := stdout.Scanner.Text()
+	for scanner.Scan() {
+		line := scanner.Text()
 		t.Log(line)
 		if strings.Contains(line, "ATTACHED") {
 			foundOutput = true

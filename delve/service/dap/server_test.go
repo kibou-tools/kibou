@@ -213,6 +213,10 @@ func TestStopWithTarget(t *testing.T) {
 		"disconnect after  exit": func(c *daptest.Client, forceStop chan struct{}) {
 			c.ContinueRequest(1)
 			c.ExpectContinueResponse(t)
+			ee := c.ExpectExitedEvent(t)
+			if ee.Body.ExitCode != 0 {
+				t.Errorf("\ngot ExitCode=%d, want 0", ee.Body.ExitCode)
+			}
 			c.ExpectTerminatedEvent(t)
 			c.DisconnectRequest()
 		},
@@ -274,6 +278,10 @@ func TestSessionStop(t *testing.T) {
 		"disconnect after exit": func(s *Session, c *daptest.Client, serveDone chan struct{}) {
 			c.ContinueRequest(1)
 			c.ExpectContinueResponse(t)
+			ee := c.ExpectExitedEvent(t)
+			if ee.Body.ExitCode != 0 {
+				t.Errorf("\ngot ExitCode=%d, want 0", ee.Body.ExitCode)
+			}
 			c.ExpectTerminatedEvent(t)
 			c.DisconnectRequest()
 			<-serveDone
@@ -477,6 +485,10 @@ func TestLaunchStopOnEntry(t *testing.T) {
 		contResp := client.ExpectContinueResponse(t)
 		if contResp.RequestSeq != 12 || !contResp.Body.AllThreadsContinued {
 			t.Errorf("\ngot %#v\nwant RequestSeq=12 Body.AllThreadsContinued=true", contResp)
+		}
+		ee := client.ExpectExitedEvent(t)
+		if ee.Body.ExitCode != 0 {
+			t.Errorf("\ngot ExitCode=%d, want 0", ee.Body.ExitCode)
 		}
 		client.ExpectTerminatedEvent(t)
 
@@ -752,6 +764,10 @@ func TestLaunchWithFollowExec(t *testing.T) {
 		if contResp.RequestSeq != 10 || !contResp.Body.AllThreadsContinued {
 			t.Errorf("\ngot %#v\nwant RequestSeq=10 Body.AllThreadsContinued=true", contResp)
 		}
+		ee := client.ExpectExitedEvent(t)
+		if ee.Body.ExitCode != 0 {
+			t.Errorf("\ngot ExitCode=%d, want 0", ee.Body.ExitCode)
+		}
 		client.ExpectTerminatedEvent(t)
 
 		// 11 >> disconnect, << disconnect
@@ -873,6 +889,10 @@ func TestContinueOnEntry(t *testing.T) {
 		client.ExpectConfigurationDoneResponse(t)
 		// "Continue" happens behind the scenes on another goroutine
 
+		ee := client.ExpectExitedEvent(t)
+		if ee.Body.ExitCode != 0 {
+			t.Errorf("\ngot ExitCode=%d, want 0", ee.Body.ExitCode)
+		}
 		client.ExpectTerminatedEvent(t)
 
 		// 6 >> threads, << threads
@@ -1010,6 +1030,10 @@ func TestPreSetBreakpoint(t *testing.T) {
 		}
 		// "Continue" is triggered after the response is sent
 
+		ee := client.ExpectExitedEvent(t)
+		if ee.Body.ExitCode != 0 {
+			t.Errorf("\ngot ExitCode=%d, want 0", ee.Body.ExitCode)
+		}
 		client.ExpectTerminatedEvent(t)
 
 		// Pause request after termination should result in an error.
@@ -1146,6 +1170,7 @@ func TestFilterGoroutines(t *testing.T) {
 							}
 						}
 						runtimeGoexitFound := false
+						runtimeMcallFound := false
 						for i, frame := range tr.Body.Threads {
 							var found bool
 							for _, wantName := range tc.want {
@@ -1158,6 +1183,12 @@ func TestFilterGoroutines(t *testing.T) {
 								// See previous comment about windows/1.26
 								found = true
 								runtimeGoexitFound = true
+							}
+							if !found && !runtimeMcallFound && strings.Contains(frame.Name, "runtime.mcall") && runtime.GOOS == "windows" {
+								// On windows there can be an extra runtime.mcall goroutine that we don't have
+								// a start location for, so the system filter doesn't work on it.
+								found = true
+								runtimeMcallFound = true
 							}
 							if !found {
 								t.Errorf("got Threads[%d]=%#v, want Name=%v\n", i, frame, tc.want)
@@ -4025,6 +4056,10 @@ func TestHitConditionBreakpoints(t *testing.T) {
 					client.ContinueRequest(1)
 					client.ExpectContinueResponse(t)
 
+					ee := client.ExpectExitedEvent(t)
+					if ee.Body.ExitCode != 0 {
+						t.Errorf("\ngot ExitCode=%d, want 0", ee.Body.ExitCode)
+					}
 					client.ExpectTerminatedEvent(t)
 				},
 				disconnect: false,
@@ -4354,8 +4389,10 @@ func TestEvaluateRequest(t *testing.T) {
 	})
 }
 
-func formatConfig(depth int, showGlobals, showRegisters bool, goroutineFilters string, showPprofLabels []string, hideSystemGoroutines bool, substitutePath [][2]string, followExec bool, followExecRegex string) string {
+func formatConfig(depth, maxStringLen, maxArrayValues int, showGlobals, showRegisters bool, goroutineFilters string, showPprofLabels []string, hideSystemGoroutines bool, substitutePath [][2]string, followExec bool, followExecRegex string) string {
 	formatStr := `stackTraceDepth	%d
+maxStringLen	%d
+maxArrayValues	%d
 showGlobalVariables	%v
 showRegisters	%v
 goroutineFilters	%q
@@ -4365,7 +4402,7 @@ substitutePath	%v
 followExec	%v
 followExecRegex	%q
 `
-	return fmt.Sprintf(formatStr, depth, showGlobals, showRegisters, goroutineFilters, showPprofLabels, hideSystemGoroutines, substitutePath, followExec, followExecRegex)
+	return fmt.Sprintf(formatStr, depth, maxStringLen, maxArrayValues, showGlobals, showRegisters, goroutineFilters, showPprofLabels, hideSystemGoroutines, substitutePath, followExec, followExecRegex)
 }
 
 func TestEvaluateCommandRequest(t *testing.T) {
@@ -4396,7 +4433,7 @@ func TestEvaluateCommandRequest(t *testing.T) {
 
 					client.EvaluateRequest("dlv config -list", 1000, "repl")
 					got = client.ExpectEvaluateResponse(t)
-					checkEval(t, got, formatConfig(50, false, false, "", []string{}, false, [][2]string{}, false, ""), noChildren)
+					checkEval(t, got, formatConfig(50, 0, 0, false, false, "", []string{}, false, [][2]string{}, false, ""), noChildren)
 
 					// Read and modify showGlobalVariables.
 					client.EvaluateRequest("dlv config -list showGlobalVariables", 1000, "repl")
@@ -4417,7 +4454,7 @@ func TestEvaluateCommandRequest(t *testing.T) {
 
 					client.EvaluateRequest("dlv config -list", 1000, "repl")
 					got = client.ExpectEvaluateResponse(t)
-					checkEval(t, got, formatConfig(50, true, false, "", []string{}, false, [][2]string{}, false, ""), noChildren)
+					checkEval(t, got, formatConfig(50, 0, 0, true, false, "", []string{}, false, [][2]string{}, false, ""), noChildren)
 
 					client.ScopesRequest(1000)
 					scopes = client.ExpectScopesResponse(t)
@@ -4895,6 +4932,10 @@ func TestEvaluateCallRequest(t *testing.T) {
 
 					// Call can exit.
 					client.EvaluateRequest("call callexit()", 1000, "this context will be ignored")
+					ee := client.ExpectExitedEvent(t)
+					if ee.Body.ExitCode != 0 {
+						t.Errorf("\ngot ExitCode=%d, want 0", ee.Body.ExitCode)
+					}
 					client.ExpectTerminatedEvent(t)
 					if res := client.ExpectVisibleErrorResponse(t); res.Body.Error == nil || !strings.Contains(res.Body.Error.Format, "terminated") {
 						t.Errorf("\ngot %#v\nwant Format=.*terminated.*", res)
@@ -5130,6 +5171,13 @@ func testNextParkedHelper(t *testing.T, client *daptest.Client, fixture protest.
 		switch event.(type) {
 		case *dap.StoppedEvent:
 			// ok
+		case *dap.ExitedEvent:
+			client.ExpectTerminatedEvent(t)
+			// This is very unlikely to happen. But in theory if all sayhi
+			// goroutines are run serially, there will never be a second parked
+			// sayhi goroutine when another breaks and we will keep trying
+			// until process termination.
+			return -1
 		case *dap.TerminatedEvent:
 			// This is very unlikely to happen. But in theory if all sayhi
 			// goroutines are run serially, there will never be a second parked
@@ -5241,10 +5289,13 @@ func TestStepOutPreservesGoroutine(t *testing.T) {
 						if e.Body.ThreadId != goroutineId {
 							t.Fatalf("StepOut did not continue on the selected goroutine, expected %d got %d", goroutineId, e.Body.ThreadId)
 						}
+					case *dap.ExitedEvent:
+						client.ExpectTerminatedEvent(t)
+						t.Logf("program exited")
 					case *dap.TerminatedEvent:
 						t.Logf("program terminated")
 					default:
-						t.Fatalf("Unexpected event type: expect stopped or terminated event, got %#v", e)
+						t.Fatalf("Unexpected event type: expect stopped, exited, or terminated event, got %#v", e)
 					}
 				},
 				disconnect: false,
@@ -5683,6 +5734,7 @@ func runDebugSessionWithBPs(t *testing.T, client *daptest.Client, cmd string, cm
 	}
 
 	if cmd == "launch" { // Let the program run to completion
+		client.ExpectExitedEvent(t)
 		client.ExpectTerminatedEvent(t)
 	}
 	client.DisconnectRequestWithKillOption(true)
@@ -5822,6 +5874,10 @@ func TestExitNonZeroStatus(t *testing.T) {
 		client.ConfigurationDoneRequest()
 		client.ExpectConfigurationDoneResponse(t)
 
+		ee := client.ExpectExitedEvent(t)
+		if ee.Body.ExitCode != 2 {
+			t.Errorf("\ngot ExitCode=%d, want 2", ee.Body.ExitCode)
+		}
 		client.ExpectTerminatedEvent(t)
 
 		client.DisconnectRequest()
@@ -5871,6 +5927,10 @@ func runNoDebugSession(t *testing.T, client *daptest.Client, launchRequest func(
 	client.ExpectLaunchResponse(t)
 
 	client.ExpectOutputEventProcessExited(t, exitStatus)
+	ee := client.ExpectExitedEvent(t)
+	if ee.Body.ExitCode != exitStatus {
+		t.Errorf("\ngot ExitCode=%d, want %d", ee.Body.ExitCode, exitStatus)
+	}
 	client.ExpectTerminatedEvent(t)
 	client.DisconnectRequestWithKillOption(true)
 	client.ExpectDisconnectResponse(t)
@@ -5923,6 +5983,7 @@ func TestNoDebug_AcceptNoRequestsButDisconnect(t *testing.T) {
 				if !ok {
 					t.Errorf("\ngot %#v\nwant Output=%q\n", m, wants)
 				}
+			case *dap.ExitedEvent:
 			case *dap.TerminatedEvent:
 				terminated = true
 			case *dap.DisconnectResponse:
@@ -6475,6 +6536,7 @@ func main() {
 					})
 					client.ExpectRestartResponse(t)
 					client.ExpectErrorResponse(t)
+					client.ExpectExitedEvent(t)
 					client.ExpectTerminatedEvent(t)
 				},
 				disconnect: false,
@@ -6575,6 +6637,10 @@ func (h *helperForSetVariable) expectSetVariable0(ref int, name, value string, w
 	}
 	if got, want := h.c.ExpectSetVariableResponse(h.t), value; got.Success != true || got.Body.Value != want {
 		h.t.Errorf("SetVariableRequest(%v, %v)=%#v, want {Success=true, Body.Value=%q", name, value, got, want)
+	}
+	ie := h.c.ExpectInvalidatedEvent(h.t)
+	if len(ie.Body.Areas) != 1 && ie.Body.Areas[0] != "all" {
+		h.t.Errorf("expected 'all' invalidated areas, got %v", ie.Body.Areas)
 	}
 }
 
@@ -7156,22 +7222,10 @@ func TestBadAttachRequest(t *testing.T) {
 		checkFailedToAttachWithMessage(client.ExpectVisibleErrorResponse(t),
 			"Failed to attach: invalid debug configuration - cannot unmarshal string into \"processId\" of type int")
 
-		// This will make debugger.(*Debugger) panic, which we will catch as an internal error.
+		// Invalid process ID should be rejected with a proper error
 		client.AttachRequest(map[string]any{"mode": "local", "processId": -1})
-		er := client.ExpectInvisibleErrorResponse(t)
-		if er.RequestSeq != seqCnt {
-			t.Errorf("RequestSeq got %d, want %d", seqCnt, er.RequestSeq)
-		}
-		seqCnt++
-		if er.Command != "" {
-			t.Errorf("Command got %q, want \"attach\"", er.Command)
-		}
-		if !checkErrorMessageFormat(er.Body.Error, "Internal Error: runtime error: index out of range [0] with length 0") {
-			t.Errorf("Message got %q, want \"Internal Error: runtime error: index out of range [0] with length 0\"", er.Message)
-		}
-		if !checkErrorMessageId(er.Body.Error, InternalError) {
-			t.Errorf("Id got %v, want Id=%d", er.Body.Error, InternalError)
-		}
+		checkFailedToAttachWithMessage(client.ExpectVisibleErrorResponse(t),
+			"Failed to attach: invalid process ID: -1")
 
 		// Bad "backend"
 		client.AttachRequest(map[string]any{"mode": "local", "processId": 1, "backend": 123})
@@ -8183,10 +8237,11 @@ func TestRedirect(t *testing.T) {
 				default:
 					t.Errorf("\ngot %#v\nwant Category='stdout' or 'stderr'", m)
 				}
+			case *dap.ExitedEvent:
 			case *dap.TerminatedEvent:
 				break terminatedPoint
 			default:
-				t.Errorf("\n got %#v, want *dap.OutputEvent or *dap.TerminateResponse", m)
+				t.Errorf("\n got %#v, want *dap.OutputEvent, *dap.ExitedEvent, or *dap.TerminatedEvent", m)
 			}
 		}
 
@@ -8245,16 +8300,16 @@ func TestBreakpointAfterDisconnect(t *testing.T) {
 	var port int
 	portChan := make(chan int, 1)
 	go func() {
-		var portLine string
+		var portLine strings.Builder
 		buf := make([]byte, 256)
 		for {
 			n, err := stdout.Read(buf)
 			if err != nil {
 				return
 			}
-			portLine += string(buf[:n])
-			if strings.Contains(portLine, "LISTENING:") {
-				parts := strings.Split(portLine, "LISTENING:")
+			portLine.WriteString(string(buf[:n]))
+			if strings.Contains(portLine.String(), "LISTENING:") {
+				parts := strings.Split(portLine.String(), "LISTENING:")
 				if len(parts) > 1 {
 					portStr := strings.TrimSpace(strings.Split(parts[1], "\n")[0])
 					if p, err := strconv.Atoi(portStr); err == nil {
@@ -8344,6 +8399,10 @@ func TestRedirects(t *testing.T) {
 
 		client.ContinueRequest(1)
 		client.ExpectContinueResponse(t)
+		ee := client.ExpectExitedEvent(t)
+		if ee.Body.ExitCode != 0 {
+			t.Errorf("\ngot ExitCode=%d, want 0", ee.Body.ExitCode)
+		}
 		client.ExpectTerminatedEvent(t)
 
 		buf, err := os.ReadFile(outfile)
@@ -8366,6 +8425,10 @@ func TestRedirects(t *testing.T) {
 
 		client.ContinueRequest(1)
 		client.ExpectContinueResponse(t)
+		ee = client.ExpectExitedEvent(t)
+		if ee.Body.ExitCode != 0 {
+			t.Errorf("\ngot ExitCode=%d, want 0", ee.Body.ExitCode)
+		}
 		client.ExpectTerminatedEvent(t)
 
 		buf2, err := os.ReadFile(outfile)
@@ -8480,6 +8543,93 @@ func TestReadMemory_StringPagination(t *testing.T) {
 					},
 					disconnect: true,
 				}})
+	})
+}
+
+func TestWriteMemory(t *testing.T) {
+	if runtime.GOOS == "freebsd" {
+		t.Skip("test skipped on freebsd")
+	}
+
+	runTest(t, "readmem_json", func(client *daptest.Client, fixture protest.Fixture) {
+		runDebugSessionWithBPs(t, client, "launch",
+			// Launch
+			func() {
+				client.LaunchRequest("exec", fixture.Path, !stopOnEntry)
+			},
+			// Breakpoints are set within the program
+			fixture.Source, []int{},
+			[]onBreakpoint{
+				{
+					execute:    func() {},
+					disconnect: false,
+				},
+				{
+					execute: func() {
+						client.StackTraceRequest(1, 0, 20)
+						_ = client.ExpectStackTraceResponse(t)
+
+						client.ScopesRequest(1000)
+						_ = client.ExpectScopesResponse(t)
+
+						client.VariablesRequest(localsScope)
+						locals := client.ExpectVariablesResponse(t)
+
+						var bytesVar dap.Variable
+						for _, v := range locals.Body.Variables {
+							if v.Name == "bytesString" {
+								bytesVar = v
+								break
+							}
+						}
+						if bytesVar.MemoryReference == "" {
+							t.Fatal("bytesString has no memory reference")
+						}
+
+						client.ReadMemoryRequest(bytesVar.MemoryReference, 0, 10)
+						rm := client.ExpectReadMemoryResponse(t)
+						origData, err := base64.StdEncoding.DecodeString(rm.Body.Data)
+						if err != nil {
+							t.Fatalf("failed to decode original data: %v", err)
+						}
+
+						newData := []byte("test\nwrite")
+						if len(newData) != len(origData) {
+							t.Fatalf("write payload length %d must match original length %d", len(newData), len(origData))
+						}
+						client.WriteMemoryRequest(bytesVar.MemoryReference, 0, base64.StdEncoding.EncodeToString(newData))
+						wr := client.ExpectWriteMemoryResponse(t)
+						if wr.Body.BytesWritten != len(newData) {
+							t.Fatalf("expected %d bytes written, got %d", len(newData), wr.Body.BytesWritten)
+						}
+						ie := client.ExpectInvalidatedEvent(t)
+						if len(ie.Body.Areas) != 1 && ie.Body.Areas[0] != "variables" {
+							t.Fatalf("expected 'varianles' invalidated areas, got %v", ie.Body.Areas)
+						}
+
+						client.ReadMemoryRequest(bytesVar.MemoryReference, 0, len(newData))
+						rm = client.ExpectReadMemoryResponse(t)
+						got, err := base64.StdEncoding.DecodeString(rm.Body.Data)
+						if err != nil {
+							t.Fatalf("failed to decode read-back data: %v", err)
+						}
+						if !bytes.Equal(got, newData) {
+							t.Fatalf("expected %q, got %q", newData, got)
+						}
+
+						client.WriteMemoryRequest(bytesVar.MemoryReference, 0, base64.StdEncoding.EncodeToString(origData))
+						wr = client.ExpectWriteMemoryResponse(t)
+						if wr.Body.BytesWritten != len(origData) {
+							t.Fatalf("expected %d bytes written, got %d", len(newData), wr.Body.BytesWritten)
+						}
+						ie = client.ExpectInvalidatedEvent(t)
+						if len(ie.Body.Areas) != 1 && ie.Body.Areas[0] != "variables" {
+							t.Fatalf("expected 'variables' invalidated areas, got %v", ie.Body.Areas)
+						}
+					},
+					disconnect: true,
+				},
+			})
 	})
 }
 
