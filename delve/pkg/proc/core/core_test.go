@@ -337,7 +337,9 @@ func TestCoreCGOAssert(t *testing.T) {
 	// Find the goroutine running main.main and check its stack for C frames.
 	var mainStack []proc.Stackframe
 	for _, g := range gs {
-		stack, err := proc.GoroutineStacktrace(p, g, 20, 0)
+		// NOTE(kibou): Bump the search depth from 20->32, as depending
+		// on glibc version, there can be more stack frames in between.
+		stack, err := proc.GoroutineStacktrace(p, g, 32, 0)
 		if err != nil {
 			t.Errorf("Stacktrace() on goroutine %v = %v", g, err)
 			continue
