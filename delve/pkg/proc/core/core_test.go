@@ -507,8 +507,18 @@ func procdump(t *testing.T, exePath string) string {
 	exeDir := filepath.Dir(exePath)
 	cmd := exec.Command("procdump64", "-accepteula", "-ma", "-n", "1", "-s", "3", "-x", exeDir, exePath, "quit")
 	out, err := cmd.CombinedOutput() // procdump exits with non-zero status on success, so we have to ignore the error here
-	if !strings.Contains(string(out), "Dump count reached.") {
-		t.Fatalf("possible error running procdump64, output: %q, error: %v", string(out), err)
+	// NOTE(kibou): The Procdump release on July 9, 2026 seems to have
+	// changed the output byte encoding to UTF-16LE instead of UTF-8,
+	// causing a failure in this logic in CI. Sysinternals doesn't seem
+	// to allow downloading older releases of binaries, so try decoding
+	// the output both ways. 😮‍💨
+	want := "Dump count reached."
+	wantUTF16LE := make([]byte, 0, len(want)*2)
+	for i := 0; i < len(want); i++ {
+		wantUTF16LE = append(wantUTF16LE, want[i], 0)
+	}
+	if !bytes.Contains(out, []byte(want)) && !bytes.Contains(out, wantUTF16LE) {
+		t.Fatalf("possible error running procdump64, output: %q, error: %v", out, err)
 	}
 
 	fis, err := os.ReadDir(exeDir)
