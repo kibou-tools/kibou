@@ -1,12 +1,10 @@
 package test
 
 import (
-	"bufio"
 	"crypto/rand"
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -43,6 +41,10 @@ type Fixture struct {
 type fixtureKey struct {
 	Name  string
 	Flags BuildFlags
+	// GoExperiment is the value of GOEXPERIMENT during compilation.
+	//
+	// Track this as it some tests use different GOEXPERIMENT values.
+	GoExperiment string
 }
 
 // Fixtures is a map of fixtureKey{ Fixture.Name, buildFlags } to Fixture.
@@ -120,7 +122,7 @@ func BuildFixture(t testing.TB, name string, flags BuildFlags) Fixture {
 	if !runningWithFixtures {
 		panic("RunTestsWithFixtures not called")
 	}
-	fk := fixtureKey{name, flags}
+	fk := fixtureKey{Name: name, Flags: flags, GoExperiment: os.Getenv("GOEXPERIMENT")}
 	fixturesmu.Lock()
 	if f, ok := fixtures[fk]; ok {
 		fixturesmu.Unlock()
@@ -260,6 +262,18 @@ func BuildFixture(t testing.TB, name string, flags BuildFlags) Fixture {
 	}
 
 	return fixture
+}
+
+func FixtureBuildToolchainVersion(t *testing.T) string {
+	if s, ok := os.LookupEnv("DELVE_TEST_GO"); ok {
+		cmd := exec.Command(s, "env", "GOVERSION")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Retrieving GOVERSION from DELVE_TEST_GO (%q): %v\n%s", s, err, string(out))
+		}
+		return strings.TrimSpace(string(out))
+	}
+	return runtime.Version()
 }
 
 // RunTestsWithFixtures sets the flag runningWithFixtures to compile fixtures on demand and runs tests with m.Run().
@@ -535,51 +549,4 @@ func getDlvBinInternal(t *testing.T, goflags ...string) string {
 	}
 
 	return dlvbin
-}
-
-// NOTE(kibou): kibou runs Delve tests with plain `go test ./...`
-// (concurrent packages), so tests use --listen 127.0.0.1:0 and read
-// the actual bound address from the startup banner.
-
-// DlvStdout manages Delve's stdout pipe for tests that need to read
-// the listen address from the startup banner.
-type DlvStdout struct {
-	cmd  *exec.Cmd
-	pipe io.ReadCloser
-	// Scanner is exposed for tests that need to keep reading stdout
-	// after extracting the listen address (e.g. for program output).
-	Scanner *bufio.Scanner
-}
-
-func NewDlvStdout(t *testing.T, cmd *exec.Cmd) *DlvStdout {
-	t.Helper()
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return &DlvStdout{cmd: cmd, pipe: stdout, Scanner: bufio.NewScanner(stdout)}
-}
-
-func (s *DlvStdout) Close() { s.pipe.Close() }
-
-// ReadPort reads the first line from Delve's stdout and extracts the
-// listen address from the startup banner.
-func (s *DlvStdout) ReadPort(t *testing.T) string {
-	t.Helper()
-	if !s.Scanner.Scan() {
-		t.Fatal("dlv exited without printing listen address")
-	}
-	line := s.Scanner.Text()
-	t.Log(line)
-	for _, prefix := range []string{
-		"API server listening at: ",
-		"DAP server listening at: ",
-	} {
-		if addr, ok := strings.CutPrefix(line, prefix); ok {
-			return addr
-		}
-	}
-	s.cmd.Process.Kill()
-	t.Fatalf("expected server listen banner, got: %q", line)
-	panic("unreachable")
 }

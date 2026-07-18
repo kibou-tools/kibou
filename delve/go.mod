@@ -1,6 +1,6 @@
 module github.com/go-delve/delve
 
-go 1.24
+go 1.25.0
 
 require (
 	github.com/cilium/ebpf v0.11.0
@@ -15,9 +15,10 @@ require (
 	github.com/spf13/pflag v1.0.9
 	go.starlark.net v0.0.0-20231101134539-556fd59b42f6
 	go.yaml.in/yaml/v3 v3.0.4
-	golang.org/x/arch v0.11.0
-	golang.org/x/sys v0.26.0
+	golang.org/x/arch v0.28.0
+	golang.org/x/sys v0.46.0
 	golang.org/x/telemetry v0.0.0-20241106142447-58a1122356f5
+	golang.org/x/text v0.40.0
 )
 
 require (
@@ -27,5 +28,5 @@ require (
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	golang.org/x/exp v0.0.0-20230224173230-c95f2b4c22f2 // indirect
-	golang.org/x/sync v0.8.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
 )

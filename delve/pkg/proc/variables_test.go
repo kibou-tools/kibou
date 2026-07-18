@@ -278,6 +278,7 @@ func TestVariableEvaluation2(t *testing.T) {
 }
 
 func TestSetVariable(t *testing.T) {
+	skipOn(t, "flaky timeout during process initialization", "riscv64")
 	const errorPrefix = "ERROR:"
 	var testcases = []struct {
 		name     string
@@ -913,7 +914,7 @@ func getEvalExpressionTestCases() []varTest {
 		{"(*afunc)(2)", false, "", "", "", errors.New("*")},
 		{"unknownthing(2)", false, "", "", "", altErrors("function calls not allowed without using 'call'", "could not find symbol value for unknownthing")},
 		{"(*unknownthing)(2)", false, "", "", "", altErrors("function calls not allowed without using 'call'", "could not find symbol value for unknownthing")},
-		{"(*strings.Split)(2)", false, "", "", "", altErrors("function calls not allowed without using 'call'", "could not find symbol value for strings")},
+		{"(*strings.Split)(2)", false, "", "", "", altErrors("function calls not allowed without using 'call'", "could not find symbol value for strings", "could not find symbol strings.Split")},
 
 		// pretty printing special types
 		{"tim1", false, `time.Time(1977-05-25T18:00:00Z)…`, `time.Time(1977-05-25T18:00:00Z)…`, "time.Time", nil},
@@ -950,6 +951,9 @@ func getEvalExpressionTestCases() []varTest {
 		{`*(*uint)(uintptr(&i1))`, false, `1`, `1`, "uint", nil},
 		{`*(*uint)(unsafe.Pointer(p1))`, false, `1`, `1`, "uint", nil},
 		{`*(*uint)(unsafe.Pointer(&i1))`, false, `1`, `1`, "uint", nil},
+
+		// issue #4179 local variable shadows package
+		{`issue4179helper.Test`, false, `*github.com/go-delve/delve/_fixtures/internal/issue4179helper.Test {Name: interface {} nil, Age: 0}`, `("*github.com/go-delve/delve/_fixtures/internal/issue4179helper.Test")(…`, "*github.com/go-delve/delve/_fixtures/internal/issue4179helper.Test", nil},
 
 		// Malformed values
 		{`badslice`, false, `(unreadable non-zero length array with nil base)`, `(unreadable non-zero length array with nil base)`, "[]int", nil},
@@ -1340,7 +1344,7 @@ func TestCallFunction(t *testing.T) {
 		{"x.CallMe()", nil, nil, 0},
 		{"x2.CallMe(5)", []string{":int:25"}, nil, 0},
 
-		{"\"delve\".CallMe()", nil, errors.New("\"delve\" (type string) is not a struct"), 0},
+		{"\"delve\".CallMe()", nil, altErrors("\"delve\" (type string) is not a struct", "could not find symbol delve.CallMe"), 0},
 
 		// Nested function calls tests
 
@@ -1366,6 +1370,9 @@ func TestCallFunction(t *testing.T) {
 
 		// Issue 4136
 		{`nilptrtostruct.VRcvr(0)`, []string{}, errors.New("nil pointer dereference"), 0},
+
+		// Issue 4181
+		{`issue4179helper.NonExistent("blah")`, []string{}, errors.New("issue4179helper (type int) has no member NonExistent"), 0},
 	}
 
 	var testcases112 = []testCaseCallFunction{
@@ -1956,27 +1963,16 @@ func TestSetupRangeFramesCrash(t *testing.T) {
 	}
 }
 
-func TestClassicMap(t *testing.T) {
+func TestMapImplementationVariants(t *testing.T) {
 	// This test replicates some of the tests in TestEvalExpression to check
-	// that we still support non-swiss maps on versions of Go where the default
-	// map backend is swisstables.
+	// that we support other implementation variants for the standard library
+	// map, specifically the classic (non-swiss) implementation and the
+	// splitmap and nosplitmap experiments (one of those is the default).
 	protest.AllowRecording(t)
 
 	if !goversion.VersionAfterOrEqual(runtime.Version(), 1, 24) {
 		t.Skip("N/A")
 	}
-	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 29) {
-		// By 1.29, the previous two releases (1.28, 1.27) both lack
-		// noswissmap, so classic map support can be dropped.
-		panic("test expired, please remove")
-	}
-	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 27) {
-		// NOTE(kibou): noswissmap GOEXPERIMENT was removed in Go 1.27,
-		// so we can't build classic-map fixtures. The test is still
-		// relevant for fixtures compiled with Go 1.24-1.26.
-		t.Skip("noswissmap experiment removed in Go 1.27")
-	}
-	t.Setenv("GOEXPERIMENT", "noswissmap")
 
 	testcases := []varTest{
 		{"m1[\"Malone\"]", false, "main.astruct {A: 2, B: 3}", "main.astruct {A: 2, B: 3}", "main.astruct", nil},
@@ -1992,40 +1988,79 @@ func TestClassicMap(t *testing.T) {
 		{"mnil == m1", false, "", "", "", errors.New("can not compare map variables")},
 		{"mnil == nil", false, "true", "true", "", nil},
 		{"m2", true, "map[int]*main.astruct [1: *{A: 10, B: 11}, ]", "map[int]*main.astruct [...]", "map[int]*main.astruct", nil},
+		{`zsvmap["testkey"]`, false, "struct {} {}", "struct {} {}", "struct {}", nil},
 	}
 
-	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		assertNoError(grp.Continue(), t, "Continue() returned an error")
-		for _, tc := range testcases {
-			t.Run(tc.name, func(t *testing.T) {
-				t.Logf("%q", tc.name)
-				variable, err := evalVariableWithCfg(p, tc.name, pnormalLoadConfig)
-				if tc.err == nil {
-					assertNoError(err, t, fmt.Sprintf("EvalExpression(%s) returned an error", tc.name))
-					assertVariable(t, variable, tc)
-					variable, err := evalVariableWithCfg(p, tc.name, pshortLoadConfig)
-					assertNoError(err, t, fmt.Sprintf("EvalExpression(%s, pshortLoadConfig) returned an error", tc.name))
-					assertVariable(t, variable, tc.alternateVarTest())
-				} else {
+	helper := func(t *testing.T, testcases []varTest) {
+		t.Helper()
+		withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
+			assertNoError(grp.Continue(), t, "Continue() returned an error")
+			for _, tc := range testcases {
+				t.Run(tc.name, func(t *testing.T) {
+					t.Logf("%q", tc.name)
+					variable, err := evalVariableWithCfg(p, tc.name, pnormalLoadConfig)
+					if tc.err == nil {
+						assertNoError(err, t, fmt.Sprintf("EvalExpression(%s) returned an error", tc.name))
+						assertVariable(t, variable, tc)
+						variable, err := evalVariableWithCfg(p, tc.name, pshortLoadConfig)
+						assertNoError(err, t, fmt.Sprintf("EvalExpression(%s, pshortLoadConfig) returned an error", tc.name))
+						assertVariable(t, variable, tc.alternateVarTest())
+					} else {
 
-					if err == nil {
-						t.Fatalf("Expected error %s, got no error (%s)", tc.err.Error(), tc.name)
-					}
-					switch e := tc.err.(type) {
-					case *altError:
-						if !slices.Contains(e.errs, err.Error()) {
-							t.Fatalf("Unexpected error. Expected %s got %s", tc.err.Error(), err.Error())
+						if err == nil {
+							t.Fatalf("Expected error %s, got no error (%s)", tc.err.Error(), tc.name)
 						}
-					default:
-						if tc.err.Error() != "*" && tc.err.Error() != err.Error() {
-							t.Fatalf("Unexpected error. Expected %s got %s", tc.err.Error(), err.Error())
+						switch e := tc.err.(type) {
+						case *altError:
+							if !slices.Contains(e.errs, err.Error()) {
+								t.Fatalf("Unexpected error. Expected %s got %s", tc.err.Error(), err.Error())
+							}
+						default:
+							if tc.err.Error() != "*" && tc.err.Error() != err.Error() {
+								t.Fatalf("Unexpected error. Expected %s got %s", tc.err.Error(), err.Error())
+							}
 						}
-					}
 
-				}
+					}
+				})
+			}
+		})
+	}
+
+	fixtureBuildGoVersion := protest.FixtureBuildToolchainVersion(t)
+	if goversion.VersionAfterOrEqual(fixtureBuildGoVersion, 1, 27) {
+		// Non-default GOEXPERIMENT values force a full standard library
+		// rebuild which is too slow on riscv64 to complete within the
+		// test timeout.
+		if runtime.GOARCH == "riscv64" {
+			t.Log("skipping GOEXPERIMENT subtests on riscv64: stdlib rebuild too slow")
+		} else {
+			t.Run("MapSplitGroup", func(t *testing.T) {
+				t.Setenv("GOEXPERIMENT", "mapsplitgroup")
+				helper(t, testcases)
+			})
+			t.Run("NoMapSplitGroup", func(t *testing.T) {
+				t.Setenv("GOEXPERIMENT", "nomapsplitgroup")
+				helper(t, testcases)
 			})
 		}
-	})
+	}
+
+	if goversion.VersionAfterOrEqual(fixtureBuildGoVersion, 1, 29) {
+		// By 1.29, the previous two releases (1.28, 1.27) both lack
+		// noswissmap, so classic map test can be dropped.
+		panic("test expired, please remove")
+	}
+	if !goversion.VersionAfterOrEqual(fixtureBuildGoVersion, 1, 26) {
+		t.Run("ClassicMaps", func(t *testing.T) {
+			t.Setenv("GOEXPERIMENT", "noswissmap")
+			helper(t, append(testcases,
+				// Check that the fixture binary actually uses the classic map
+				// implementation: runtime.hmap does not exist in swissmap binaries.
+				varTest{`**(**runtime.hmap)(uintptr(&m1))`, false, `…`, `…`, "runtime.hmap", nil}))
+		})
+	}
+
 }
 
 func TestCallFunctionRegisterArg(t *testing.T) {

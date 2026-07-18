@@ -231,6 +231,8 @@ func (c *Client) InitializeRequest() {
 		SupportsVariablePaging:       true,
 		SupportsRunInTerminalRequest: true,
 		SupportsMemoryReferences:     true,
+		SupportsMemoryEvent:          true,
+		SupportsInvalidatedEvent:     true,
 		Locale:                       "en-us",
 	}
 	c.send(request)
@@ -588,6 +590,17 @@ func (c *Client) ReadMemoryRequest(ref string, offset, count int) {
 			MemoryReference: ref,
 			Offset:          offset,
 			Count:           count,
+		}})
+}
+
+// WriteMemoryRequest sends a 'writeMemory' request.
+func (c *Client) WriteMemoryRequest(ref string, offset int, data string) {
+	c.send(&dap.WriteMemoryRequest{
+		Request: *c.newRequest("writeMemory"),
+		Arguments: dap.WriteMemoryArguments{
+			MemoryReference: ref,
+			Offset:          offset,
+			Data:            data,
 		}})
 }
 

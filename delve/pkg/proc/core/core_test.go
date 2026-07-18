@@ -19,6 +19,7 @@ import (
 	"github.com/go-delve/delve/pkg/goversion"
 	"github.com/go-delve/delve/pkg/proc"
 	"github.com/go-delve/delve/pkg/proc/test"
+	"golang.org/x/text/encoding/unicode"
 )
 
 var buildMode string
@@ -319,6 +320,60 @@ func TestCore(t *testing.T) {
 	logRegisters(t, regs, p.BinInfo().Arch)
 }
 
+// TestCoreCGOAssert verifies that C function frames appear in core dump backtraces.
+// Issue #3322: the crash frame (C.test1) is missing when assert() crashes in CGO code.
+func TestCoreCGOAssert(t *testing.T) {
+	t.Parallel()
+	mustSupportCore(t)
+
+	grp, _ := withCoreFile(t, "cgocoreassert", "")
+	p := grp.Selected
+
+	gs, _, err := proc.GoroutinesInfo(p, 0, 0)
+	if err != nil || len(gs) == 0 {
+		t.Fatalf("GoroutinesInfo() = %v, %v; wanted at least one goroutine", gs, err)
+	}
+
+	// Find the goroutine running main.main and check its stack for C frames.
+	var mainStack []proc.Stackframe
+	for _, g := range gs {
+		// NOTE(kibou): Bump the search depth from 20->32, as depending
+		// on glibc version, there can be more stack frames in between.
+		stack, err := proc.GoroutineStacktrace(p, g, 32, 0)
+		if err != nil {
+			t.Errorf("Stacktrace() on goroutine %v = %v", g, err)
+			continue
+		}
+		for _, frame := range stack {
+			if frame.Call.Fn != nil && frame.Call.Fn.Name == "main.main" {
+				mainStack = stack
+				break
+			}
+		}
+		if mainStack != nil {
+			break
+		}
+	}
+	if mainStack == nil {
+		t.Fatal("could not find main goroutine")
+	}
+
+	found := make(map[string]bool)
+	for _, frame := range mainStack {
+		if frame.Call.Fn != nil {
+			found[frame.Call.Fn.Name] = true
+		}
+	}
+
+	// Issue #3322: C.test1 (where assert(0) is called) is missing from the
+	// backtrace. C.test2 and C.test3 are resolved correctly.
+	for _, name := range []string{"C.test1", "C.test2", "C.test3"} {
+		if !found[name] {
+			t.Errorf("C function frame %q missing from backtrace (issue #3322)", name)
+		}
+	}
+}
+
 func TestCoreFpRegisters(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS != "linux" || runtime.GOARCH == "386" {
@@ -507,18 +562,9 @@ func procdump(t *testing.T, exePath string) string {
 	exeDir := filepath.Dir(exePath)
 	cmd := exec.Command("procdump64", "-accepteula", "-ma", "-n", "1", "-s", "3", "-x", exeDir, exePath, "quit")
 	out, err := cmd.CombinedOutput() // procdump exits with non-zero status on success, so we have to ignore the error here
-	// NOTE(kibou): The Procdump release on July 9, 2026 seems to have
-	// changed the output byte encoding to UTF-16LE instead of UTF-8,
-	// causing a failure in this logic in CI. Sysinternals doesn't seem
-	// to allow downloading older releases of binaries, so try decoding
-	// the output both ways. 😮‍💨
-	want := "Dump count reached."
-	wantUTF16LE := make([]byte, 0, len(want)*2)
-	for i := 0; i < len(want); i++ {
-		wantUTF16LE = append(wantUTF16LE, want[i], 0)
-	}
-	if !bytes.Contains(out, []byte(want)) && !bytes.Contains(out, wantUTF16LE) {
-		t.Fatalf("possible error running procdump64, output: %q, error: %v", out, err)
+	outStr := decodeProcdumpOutput(out)
+	if !strings.Contains(outStr, "Dump count reached.") {
+		t.Fatalf("possible error running procdump64, output: %q, error: %v", outStr, err)
 	}
 
 	fis, err := os.ReadDir(exeDir)
@@ -539,6 +585,20 @@ func procdump(t *testing.T, exePath string) string {
 
 	t.Fatalf("could not find dump file")
 	return ""
+}
+
+// decodeProcdumpOutput handles procdump64 output which may be UTF-16LE encoded.
+func decodeProcdumpOutput(out []byte) string {
+	s := string(out)
+	if strings.Contains(s, "Dump count reached.") {
+		return s
+	}
+	// ProcDump v12.01+ may produce UTF-16LE output.
+	decoder := unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewDecoder()
+	if decoded, err := decoder.Bytes(out); err == nil {
+		return string(decoded)
+	}
+	return s
 }
 
 func mustSupportCore(t *testing.T) {
