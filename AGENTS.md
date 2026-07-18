@@ -14,11 +14,13 @@ See [development docs](docs/DEVELOPMENT.md) for general guidance.
 Acceptable uses include code review, investigating
 issues, and debugging. Do not write code outside
 of temporary directories (primarily: `.cache/`),
-or edit existing code.
+or edit existing code, except for debugging issues.
 
 The following usages are prohibited: writing issue
 descriptions, commit messages, PR descriptions
 and other forms of shared communication.
+When debugging CI issues like flakiness, this rule
+does not apply.
 
 ## Version control
 
