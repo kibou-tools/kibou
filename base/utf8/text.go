@@ -5,12 +5,11 @@
 package utf8
 
 import (
-	"strconv"
-	"strings"
 	stdutf8 "unicode/utf8"
 
 	"code.kibou.tools/base/assert"
 	. "code.kibou.tools/base/core/option"
+	"code.kibou.tools/base/internal/unicode_impl"
 	"code.kibou.tools/base/ranges"
 )
 
@@ -34,7 +33,7 @@ func (t Text) GetByte(i int) byte {
 // ParseText validates s as UTF-8 text.
 func ParseText(s string) (Text, *TextParseError) {
 	if span, ok := firstInvalidSpan(s).Get(); ok {
-		firstInvalidBytes := invalidBytesPrefix(s, span)
+		firstInvalidBytes := unicode_impl.InvalidBytesPrefix(s, span)
 		length := span.Length().Unwrap()
 		return Text{}, NewTextParseError(len(s), span, firstInvalidBytes[:length])
 	}
@@ -145,49 +144,5 @@ func (e *TextParseError) FirstInvalidSpan() ranges.Span[int] {
 }
 
 func (e *TextParseError) Error() string {
-	span := e.firstInvalidSpan
-	length := span.Length().Unwrap()
-
-	var b strings.Builder
-	b.Grow(maxTextParseErrorStringLen)
-	if length == 1 {
-		b.WriteString("invalid UTF-8 byte 0x")
-		writeInvalidBytesHex(&b, e.firstInvalidBytes, 1)
-		b.WriteString(" at byte offset ")
-		writeInt(&b, span.Start())
-		return b.String()
-	}
-
-	b.WriteString("invalid UTF-8 bytes ")
-	b.WriteString("0x")
-	writeInvalidBytesHex(&b, e.firstInvalidBytes, length)
-	b.WriteString(" at byte span [")
-	writeInt(&b, span.Start())
-	b.WriteString(", ")
-	writeInt(&b, span.End())
-	b.WriteByte(')')
-	return b.String()
-}
-
-const maxTextParseErrorStringLen = len("invalid UTF-8 bytes 0x") + 2*4 + len(" at byte span [") + 19 + len(", ") + 19 + len(")")
-
-func invalidBytesPrefix(s string, span ranges.Span[int]) [4]byte {
-	var prefix [4]byte
-	copy(prefix[:], s[span.Start():span.End()])
-	return prefix
-}
-
-// Precondition: length ∈ [0, len(bytes)].
-func writeInvalidBytesHex(b *strings.Builder, bytes [4]byte, length int) {
-	const hexDigits = "0123456789ABCDEF"
-	for i := range length {
-		value := bytes[i]
-		b.WriteByte(hexDigits[value>>4])
-		b.WriteByte(hexDigits[value&0x0f])
-	}
-}
-
-func writeInt(b *strings.Builder, n int) {
-	var buf [20]byte
-	b.Write(strconv.AppendInt(buf[:0], int64(n), 10))
+	return unicode_impl.FormatTextParseError("UTF-8", e.firstInvalidSpan, e.firstInvalidBytes)
 }
