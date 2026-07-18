@@ -1,0 +1,111 @@
+name: windows-flake-diagnostic
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+permissions:
+  contents: read
+
+env:
+  GOCACHE: ${{ github.workspace }}/.cache/go-build
+
+jobs:
+  package-stress:
+    if: github.event.pull_request.head.ref == 'debug/windows-flakes-240'
+    name: package-stress (${{ matrix.runner }})
+    runs-on: windows-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: 1.26.x
+          cache: false
+      - name: Build toolchain
+        shell: pwsh
+        working-directory: go/src
+        run: .\make.bat
+      - name: Diagnose entropy source and stress failing packages
+        shell: pwsh
+        env:
+          ITERATIONS: 100
+          GOTRACEBACK: system
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $false
+          $go = Join-Path $env:GITHUB_WORKSPACE "go\bin\go.exe"
+          $env:GOROOT = Join-Path $env:GITHUB_WORKSPACE "go"
+          $env:PATH = "$env:GOROOT\bin;$env:PATH"
+
+          & $go version
+          Get-CimInstance Win32_OperatingSystem |
+            Select-Object Caption, Version, BuildNumber, OSArchitecture |
+            Format-List
+          Get-CimInstance Win32_Processor |
+            Select-Object Name, NumberOfCores, NumberOfLogicalProcessors |
+            Format-List
+          Write-Host "QueryPerformanceCounter frequency: $([Diagnostics.Stopwatch]::Frequency) Hz"
+
+          $diagnosticDirectory = Join-Path $env:GITHUB_WORKSPACE ".cache\entropy-diagnostic"
+          New-Item -ItemType Directory -Force -Path $diagnosticDirectory | Out-Null
+          $logicalTestFile = Join-Path $env:GITHUB_WORKSPACE "go\src\crypto\internal\fips140test\entropy_diagnostic_windows_test.go"
+          $backingTestFile = Join-Path $env:GITHUB_WORKSPACE ".github\diagnostics\entropy_diagnostic_windows_test.go"
+          $overlayPath = Join-Path $diagnosticDirectory "overlay.json"
+          $overlay = @{ Replace = @{ $logicalTestFile = $backingTestFile } } | ConvertTo-Json -Depth 4
+          [IO.File]::WriteAllText($overlayPath, $overlay, (New-Object Text.UTF8Encoding($false)))
+
+          Write-Host "=== QPC and entropy distribution diagnostic ==="
+          $diagnosticOutput = & $go test "-overlay=$overlayPath" -run "^TestEntropyDiagnostic" -count=1 -timeout=10m -v crypto/internal/fips140test 2>&1
+          $diagnosticExitCode = $LASTEXITCODE
+          $diagnosticOutput | ForEach-Object { Write-Host $_ }
+
+          Write-Host "=== Entropy test: $env:ITERATIONS repetitions in one process ==="
+          $entropyOutput = & $go test -run "^TestEntropySamples$" -count $env:ITERATIONS -timeout=60m -v crypto/internal/fips140test 2>&1
+          $entropyExitCode = $LASTEXITCODE
+          $entropyText = $entropyOutput | Out-String
+          $entropyOutput | ForEach-Object { Write-Host $_ }
+          $entropyPasses = ([regex]::Matches($entropyText, "(?m)^--- PASS: TestEntropySamples ")).Count
+          $entropyFailures = ([regex]::Matches($entropyText, "(?m)^--- FAIL: TestEntropySamples ")).Count
+          $entropyIncomplete = [Math]::Max(0, [int]$env:ITERATIONS - $entropyPasses - $entropyFailures)
+          $entropyHealthRetries = ([regex]::Matches($entropyText, "entropy\.Samples\(\) failed: entropy:")).Count
+
+          Write-Host "=== html/template: $env:ITERATIONS repetitions in one process with GOGC=1 ==="
+          $env:GOGC = "1"
+          $htmlOutput = & $go test -count $env:ITERATIONS -timeout=60m html/template 2>&1
+          $htmlExitCode = $LASTEXITCODE
+          Remove-Item Env:\GOGC
+          $htmlText = $htmlOutput | Out-String
+          $htmlOutput | ForEach-Object { Write-Host $_ }
+          $htmlGCInvariantFailures = ([regex]::Matches($htmlText, "marked free object in span")).Count
+
+          $summary = @"
+          ## Windows package stress results (runner ${{ matrix.runner }})
+
+          | Measurement | Result |
+          | --- | ---: |
+          | Entropy repetitions requested | $env:ITERATIONS |
+          | Entropy repetitions passed | $entropyPasses |
+          | Entropy repetitions failed | $entropyFailures |
+          | Entropy repetitions incomplete | $entropyIncomplete |
+          | Entropy health-test retries | $entropyHealthRetries |
+          | Entropy command exit code | $entropyExitCode |
+          | html/template repetitions requested | $env:ITERATIONS |
+          | html/template command exit code | $htmlExitCode |
+          | html/template GC invariant messages | $htmlGCInvariantFailures |
+          | Diagnostic command exit code | $diagnosticExitCode |
+          "@
+          $summary | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append
+
+          if ($diagnosticExitCode -ne 0 -or $entropyExitCode -ne 0 -or $htmlExitCode -ne 0) {
+            throw "One or more diagnostic commands failed"
+          }
