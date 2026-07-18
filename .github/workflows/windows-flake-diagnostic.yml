@@ -1,4 +1,4 @@
-name: windows-flake-diagnostic
+name: windows-gc-flake-diagnostic
 
 on:
   pull_request:
@@ -15,9 +15,9 @@ env:
   GOCACHE: ${{ github.workspace }}/.cache/go-build
 
 jobs:
-  package-stress:
+  gc-stress:
     if: github.event.pull_request.head.ref == 'debug/windows-flakes-240'
-    name: package-stress (${{ matrix.runner }})
+    name: gc-stress (${{ matrix.runner }})
     runs-on: windows-latest
     timeout-minutes: 180
     strategy:
@@ -25,87 +25,187 @@ jobs:
       matrix:
         runner: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Detect CPU
+        id: cpu
+        shell: pwsh
+        run: |
+          $processor = Get-CimInstance Win32_Processor | Select-Object -First 1
+          $isIntel = $processor.Manufacturer -match "Intel" -or $processor.Name -match "Intel"
+          $isIntelText = $isIntel.ToString().ToLowerInvariant()
+
+          $processor | Select-Object Name, Manufacturer, NumberOfCores, NumberOfLogicalProcessors | Format-List
+          Write-Host "Intel runner: $isIntelText"
+          "is_intel=$isIntelText" >> $env:GITHUB_OUTPUT
+          "cpu_name=$($processor.Name)" >> $env:GITHUB_OUTPUT
+
+          if (-not $isIntel) {
+            @"
+          ## Windows GC stress (runner ${{ matrix.runner }})
+
+          Skipped before checkout and toolchain setup because this runner uses $($processor.Name) rather than an Intel CPU.
+          "@ | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          }
+
+      - if: steps.cpu.outputs.is_intel == 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+
+      - if: steps.cpu.outputs.is_intel == 'true'
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: 1.26.x
           cache: false
+
+      - name: Improve zombie diagnostics
+        if: steps.cpu.outputs.is_intel == 'true'
+        shell: pwsh
+        run: |
+          $path = Join-Path $env:GITHUB_WORKSPACE "go\src\runtime\mgcsweep.go"
+          $source = [IO.File]::ReadAllText($path)
+
+          $oldHeader = 'print("runtime: marked free object in span ", s, ", elemsize=", s.elemsize, " freeindex=", s.freeindex, " (bad use of unsafe.Pointer or having race conditions? try -d=checkptr or -race)\n")'
+          $newHeader = 'print("runtime: marked free object in span ", s, ", elemsize=", s.elemsize, " freeindex=", s.freeindex, " allocCount=", s.allocCount, " nelems=", s.nelems, " spanclass=", s.spanclass, " sweepgen=", s.sweepgen, " (bad use of unsafe.Pointer or having race conditions? try -d=checkptr or -race)\n")'
+          $oldBits = "`tmbits := s.markBitsForBase()"
+          $newBits = "`t// Green Tea has already moved and cleared the inline marks at this point.`n`tmbits := markBits{&s.gcmarkBits.x, uint8(1), 0}"
+          $newline = if ($source.Contains("`r`n")) { "`r`n" } else { "`n" }
+          $oldReport = $oldHeader + $newline + $oldBits
+          $newReport = $newHeader + $newline + $newBits
+
+          if (([regex]::Matches($source, [regex]::Escape($oldReport))).Count -ne 1) {
+            throw "Unexpected number of reportZombies matches"
+          }
+
+          $source = $source.Replace($oldReport, $newReport)
+          [IO.File]::WriteAllText($path, $source, (New-Object Text.UTF8Encoding($false)))
+
       - name: Build toolchain
+        if: steps.cpu.outputs.is_intel == 'true'
         shell: pwsh
         working-directory: go/src
         run: .\make.bat
-      - name: Diagnose entropy source and stress failing packages
+
+      - name: Stress GC configurations
+        if: steps.cpu.outputs.is_intel == 'true'
         shell: pwsh
         env:
-          ITERATIONS: 100
           GOTRACEBACK: system
         run: |
           $PSNativeCommandUseErrorActionPreference = $false
           $go = Join-Path $env:GITHUB_WORKSPACE "go\bin\go.exe"
           $env:GOROOT = Join-Path $env:GITHUB_WORKSPACE "go"
           $env:PATH = "$env:GOROOT\bin;$env:PATH"
+          $outputDirectory = Join-Path $env:GITHUB_WORKSPACE ".cache\gc-diagnostic"
+          New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
 
           & $go version
           Get-CimInstance Win32_OperatingSystem |
             Select-Object Caption, Version, BuildNumber, OSArchitecture |
             Format-List
           Get-CimInstance Win32_Processor |
-            Select-Object Name, NumberOfCores, NumberOfLogicalProcessors |
+            Select-Object Name, Manufacturer, NumberOfCores, NumberOfLogicalProcessors |
             Format-List
           Write-Host "QueryPerformanceCounter frequency: $([Diagnostics.Stopwatch]::Frequency) Hz"
 
-          $diagnosticDirectory = Join-Path $env:GITHUB_WORKSPACE ".cache\entropy-diagnostic"
-          New-Item -ItemType Directory -Force -Path $diagnosticDirectory | Out-Null
-          $logicalTestFile = Join-Path $env:GITHUB_WORKSPACE "go\src\crypto\internal\fips140test\entropy_diagnostic_windows_test.go"
-          $backingTestFile = Join-Path $env:GITHUB_WORKSPACE ".github\diagnostics\entropy_diagnostic_windows_test.go"
-          $overlayPath = Join-Path $diagnosticDirectory "overlay.json"
-          $overlay = @{ Replace = @{ $logicalTestFile = $backingTestFile } } | ConvertTo-Json -Depth 4
-          [IO.File]::WriteAllText($overlayPath, $overlay, (New-Object Text.UTF8Encoding($false)))
+          $results = [Collections.Generic.List[object]]::new()
 
-          Write-Host "=== QPC and entropy distribution diagnostic ==="
-          $diagnosticOutput = & $go test "-overlay=$overlayPath" -run "^TestEntropyDiagnostic" -count=1 -timeout=10m -v crypto/internal/fips140test 2>&1
-          $diagnosticExitCode = $LASTEXITCODE
-          $diagnosticOutput | ForEach-Object { Write-Host $_ }
+          function Set-OptionalEnvironment([string]$Name, [string]$Value) {
+            if ([string]::IsNullOrEmpty($Value)) {
+              Remove-Item "Env:\$Name" -ErrorAction SilentlyContinue
+            } else {
+              Set-Item "Env:\$Name" $Value
+            }
+          }
 
-          Write-Host "=== Entropy test: $env:ITERATIONS repetitions in one process ==="
-          $entropyOutput = & $go test -run "^TestEntropySamples$" -count $env:ITERATIONS -timeout=60m -v crypto/internal/fips140test 2>&1
-          $entropyExitCode = $LASTEXITCODE
-          $entropyText = $entropyOutput | Out-String
-          $entropyOutput | ForEach-Object { Write-Host $_ }
-          $entropyPasses = ([regex]::Matches($entropyText, "(?m)^--- PASS: TestEntropySamples ")).Count
-          $entropyFailures = ([regex]::Matches($entropyText, "(?m)^--- FAIL: TestEntropySamples ")).Count
-          $entropyIncomplete = [Math]::Max(0, [int]$env:ITERATIONS - $entropyPasses - $entropyFailures)
-          $entropyHealthRetries = ([regex]::Matches($entropyText, "entropy\.Samples\(\) failed: entropy:")).Count
+          function Invoke-GCVariant {
+            param(
+              [string]$Name,
+              [int]$Count,
+              [string]$GoExperiment = "",
+              [string]$GoDebug = "",
+              [string]$GoMaxProcs = "",
+              [string]$GCFlags = ""
+            )
 
-          Write-Host "=== html/template: $env:ITERATIONS repetitions in one process with GOGC=1 ==="
-          $env:GOGC = "1"
-          $htmlOutput = & $go test -count $env:ITERATIONS -timeout=60m html/template 2>&1
-          $htmlExitCode = $LASTEXITCODE
-          Remove-Item Env:\GOGC
-          $htmlText = $htmlOutput | Out-String
-          $htmlOutput | ForEach-Object { Write-Host $_ }
-          $htmlGCInvariantFailures = ([regex]::Matches($htmlText, "marked free object in span")).Count
+            Set-OptionalEnvironment "GOEXPERIMENT" $GoExperiment
+            Set-OptionalEnvironment "GODEBUG" $GoDebug
+            Set-OptionalEnvironment "GOMAXPROCS" $GoMaxProcs
+            $env:GOGC = "1"
 
-          $summary = @"
-          ## Windows package stress results (runner ${{ matrix.runner }})
+            Write-Host ""
+            Write-Host "=== $Name ==="
+            Write-Host "count=$Count GOEXPERIMENT='$GoExperiment' GODEBUG='$GoDebug' GOMAXPROCS='$GoMaxProcs' GOGC=1 GCFLAGS='$GCFlags'"
+            & $go env GOEXPERIMENT
 
-          | Measurement | Result |
-          | --- | ---: |
-          | Entropy repetitions requested | $env:ITERATIONS |
-          | Entropy repetitions passed | $entropyPasses |
-          | Entropy repetitions failed | $entropyFailures |
-          | Entropy repetitions incomplete | $entropyIncomplete |
-          | Entropy health-test retries | $entropyHealthRetries |
-          | Entropy command exit code | $entropyExitCode |
-          | html/template repetitions requested | $env:ITERATIONS |
-          | html/template command exit code | $htmlExitCode |
-          | html/template GC invariant messages | $htmlGCInvariantFailures |
-          | Diagnostic command exit code | $diagnosticExitCode |
-          "@
-          $summary | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append
+            $arguments = @("test", "-count=$Count", "-timeout=45m")
+            if (-not [string]::IsNullOrEmpty($GCFlags)) {
+              $arguments += "-gcflags=$GCFlags"
+            }
+            $arguments += "html/template"
 
-          if ($diagnosticExitCode -ne 0 -or $entropyExitCode -ne 0 -or $htmlExitCode -ne 0) {
-            throw "One or more diagnostic commands failed"
+            $started = Get-Date
+            $output = & $go @arguments 2>&1
+            $exitCode = $LASTEXITCODE
+            $elapsed = (Get-Date) - $started
+            $text = $output | Out-String
+            $output | ForEach-Object { Write-Host $_ }
+            $text | Set-Content -Encoding utf8 (Join-Path $outputDirectory "$Name.log")
+
+            $result = [PSCustomObject]@{
+              Name = $Name
+              Count = $Count
+              ExitCode = $exitCode
+              Seconds = [Math]::Round($elapsed.TotalSeconds, 3)
+              MarkedFree = ([regex]::Matches($text, "marked free object in span")).Count
+              PointerToFree = ([regex]::Matches($text, "found pointer to free object")).Count
+              Zombies = ([regex]::Matches($text, " zombie")).Count
+              Checkmark = ([regex]::Matches($text, "checkmark found unmarked object")).Count
+              LockCount = ([regex]::Matches($text, "runtime.+lock: lock count")).Count
+              FatalErrors = ([regex]::Matches($text, "fatal error:")).Count
+            }
+            $results.Add($result)
+          }
+
+          Invoke-GCVariant -Name "greentea-parallel" -Count 500
+          Invoke-GCVariant -Name "nogreentea-parallel" -Count 500 -GoExperiment "nogreenteagc"
+          Invoke-GCVariant -Name "greentea-gomaxprocs1" -Count 500 -GoMaxProcs "1"
+          Invoke-GCVariant -Name "greentea-asyncpreemptoff" -Count 500 -GoDebug "asyncpreemptoff=1"
+          Invoke-GCVariant -Name "greentea-stoptheworld2" -Count 300 -GoDebug "gcstoptheworld=2"
+          Invoke-GCVariant -Name "greentea-gccheckmark" -Count 200 -GoDebug "gccheckmark=1"
+          Invoke-GCVariant -Name "greentea-clobberfree" -Count 300 -GoDebug "clobberfree=1"
+          Invoke-GCVariant -Name "greentea-checkptr2" -Count 200 -GCFlags "all=-d=checkptr=2"
+          Invoke-GCVariant -Name "greentea-staticlockranking" -Count 200 -GoExperiment "staticlockranking"
+
+          $greenTeaPath = Join-Path $env:GITHUB_WORKSPACE "go\src\runtime\mgcmark_greenteagc.go"
+          $greenTeaSource = [IO.File]::ReadAllText($greenTeaPath)
+          $oldDoubleCheck = "const doubleCheckGreenTea = false"
+          if (([regex]::Matches($greenTeaSource, [regex]::Escape($oldDoubleCheck))).Count -ne 1) {
+            throw "Unexpected number of doubleCheckGreenTea matches"
+          }
+          $greenTeaSource = $greenTeaSource.Replace($oldDoubleCheck, "const doubleCheckGreenTea = true")
+          [IO.File]::WriteAllText($greenTeaPath, $greenTeaSource, (New-Object Text.UTF8Encoding($false)))
+          Invoke-GCVariant -Name "greentea-doublecheck" -Count 300
+
+          Remove-Item Env:\GOGC -ErrorAction SilentlyContinue
+          Remove-Item Env:\GOEXPERIMENT -ErrorAction SilentlyContinue
+          Remove-Item Env:\GODEBUG -ErrorAction SilentlyContinue
+          Remove-Item Env:\GOMAXPROCS -ErrorAction SilentlyContinue
+
+          $results | Export-Csv -NoTypeInformation (Join-Path $outputDirectory "results.csv")
+          $results | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $outputDirectory "results.json")
+
+          $summary = [Collections.Generic.List[string]]::new()
+          $summary.Add("## Windows GC stress results (runner ${{ matrix.runner }})")
+          $summary.Add("")
+          $summary.Add("CPU: ${{ steps.cpu.outputs.cpu_name }}")
+          $summary.Add("")
+          $summary.Add("| Variant | Count | Exit | Seconds | Marked free | Pointer to free | Zombies | Checkmark | Lock count | Fatal errors |")
+          $summary.Add("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+          foreach ($result in $results) {
+            $summary.Add("| $($result.Name) | $($result.Count) | $($result.ExitCode) | $($result.Seconds) | $($result.MarkedFree) | $($result.PointerToFree) | $($result.Zombies) | $($result.Checkmark) | $($result.LockCount) | $($result.FatalErrors) |")
+          }
+          ($summary -join "`n") | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append
+
+          if (($results | Where-Object ExitCode -ne 0).Count -ne 0) {
+            throw "One or more GC stress variants failed"
           }
