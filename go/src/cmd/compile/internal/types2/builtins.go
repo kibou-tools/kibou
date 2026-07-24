@@ -779,7 +779,7 @@ func (check *Checker) builtin(x *operand, call *syntax.CallExpr, id builtinId) (
 			return
 		}
 
-		check.expr(nil, x, selx.X)
+		check.expr(nil, nil, x, selx.X)
 		if !x.isValid() {
 			return
 		}
@@ -967,7 +967,7 @@ func (check *Checker) builtin(x *operand, call *syntax.CallExpr, id builtinId) (
 		var t operand
 		x1 := x
 		for _, arg := range argList {
-			check.rawExpr(nil, x1, arg, nil, false) // permit trace for types, e.g.: new(trace(T))
+			check.rawExpr(nil, nil, x1, arg, nil, false) // permit trace for types, e.g.: new(trace(T))
 			check.dump("%v: %s", atPos(x1), x1)
 			x1 = &t // use incoming x only for first argument
 		}
@@ -1027,12 +1027,18 @@ func (check *Checker) hasVarSize(t Type) bool {
 			return true
 		}
 
-		check.push(t.obj)
+		obj := t.obj
+		check.push(obj)
 		defer check.pop()
 
 		// Careful, we're inspecting t.fromRHS, so we need to unpack first.
 		t.unpack()
 		varSize := check.hasVarSize(t.rhs())
+
+		// Special case for portable simd types that rewrite to unknown sizes.
+		if pkg := obj.Pkg(); pkg != nil && pkg.Path() == "simd" && obj.Name() == "_simd" {
+			varSize = true
+		}
 
 		t.mu.Lock()
 		defer t.mu.Unlock()

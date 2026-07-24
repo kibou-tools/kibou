@@ -16,7 +16,7 @@ import (
 	"text/template"
 	"unicode"
 
-	"_gen/sgutil"
+	"simd/archsimd/_gen/sgutil"
 )
 
 var (
@@ -263,15 +263,15 @@ var allFlags = []OpFlags{
 
 func (o OpFlags) String() string {
 	sep := ""
-	ret := ""
+	var ret strings.Builder
 
 	for _, x := range allFlags {
 		if x&o != 0 {
-			ret += sep + x.OneString()
+			ret.WriteString(sep + x.OneString())
 			sep = "+"
 		}
 	}
-	return ret
+	return ret.String()
 }
 
 // wasmOp represents a WebAssembly SIMD instruction.
@@ -337,7 +337,7 @@ func (o *wasmOp) ImmName() string {
 
 func snakeToCamel(s string) string {
 	capnext := true
-	result := ""
+	var result strings.Builder
 	for _, c := range s {
 		if c == '_' {
 			capnext = true
@@ -351,9 +351,9 @@ func snakeToCamel(s string) string {
 				capnext = false
 			}
 		}
-		result += string(c)
+		result.WriteString(string(c))
 	}
-	return result
+	return result.String()
 }
 
 // Op returns the snakeToCamel version of the WASM operation,
@@ -741,7 +741,7 @@ var (
 		"ge_u":         "GreaterEqual",
 		"lt_u":         "Less",
 		"gt_u":         "Greater",
-		"relaxed_madd": "MulAdd",
+		"relaxed_madd": "-",
 		"shl":          "ShiftAllLeft",
 
 		"extract_lane":   "GetElem",
@@ -887,7 +887,7 @@ func initWasmOps() {
 
 	addWasmOps(floats, f_2, 2, binShape)
 
-	addWasmOps(floats, f_3, 3, nil)
+	// addWasmOps(floats, f_3, 3, nil) // relaxed_madd does not work
 	// addWasmOps(ints, i_3, 3, nil)
 	addWasmOps(ints, i_t, 1, isTest)
 
@@ -1947,7 +1947,7 @@ func initWasmSIMD() {
 	makeSimdOp1Imm8 := func(op ssa.Op, immLimit uint64) func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 		return func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 			t := n.Type()
-			if args[1].Op == ssa.OpConst8 {
+			if args[1].Op == ssa.OpConst8 && uint64(args[1].AuxInt) < immLimit {
 				return s.newValue1I(op, t, args[1].AuxInt, args[0])
 			}
 			return immJumpTableN(s, args[1], n, immLimit, func(sNew *state, idx int) {
@@ -1960,7 +1960,7 @@ func initWasmSIMD() {
 	makeSimdOp2Imm8 := func(op ssa.Op, immLimit uint64) func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 		return func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 			t := types.TypeVec128
-			if args[1].Op == ssa.OpConst8 {
+			if args[1].Op == ssa.OpConst8 && uint64(args[1].AuxInt) < immLimit {
 				return s.newValue2I(op, t, args[1].AuxInt, args[0], args[2])
 			}
 			return immJumpTableN(s, args[1], n, immLimit, func(sNew *state, idx int) {
