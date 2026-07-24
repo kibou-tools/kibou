@@ -4389,7 +4389,7 @@ func TestEvaluateRequest(t *testing.T) {
 	})
 }
 
-func formatConfig(depth, maxStringLen, maxArrayValues int, showGlobals, showRegisters bool, goroutineFilters string, showPprofLabels []string, hideSystemGoroutines bool, substitutePath [][2]string, followExec bool, followExecRegex string) string {
+func formatConfig(depth, maxStringLen, maxArrayValues int, showGlobals, showRegisters bool, goroutineFilters string, showPprofLabels []string, hideSystemGoroutines bool, substitutePath [][2]string, followExec bool, followExecRegex string, showRawStrings bool) string {
 	formatStr := `stackTraceDepth	%d
 maxStringLen	%d
 maxArrayValues	%d
@@ -4401,8 +4401,149 @@ hideSystemGoroutines	%v
 substitutePath	%v
 followExec	%v
 followExecRegex	%q
+showRawStrings	%v
 `
-	return fmt.Sprintf(formatStr, depth, maxStringLen, maxArrayValues, showGlobals, showRegisters, goroutineFilters, showPprofLabels, hideSystemGoroutines, substitutePath, followExec, followExecRegex)
+	return fmt.Sprintf(formatStr, depth, maxStringLen, maxArrayValues, showGlobals, showRegisters, goroutineFilters, showPprofLabels, hideSystemGoroutines, substitutePath, followExec, followExecRegex, showRawStrings)
+}
+
+// TestEvaluateEscapeStrings reproduces https://github.com/go-delve/delve/issues/4245.
+// Tests both the default behavior (showRawStrings=false) where strings are
+// displayed with Go's %q (quoted and escaped), and the expanded behavior
+// (showRawStrings=true) where strings are printed as-is with %s.
+func TestEvaluateEscapeStrings(t *testing.T) {
+	type testCase struct {
+		showRawStrings bool
+		multiline      string
+		withTabs       string
+		mixed          string
+		backslash      string
+		carriageRet    string
+		withQuote      string
+	}
+	cases := []testCase{
+		{
+			showRawStrings: false,
+			multiline:      `"hello\nworld"`,
+			withTabs:       `"col1\tcol2\tcol3"`,
+			mixed:          `"line1\nline2\tindented\nline3"`,
+			backslash:      `"C:\\Users\\test"`,
+			carriageRet:    `"line1\r\nline2"`,
+			withQuote:      `"he said \"hello\""`,
+		},
+		{
+			showRawStrings: true,
+			multiline:      "hello\nworld",
+			withTabs:       "col1\tcol2\tcol3",
+			mixed:          "line1\nline2\tindented\nline3",
+			backslash:      "C:\\Users\\test",
+			carriageRet:    "line1\r\nline2",
+			withQuote:      "he said \"hello\"",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("showRawStrings=%v", tc.showRawStrings), func(t *testing.T) {
+			runTest(t, "escapestrings", func(client *daptest.Client, fixture protest.Fixture) {
+				runDebugSessionWithBPs(t, client, "launch",
+					func() {
+						client.LaunchRequestWithArgs(map[string]any{
+							"mode":           "exec",
+							"program":        fixture.Path,
+							"stopOnEntry":    !stopOnEntry,
+							"showRawStrings": tc.showRawStrings,
+						})
+					},
+					fixture.Source, []int{},
+					[]onBreakpoint{{ // Stop at breakpoint in main
+						execute: func() {
+							checkStop(t, client, 1, "main.main", 28)
+
+							client.EvaluateRequest("multiline", 1000, "this context will be ignored")
+							got := client.ExpectEvaluateResponse(t)
+							checkEval(t, got, tc.multiline, noChildren)
+
+							client.EvaluateRequest("withTabs", 1000, "this context will be ignored")
+							got = client.ExpectEvaluateResponse(t)
+							checkEval(t, got, tc.withTabs, noChildren)
+
+							client.EvaluateRequest("mixed", 1000, "this context will be ignored")
+							got = client.ExpectEvaluateResponse(t)
+							checkEval(t, got, tc.mixed, noChildren)
+
+							client.EvaluateRequest("backslash", 1000, "this context will be ignored")
+							got = client.ExpectEvaluateResponse(t)
+							checkEval(t, got, tc.backslash, noChildren)
+
+							client.EvaluateRequest("carriageRet", 1000, "this context will be ignored")
+							got = client.ExpectEvaluateResponse(t)
+							checkEval(t, got, tc.carriageRet, noChildren)
+
+							client.EvaluateRequest("withQuote", 1000, "this context will be ignored")
+							got = client.ExpectEvaluateResponse(t)
+							checkEval(t, got, tc.withQuote, noChildren)
+						},
+						disconnect: false,
+					}})
+			})
+		})
+	}
+}
+
+func TestEvaluateEscapeStringsWithCall(t *testing.T) {
+	protest.MustSupportFunctionCalls(t, testBackend)
+
+	type testCase struct {
+		showRawStrings bool
+		funcMultiline  string
+		funcWithTabs   string
+	}
+	cases := []testCase{
+		{
+			showRawStrings: false,
+			funcMultiline:  `"func\nline1\nline2"`,
+			funcWithTabs:   `"func\tcol1\tcol2"`,
+		},
+		{
+			showRawStrings: true,
+			funcMultiline:  "func\nline1\nline2",
+			funcWithTabs:   "func\tcol1\tcol2",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("showRawStrings=%v", tc.showRawStrings), func(t *testing.T) {
+			runTest(t, "escapestrings", func(client *daptest.Client, fixture protest.Fixture) {
+				runDebugSessionWithBPs(t, client, "launch",
+					func() {
+						client.LaunchRequestWithArgs(map[string]any{
+							"mode":           "exec",
+							"program":        fixture.Path,
+							"stopOnEntry":    !stopOnEntry,
+							"showRawStrings": tc.showRawStrings,
+						})
+					},
+					fixture.Source, []int{},
+					[]onBreakpoint{{ // Stop at breakpoint in main
+						execute: func() {
+							checkStop(t, client, 1, "main.main", 28)
+
+							client.EvaluateRequest("call getMultiline()", 1000, "repl")
+							got := client.ExpectEvaluateResponse(t)
+							if got.Body.Result != tc.funcMultiline {
+								t.Errorf("got Result=%q, want %q", got.Body.Result, tc.funcMultiline)
+							}
+
+							client.EvaluateRequest("call getWithTabs()", 1000, "repl")
+							got = client.ExpectEvaluateResponse(t)
+							if got.Body.Result != tc.funcWithTabs {
+								t.Errorf("got Result=%q, want %q", got.Body.Result, tc.funcWithTabs)
+							}
+						},
+						disconnect: false,
+					}})
+			})
+		})
+	}
 }
 
 func TestEvaluateCommandRequest(t *testing.T) {
@@ -4433,7 +4574,7 @@ func TestEvaluateCommandRequest(t *testing.T) {
 
 					client.EvaluateRequest("dlv config -list", 1000, "repl")
 					got = client.ExpectEvaluateResponse(t)
-					checkEval(t, got, formatConfig(50, 0, 0, false, false, "", []string{}, false, [][2]string{}, false, ""), noChildren)
+					checkEval(t, got, formatConfig(50, 0, 0, false, false, "", []string{}, false, [][2]string{}, false, "", false), noChildren)
 
 					// Read and modify showGlobalVariables.
 					client.EvaluateRequest("dlv config -list showGlobalVariables", 1000, "repl")
@@ -4454,7 +4595,7 @@ func TestEvaluateCommandRequest(t *testing.T) {
 
 					client.EvaluateRequest("dlv config -list", 1000, "repl")
 					got = client.ExpectEvaluateResponse(t)
-					checkEval(t, got, formatConfig(50, 0, 0, true, false, "", []string{}, false, [][2]string{}, false, ""), noChildren)
+					checkEval(t, got, formatConfig(50, 0, 0, true, false, "", []string{}, false, [][2]string{}, false, "", false), noChildren)
 
 					client.ScopesRequest(1000)
 					scopes = client.ExpectScopesResponse(t)
@@ -6604,6 +6745,22 @@ func (h *helperForSetVariable) expectSetVariable(ref int, name, value string) {
 	h.expectSetVariable0(ref, name, value, false)
 }
 
+func (h *helperForSetVariable) expectSetVariableWithType(ref int, name, value, wantType string) {
+	h.t.Helper()
+	h.c.SetVariableRequest(ref, name, value)
+	got := h.c.ExpectSetVariableResponse(h.t)
+	if got.Success != true || got.Body.Value != value {
+		h.t.Errorf("SetVariableRequest(%v, %v)=%#v, want {Success=true, Body.Value=%q}", name, value, got, value)
+	}
+	if got.Body.Type != wantType {
+		h.t.Errorf("SetVariableRequest(%v, %v) Body.Type=%q, want %q", name, value, got.Body.Type, wantType)
+	}
+	ie := h.c.ExpectInvalidatedEvent(h.t)
+	if len(ie.Body.Areas) != 1 && ie.Body.Areas[0] != "all" {
+		h.t.Errorf("expected 'all' invalidated areas, got %v", ie.Body.Areas)
+	}
+}
+
 func (h *helperForSetVariable) failSetVariable(ref int, name, value, wantErrInfo string) {
 	h.t.Helper()
 	h.failSetVariable0(ref, name, value, wantErrInfo, false)
@@ -6694,7 +6851,7 @@ func TestSetVariable(t *testing.T) {
 
 					// int
 					checkVarExact(t, locals, -1, "a2", "a2", "6", "int", noChildren)
-					tester.expectSetVariable(localsScope, "a2", "42")
+					tester.expectSetVariableWithType(localsScope, "a2", "42", "int")
 					tester.evaluate("a2", "42", noChildren)
 
 					tester.failSetVariable(localsScope, "a2", "false", "can not convert")
