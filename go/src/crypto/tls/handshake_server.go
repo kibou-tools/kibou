@@ -279,6 +279,7 @@ func (hs *serverHandshakeState) processClientHello() error {
 		}
 		return err
 	}
+
 	if hs.clientHello.scts {
 		hs.hello.scts = hs.cert.SignedCertificateTimestamps
 	}
@@ -535,8 +536,11 @@ func (hs *serverHandshakeState) checkForResumption() error {
 		return errors.New("tls: session supported extended_master_secret but client does not")
 	}
 	if !sessionState.extMasterSecret && fips140tls.Required() {
-		// FIPS 140-3 requires the use of Extended Master Secret.
-		return nil
+		if fips140ems.Value() != "0" {
+			// FIPS 140-3 requires the use of Extended Master Secret.
+			return nil
+		}
+		fips140ems.IncNonDefault()
 	}
 
 	c.peerCertificates = sessionState.peerCertificates
@@ -613,6 +617,10 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 
 	certMsg := new(certificateMsg)
 	certMsg.certificates = hs.cert.Certificate
+	// Set localCertificate here, rather than at certificate selection time, so
+	// that it is only populated when a certificate is actually presented to the
+	// peer, and not on resumed connections.
+	c.localCertificate = hs.cert.Certificate
 	if _, err := hs.c.writeHandshakeRecord(certMsg, &hs.finishedHash); err != nil {
 		return err
 	}
@@ -731,8 +739,11 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 			hs.finishedHash.Sum())
 	} else {
 		if fips140tls.Required() {
-			c.sendAlert(alertHandshakeFailure)
-			return errors.New("tls: FIPS 140-3 requires the use of Extended Master Secret")
+			if fips140ems.Value() != "0" {
+				c.sendAlert(alertHandshakeFailure)
+				return errors.New("tls: FIPS 140-3 requires the use of Extended Master Secret")
+			}
+			fips140ems.IncNonDefault()
 		}
 		hs.masterSecret = masterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret,
 			hs.clientHello.random, hs.hello.random)

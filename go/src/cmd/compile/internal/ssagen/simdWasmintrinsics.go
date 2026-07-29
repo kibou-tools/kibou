@@ -43,7 +43,7 @@ func initWasmSIMD() {
 	makeSimdOp1Imm8 := func(op ssa.Op, immLimit uint64) func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 		return func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 			t := n.Type()
-			if args[1].Op == ssa.OpConst8 {
+			if args[1].Op == ssa.OpConst8 && uint64(args[1].AuxInt) < immLimit {
 				return s.newValue1I(op, t, args[1].AuxInt, args[0])
 			}
 			return immJumpTableN(s, args[1], n, immLimit, func(sNew *state, idx int) {
@@ -56,7 +56,7 @@ func initWasmSIMD() {
 	makeSimdOp2Imm8 := func(op ssa.Op, immLimit uint64) func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 		return func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 			t := types.TypeVec128
-			if args[1].Op == ssa.OpConst8 {
+			if args[1].Op == ssa.OpConst8 && uint64(args[1].AuxInt) < immLimit {
 				return s.newValue2I(op, t, args[1].AuxInt, args[0], args[2])
 			}
 			return immJumpTableN(s, args[1], n, immLimit, func(sNew *state, idx int) {
@@ -229,8 +229,6 @@ func initWasmSIMD() {
 	addWasmSIMD("simd/archsimd", "Int64x2.Mul", makeSimdOp2(ssa.OpMulInt64x2))
 	addWasmSIMD("simd/archsimd", "Uint64x2.Mul", makeSimdOp2(ssa.OpMulUint64x2))
 	addWasmSIMD("simd/archsimd", "Float64x2.Mul", makeSimdOp2(ssa.OpMulFloat64x2))
-	addWasmSIMD("simd/archsimd", "Float32x4.MulAdd", makeSimdOp3(ssa.OpMulAddFloat32x4))
-	addWasmSIMD("simd/archsimd", "Float64x2.MulAdd", makeSimdOp3(ssa.OpMulAddFloat64x2))
 	addWasmSIMD("simd/archsimd", "Int8x16.MulWidenHi", makeSimdOp2(ssa.OpMulWidenHiInt8x16))
 	addWasmSIMD("simd/archsimd", "Uint8x16.MulWidenHi", makeSimdOp2(ssa.OpMulWidenHiUint8x16))
 	addWasmSIMD("simd/archsimd", "Int16x8.MulWidenHi", makeSimdOp2(ssa.OpMulWidenHiInt16x8))

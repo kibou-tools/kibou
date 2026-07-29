@@ -6,6 +6,7 @@ package ssa
 
 import (
 	"cmd/compile/internal/ir"
+	"cmd/compile/internal/ssa/block"
 	"cmd/internal/src"
 	"internal/buildcfg"
 )
@@ -105,7 +106,7 @@ func nilcheckelim(f *Func) {
 			// First, see if we're dominated by an explicit nil check.
 			if len(b.Preds) == 1 {
 				p := b.Preds[0].b
-				if p.Kind == BlockIf && p.Controls[0].Op == OpIsNonNil && p.Succs[0].b == b {
+				if p.Kind == block.BlockIf && p.Controls[0].Op == OpIsNonNil && p.Succs[0].b == b {
 					if ptr := p.Controls[0].Args[0]; nonNilValues[ptr.ID] == nil {
 						nonNilValues[ptr.ID] = ptr
 						work = append(work, bp{op: ClearPtr, ptr: ptr})
@@ -217,13 +218,13 @@ func nilcheckelim2(f *Func) {
 					f.Warnl(v.Pos, "removed nil check")
 				}
 				// For bug 33724, policy is that we might choose to bump an existing position
-				// off the faulting load in favor of the one from the nil check.
+				// off the faulting load/store in favor of the one from the nil check.
 
 				// Iteration order means that first nilcheck in the chain wins, others
 				// are bumped into the ordinary statement preservation algorithm.
 				uid, _ := unnecessary.get(v.Args[0].ID)
 				u := b.Values[uid]
-				if !u.Type.IsMemory() && !u.Pos.SameFileAndLine(v.Pos) {
+				if !u.Pos.SameFileAndLine(v.Pos) {
 					if u.Pos.IsStmt() == src.PosIsStmt {
 						pendingLines.add(u.Pos)
 					}
