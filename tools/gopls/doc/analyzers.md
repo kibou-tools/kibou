@@ -384,13 +384,11 @@ In many cases, assigning to the blank identifier is unnecessary.
 Before:
 
 	for _ = range s {}
-	x, _ = someMap[key]
 	_ = <-ch
 
 After:
 
 	for range s{}
-	x = someMap[key]
 	<-ch
 
 Available since
@@ -1028,6 +1026,8 @@ Package documentation: [SA1001](https://staticcheck.dev/docs/checks/#SA1001)
 <a id='SA1002'></a>
 ## `SA1002`: Invalid format in time.Parse
 
+time.Parse requires a layout string that uses Go's reference time: 'Mon Jan 2 15:04:05 MST 2006'. The layout must represent this date and time exactly. See [https://pkg.go.dev/time#pkg-constants](https://pkg.go.dev/time#pkg-constants) for layout examples.
+
 Available since
 
 	2017.1
@@ -1162,6 +1162,8 @@ Package documentation: [SA1011](https://staticcheck.dev/docs/checks/#SA1011)
 <a id='SA1012'></a>
 ## `SA1012`: A nil context.Context is being passed to a function, consider using context.TODO instead
 
+The context package prohibits the use of a nil context. If no parent context is available, a new context should be used, e.g. context.TODO or context.Background.
+
 Available since
 
 	2017.1
@@ -1185,6 +1187,8 @@ Package documentation: [SA1013](https://staticcheck.dev/docs/checks/#SA1013)
 
 <a id='SA1014'></a>
 ## `SA1014`: Non-pointer value passed to Unmarshal or Decode
+
+Functions such as encoding/json.Unmarshal and (\*encoding/json.Decoder).Decode require a pointer to the value that should be populated. Passing a non-pointer value results in the function returning an error at runtime, as it cannot modify the target value.
 
 Available since
 
@@ -1255,6 +1259,8 @@ Package documentation: [SA1018](https://staticcheck.dev/docs/checks/#SA1018)
 
 <a id='SA1020'></a>
 ## `SA1020`: Using an invalid host:port pair with a net.Listen-related function
+
+Functions such as net.Listen, net.ListenTCP, and similar, expect a valid network address in the form of host:port. The host, the port, or both, can be omitted, e.g. localhost:8080, :8080 or : are valid host:port pairs. See [https://pkg.go.dev/net#Listen](https://pkg.go.dev/net#Listen) for the full documentation.
 
 Available since
 
@@ -1470,6 +1476,16 @@ Package documentation: [SA2002](https://staticcheck.dev/docs/checks/#SA2002)
 <a id='SA2003'></a>
 ## `SA2003`: Deferred Lock right after locking, likely meant to defer Unlock instead
 
+Deferring a call to Lock immediately after locking is almost always a typo. For example:
+
+	mu.Lock()
+	defer mu.Lock()
+
+While this does not strictly guarantee a deadlock depending on how the surrounding code is structured, it is highly likely to be a mistake. The intended code was likely this:
+
+	mu.Lock()
+	defer mu.Unlock()
+
 Available since
 
 	2017.1
@@ -1622,6 +1638,8 @@ Package documentation: [SA4009](https://staticcheck.dev/docs/checks/#SA4009)
 
 <a id='SA4010'></a>
 ## `SA4010`: The result of append will never be observed anywhere
+
+Calls to append produce a new slice value. When the result of append is assigned to a variable that is never subsequently read, the append operation may have an unintended effect.
 
 Available since
 
@@ -2132,68 +2150,6 @@ Default: off. Enable by setting `"analyses": {"SA5010": true}`.
 
 Package documentation: [SA5010](https://staticcheck.dev/docs/checks/#SA5010)
 
-<a id='SA5011'></a>
-## `SA5011`: Possible nil pointer dereference
-
-A pointer is being dereferenced unconditionally, while also being checked against nil in another place. This suggests that the pointer may be nil and dereferencing it may panic. This is commonly a result of improperly ordered code or missing return statements. Consider the following examples:
-
-	func fn(x *int) {
-	    fmt.Println(*x)
-
-	    // This nil check is equally important for the previous dereference
-	    if x != nil {
-	        foo(*x)
-	    }
-	}
-
-	func TestFoo(t *testing.T) {
-	    x := compute()
-	    if x == nil {
-	        t.Errorf("nil pointer received")
-	    }
-
-	    // t.Errorf does not abort the test, so if x is nil, the next line will panic.
-	    foo(*x)
-	}
-
-Staticcheck tries to deduce which functions abort control flow. For example, it is aware that a function will not continue execution after a call to panic or log.Fatal. However, sometimes this detection fails, in particular in the presence of conditionals. Consider the following example:
-
-	func Log(msg string, level int) {
-	    fmt.Println(msg)
-	    if level == levelFatal {
-	        os.Exit(1)
-	    }
-	}
-
-	func Fatal(msg string) {
-	    Log(msg, levelFatal)
-	}
-
-	func fn(x *int) {
-	    if x == nil {
-	        Fatal("unexpected nil pointer")
-	    }
-	    fmt.Println(*x)
-	}
-
-Staticcheck will flag the dereference of x, even though it is perfectly safe. Staticcheck is not able to deduce that a call to Fatal will exit the program. For the time being, the easiest workaround is to modify the definition of Fatal like so:
-
-	func Fatal(msg string) {
-	    Log(msg, levelFatal)
-	    panic("unreachable")
-	}
-
-We also hard-code functions from common logging packages such as logrus. Please file an issue if we're missing support for a popular package.
-
-Available since
-
-	2020.1
-
-
-Default: off. Enable by setting `"analyses": {"SA5011": true}`.
-
-Package documentation: [SA5011](https://staticcheck.dev/docs/checks/#SA5011)
-
 <a id='SA5012'></a>
 ## `SA5012`: Passing odd-sized slice to function expecting even size
 
@@ -2567,6 +2523,35 @@ Default: on.
 
 Package documentation: [SA9009](https://staticcheck.dev/docs/checks/#SA9009)
 
+<a id='SA9010'></a>
+## `SA9010`: Returned function should be called in defer
+
+If you have a function such as:
+
+	func f() func() {
+	    // Do something.
+	    return func() {
+	        // Do something.
+	    }
+	}
+
+Then calling that in defer:
+
+	defer f()
+
+Is almost always a mistake, since you typically want to call the returned function:
+
+	defer f()()
+
+Available since
+
+	2026.2
+
+
+Default: on.
+
+Package documentation: [SA9010](https://staticcheck.dev/docs/checks/#SA9010)
+
 <a id='ST1000'></a>
 ## `ST1000`: Incorrect or missing package comment
 
@@ -2871,7 +2856,7 @@ The any analyzer suggests replacing uses of the empty interface type, \`interfac
 
 Default: on.
 
-Package documentation: [any](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#any)
+Package documentation: [any](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_any)
 
 <a id='appendclipped'></a>
 ## `appendclipped`: simplify append chains using slices.Concat
@@ -2887,7 +2872,7 @@ This analyzer is currently disabled by default as the transformation does not pr
 
 Default: off. Enable by setting `"analyses": {"appendclipped": true}`.
 
-Package documentation: [appendclipped](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#appendclipped)
+Package documentation: [appendclipped](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_appendclipped)
 
 <a id='appends'></a>
 ## `appends`: check for missing values after append
@@ -2964,7 +2949,7 @@ The atomic types are safer because they don't allow non-atomic access, which is 
 
 Default: on.
 
-Package documentation: [atomictypes](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#atomictypes)
+Package documentation: [atomictypes](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_atomictypes)
 
 <a id='bloop'></a>
 ## `bloop`: replace for-range over b.N with b.Loop
@@ -2978,7 +2963,7 @@ Caveats: The b.Loop() method is designed to prevent the compiler from optimizing
 
 Default: on.
 
-Package documentation: [bloop](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#bloop)
+Package documentation: [bloop](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_bloop)
 
 <a id='bools'></a>
 ## `bools`: check for common mistakes involving boolean operators
@@ -3134,7 +3119,7 @@ would become
 
 Default: on.
 
-Package documentation: [embedlit](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#embedlit)
+Package documentation: [embedlit](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_embedlit)
 
 <a id='errorsas'></a>
 ## `errorsas`: report passing non-pointer or non-error values to errors.As
@@ -3170,7 +3155,7 @@ The fix is only offered if the var declaration has the form shown and there are 
 
 Default: on.
 
-Package documentation: [errorsastype](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#errorsastype)
+Package documentation: [errorsastype](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_errorsastype)
 
 <a id='errorsastypeshadow'></a>
 ## `errorsastypeshadow`: report shadowing of errors.AsType[T] in if/else chains
@@ -3254,7 +3239,7 @@ Since its fix is not a Pareto improvement, fmtappendf is disabled by default in 
 
 Default: on.
 
-Package documentation: [fmtappendf](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#fmtappendf)
+Package documentation: [fmtappendf](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_fmtappendf)
 
 <a id='forvar'></a>
 ## `forvar`: remove redundant re-declaration of loop variables
@@ -3266,7 +3251,7 @@ This fix only applies to \`range\` loops.
 
 Default: on.
 
-Package documentation: [forvar](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#forvar)
+Package documentation: [forvar](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_forvar)
 
 <a id='framepointer'></a>
 ## `framepointer`: report assembly that clobbers the frame pointer before saving it
@@ -3334,6 +3319,20 @@ The Read method in v has a different signature than the Read method in io.Reader
 Default: on.
 
 Package documentation: [ifaceassert](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/ifaceassert)
+
+<a id='importcomment'></a>
+## `importcomment`: remove obsolete comments specifying canonical import path
+
+The importcomment analyzer removes comments specifying the canonical import path, such as
+
+	package foo // import "example.com/foo"
+
+The go command enforced these comments in GOPATH mode via "go get", but ignores them in module mode, so they are obsolete once the package belongs to a module. The fix removes the comment.
+
+
+Default: on.
+
+Package documentation: [importcomment](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_importcomment)
 
 <a id='infertypeargs'></a>
 ## `infertypeargs`: check for unnecessary type arguments in call expressions
@@ -3555,7 +3554,7 @@ The transformation to \`maps.Clone\` is applied conservatively, as it preserves 
 
 Default: on.
 
-Package documentation: [mapsloop](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#mapsloop)
+Package documentation: [mapsloop](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_mapsloop)
 
 <a id='minmax'></a>
 ## `minmax`: replace if/else statements with calls to min or max
@@ -3573,7 +3572,7 @@ This analyzer avoids making suggestions for floating-point types, as the behavio
 
 Default: on.
 
-Package documentation: [minmax](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#minmax)
+Package documentation: [minmax](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_minmax)
 
 <a id='newexpr'></a>
 ## `newexpr`: simplify code by using go1.26's new(expr)
@@ -3602,7 +3601,7 @@ Wrapper functions such as varOf are common when working with Go serialization pa
 
 Default: on.
 
-Package documentation: [newexpr](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#newexpr)
+Package documentation: [newexpr](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_newexpr)
 
 <a id='nilfunc'></a>
 ## `nilfunc`: check for useless comparisons between functions and nil
@@ -3720,7 +3719,7 @@ Replacing \`omitempty\` with \`omitzero\` is a change in behavior. The original 
 
 Default: on.
 
-Package documentation: [omitzero](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#omitzero)
+Package documentation: [omitzero](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_omitzero)
 
 <a id='plusbuild'></a>
 ## `plusbuild`: remove obsolete //+build comments
@@ -3738,7 +3737,7 @@ in files that also contain a Go 1.18-style tag such as:
 
 Default: on.
 
-Package documentation: [plusbuild](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#plusbuild)
+Package documentation: [plusbuild](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_plusbuild)
 
 <a id='printf'></a>
 ## `printf`: check consistency of Printf format strings and arguments
@@ -3751,6 +3750,18 @@ See the documentation of the fmt package for the complete set of format operator
 Default: on.
 
 Package documentation: [printf](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/printf)
+
+<a id='ptrtoerror'></a>
+## `ptrtoerror`: detect inconsistent conversions of concrete types to error
+
+The ptrtoerror analyzer detects when a concrete type E is converted to the error interface inconsistently, both as a value of type E and as a pointer of type \*E. Such inconsistency defeats attempts by client code to test for specific error types using type assertions or library functions such as [errors.As](/errors#As) and [errors.Is](/errors#Is).
+
+The analyzer also detects when both E and \*E implement error but neither of those types is converted to error within the defining package, leaving the intended error form (E or \*E) ambiguous. This diagnostic offers two alternative fixes to add declarations that make the intent explicit.
+
+
+Default: on.
+
+Package documentation: [ptrtoerror](https://pkg.go.dev/golang.org/x/tools/gopls/internal/analysis/ptrtoerror)
 
 <a id='rangeint'></a>
 ## `rangeint`: replace 3-clause for loops with for-range over integers
@@ -3768,7 +3779,7 @@ This transformation is applied only if (a) the loop variable is not modified wit
 
 Default: on.
 
-Package documentation: [rangeint](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#rangeint)
+Package documentation: [rangeint](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_rangeint)
 
 <a id='recursiveiter'></a>
 ## `recursiveiter`: check for inefficient recursive iterators
@@ -3839,6 +3850,20 @@ Default: on.
 
 Package documentation: [recursiveiter](https://pkg.go.dev/golang.org/x/tools/gopls/internal/analysis/recursiveiter)
 
+<a id='reflecttypeassert'></a>
+## `reflecttypeassert`: replace v.Interface().(T) with reflect.TypeAssert[T](v)
+
+This analyzer suggests fixes to replace two-valued type assertions on the result of (reflect.Value).Interface with reflect.TypeAssert, introduced in go1.25, which avoids the intermediate allocation of an interface value, for example:
+
+	x, ok := v.Interface().(string)  ->  x, ok := reflect.TypeAssert[string](v)
+
+No fix is offered for single-valued assertions, since they panic when the assertion fails whereas reflect.TypeAssert does not. Nor is a fix offered for a type switch.
+
+
+Default: on.
+
+Package documentation: [reflecttypeassert](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_reflecttypeassert)
+
 <a id='reflecttypefor'></a>
 ## `reflecttypefor`: replace reflect.TypeOf(x) with TypeFor[T]()
 
@@ -3869,7 +3894,7 @@ or when the operand has potential side effects.
 
 Default: on.
 
-Package documentation: [reflecttypefor](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#reflecttypefor)
+Package documentation: [reflecttypefor](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_reflecttypefor)
 
 <a id='scannererr'></a>
 ## `scannererr`: report failure to check bufio.Scanner.Err
@@ -4039,7 +4064,25 @@ If the loop index is needed beyond just indexing into the slice, both the index 
 
 Default: on.
 
-Package documentation: [slicesbackward](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#slicesbackward)
+Package documentation: [slicesbackward](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_slicesbackward)
+
+<a id='slicesclip'></a>
+## `slicesclip`: replace three-index slice expressions with slices.Clip
+
+The slicesclip analyzer suggests replacing a full slice expression of the form
+
+	x[:len(x):len(x)]
+
+which clips the capacity of a slice to its length, with the simpler and more readable
+
+	slices.Clip(x)
+
+added in Go 1.21.
+
+
+Default: on.
+
+Package documentation: [slicesclip](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_slicesclip)
 
 <a id='slicescontains'></a>
 ## `slicescontains`: replace loops with slices.Contains or slices.ContainsFunc
@@ -4051,7 +4094,7 @@ If the expression for the target element has side effects, this transformation w
 
 Default: on.
 
-Package documentation: [slicescontains](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#slicescontains)
+Package documentation: [slicescontains](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_slicescontains)
 
 <a id='slicesdelete'></a>
 ## `slicesdelete`: replace append-based slice deletion with slices.Delete
@@ -4071,7 +4114,7 @@ This analyzer is disabled by default. The \`slices.Delete\` function zeros the e
 
 Default: off. Enable by setting `"analyses": {"slicesdelete": true}`.
 
-Package documentation: [slicesdelete](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#slicesdelete)
+Package documentation: [slicesdelete](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_slicesdelete)
 
 <a id='slicessort'></a>
 ## `slicessort`: replace sort.Slice with slices.Sort for basic types
@@ -4085,7 +4128,7 @@ with the simpler \`slices.Sort(s)\`, which was added in Go 1.21.
 
 Default: on.
 
-Package documentation: [slicessort](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#slicessort)
+Package documentation: [slicessort](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_slicessort)
 
 <a id='slog'></a>
 ## `slog`: check for invalid structured logging calls
@@ -4157,7 +4200,7 @@ This analyzer suggests a fix to replace each loop of the form:
 or its "for elem := range x.Len()" equivalent by a range loop over an iterator offered by the same data type:
 
 	for elem := range x.All() {
-		use(x.At(i)
+		use(elem)
 	}
 
 where x is one of various well-known types in the standard library.
@@ -4165,7 +4208,7 @@ where x is one of various well-known types in the standard library.
 
 Default: on.
 
-Package documentation: [stditerators](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#stditerators)
+Package documentation: [stditerators](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_stditerators)
 
 <a id='stdmethods'></a>
 ## `stdmethods`: check signature of methods of well-known interfaces
@@ -4266,7 +4309,7 @@ The WriteString call can be further simplified to the more efficient fmt.Fprintf
 
 Default: on.
 
-Package documentation: [stringsbuilder](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#stringbuilder)
+Package documentation: [stringsbuilder](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_stringsbuilder)
 
 <a id='stringscut'></a>
 ## `stringscut`: replace strings.Index etc. with strings.Cut
@@ -4318,7 +4361,7 @@ The fix is only offered when sep is a non-empty string literal. When sep is a va
 
 Default: on.
 
-Package documentation: [stringscut](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#stringscut)
+Package documentation: [stringscut](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_stringscut)
 
 <a id='stringscutprefix'></a>
 ## `stringscutprefix`: replace HasPrefix/TrimPrefix with CutPrefix
@@ -4352,7 +4395,7 @@ is fixed to:
 
 Default: on.
 
-Package documentation: [stringscutprefix](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#stringscutprefix)
+Package documentation: [stringscutprefix](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_stringscutprefix)
 
 <a id='stringsseq'></a>
 ## `stringsseq`: replace ranging over Split/Fields with SplitSeq/FieldsSeq
@@ -4370,7 +4413,7 @@ which was added in Go 1.24 and avoids allocating a slice for the substrings. The
 
 Default: on.
 
-Package documentation: [stringsseq](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#stringsseq)
+Package documentation: [stringsseq](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_stringsseq)
 
 <a id='structtag'></a>
 ## `structtag`: check that struct field tags conform to reflect.StructTag.Get
@@ -4397,7 +4440,7 @@ This change is only suggested if the \`cancel\` function is not used for any oth
 
 Default: on.
 
-Package documentation: [testingcontext](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#testingcontext)
+Package documentation: [testingcontext](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_testingcontext)
 
 <a id='testinggoroutine'></a>
 ## `testinggoroutine`: report calls to (*testing.T).Fatal from goroutines started by a test
@@ -4473,7 +4516,7 @@ where ptr is an unsafe.Pointer, is replaced by:
 
 Default: on.
 
-Package documentation: [unsafefuncs](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#unsafefuncs)
+Package documentation: [unsafefuncs](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_unsafefuncs)
 
 <a id='unsafeptr'></a>
 ## `unsafeptr`: check for invalid conversions of uintptr to unsafe.Pointer
@@ -4638,7 +4681,7 @@ which was added in Go 1.25.
 
 Default: on.
 
-Package documentation: [waitgroupgo](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#waitgroupgo)
+Package documentation: [waitgroupgo](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize#hdr-Analyzer_waitgroupgo)
 
 <a id='writestring'></a>
 ## `writestring`: detect inefficient string concatenation in uses of WriteString

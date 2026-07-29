@@ -1941,11 +1941,28 @@ func (c *commandHandler) MoveType(ctx context.Context, args command.MoveTypeArgs
 	err := c.run(ctx, commandConfig{
 		forURI: args.Location.URI,
 	}, func(ctx context.Context, deps commandDeps) error {
-		changes, err := golang.MoveType(ctx, deps.fh, deps.snapshot, args.Location, "newpkg/new.go")
+		// TODO(mkalil): implement with interactive params
+		destFile := filepath.Join(args.Location.URI.DirPath(), "otherpkg", "destfile.go")
+		destURI := protocol.URIFromPath(destFile)
+		changes, rng, err := golang.MoveType(ctx, deps.fh, deps.snapshot, args.Location, destURI)
+		if err != nil {
+			return err
+		}
+		// Open the file where the type was moved to.
+		showDocumentImpl(ctx, c.s.client, protocol.URI(destURI), &rng.Range, c.s.options)
+		return applyChanges(ctx, c.s.client, changes)
+	})
+	return err
+}
+
+func (c *commandHandler) MoveDeclaration(ctx context.Context, args command.MoveDeclarationArgs, params *protocol.InteractiveParams) error {
+	return c.run(ctx, commandConfig{
+		forURI: args.Location.URI,
+	}, func(ctx context.Context, deps commandDeps) error {
+		changes, _, err := golang.MoveDeclaration(ctx, deps.fh, deps.snapshot)
 		if err != nil {
 			return err
 		}
 		return applyChanges(ctx, c.s.client, changes)
 	})
-	return err
 }

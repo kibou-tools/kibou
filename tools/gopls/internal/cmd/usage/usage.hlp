@@ -2,12 +2,14 @@
 gopls is a Go language server.
 
 It is typically used with an editor to provide language features. When no
-command is specified, gopls will default to the 'serve' command. The language
-features can also be accessed via the gopls command-line interface.
+command is specified, gopls will default to the 'serve' command. To see flags
+for the 'serve' command, run 'gopls help serve'.
+
+The language features can also be accessed via the gopls command-line interface.
 
 For documentation of all its features, see:
 
-   https://github.com/golang/tools/blob/master/gopls/doc/features
+   https://go.dev/gopls/features
 
 Usage:
   gopls help [<subject>]
@@ -17,7 +19,6 @@ Command:
 Main                
   serve             run a server for Go code using the Language Server Protocol
   version           print the gopls version information
-  bug               report a bug in gopls
   help              print usage information for subcommands
   api-json          print JSON describing gopls API
   licenses          print licenses of included software
@@ -29,7 +30,6 @@ Features
   codelens          List or execute code lenses for a file
   definition        show declaration of selected identifier
   execute           Execute a gopls custom LSP command
-  fix               apply suggested fixes (obsolete)
   folding_ranges    display selected file's folding ranges
   format            format the code according to the go standard
   mcp               start the gopls MCP server in headless mode
@@ -37,7 +37,6 @@ Features
   implementation    display selected identifier's implementation
   imports           updates import statements
   remote            interact with the gopls daemon
-  inspect           interact with the gopls daemon (deprecated: use 'remote')
   links             list links in a file
   prepare_rename    test validity of a rename operation at location
   references        display selected identifier's references
@@ -49,18 +48,6 @@ Features
   workspace_symbol  search symbols in workspace
 
 flags:
-  -debug=string
-    	serve debug information on the supplied address
-  -listen=string
-    	address on which to listen for remote connections. If prefixed by 'unix;', the subsequent address is assumed to be a unix domain socket. Otherwise, TCP is used.
-  -listen.timeout=duration
-    	when used with -listen, shut down the server when there are no connected clients for this duration
-  -logfile=string
-    	filename to log to. if value is "auto", then logging to a default output file is enabled
-  -mcp.listen=string
-    	experimental: address on which to listen for model context protocol connections. If port is localhost:0, pick a random port in localhost instead.
-  -mode=string
-    	no effect
   -otel=string
     	export telemetry to specified OpenTelemetry collector address (e.g. http://localhost:4318)
   -profile.alloc=string
@@ -81,9 +68,9 @@ flags:
     	when used with -remote=auto, the -listen.timeout value used to start the daemon (default 1m0s)
   -remote.logfile=string
     	when used with -remote=auto, the -logfile value used to start the daemon
-  -rpc.trace
-    	print the full rpc trace in lsp inspector format
   -v,-verbose
     	verbose output
   -vv,-veryverbose
     	very verbose output
+
+For flags specific to running the language server (such as -listen, -logfile, or -debug), run 'gopls help serve'.

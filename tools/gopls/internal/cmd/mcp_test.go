@@ -10,13 +10,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -205,9 +203,7 @@ package b
 
 func MyFun() {}
 `)
-	port := strconv.Itoa(getRandomPort())
-	addr := "localhost:" + port
-	goplsCmd := exec.Command(os.Args[0], "-v", "mcp", "-listen="+addr)
+	goplsCmd := exec.Command(os.Args[0], "-v", "mcp", "-listen=localhost:0")
 	goplsCmd.Env = append(os.Environ(), "ENTRYPOINT=goplsMain")
 	goplsCmd.Dir = tree
 	goplsCmd.Stdout = os.Stderr
@@ -232,18 +228,19 @@ func MyFun() {}
 		goplsCmd.Wait()
 	}()
 
-	// Wait for the MCP server to start listening. The referenced log occurs
-	// after the connection is opened via net.Listen and the HTTP handlers are
-	// set up.
-	ready := make(chan bool)
+	// Wait for the MCP server to start listening and send the address through
+	// the channel. The referenced log occurs after the connection is opened via
+	// net.Listen and the HTTP handlers are set up.
+	ready := make(chan string, 1)
 	go func() {
-		// Copy from the pipe to stderr, keeping an eye out for the "mcp http
-		// server listening" string.
+		defer close(ready)
+		// Copy from the pipe to stderr, keeping an eye out for the "Gopls MCP
+		// server: listening on <addr>" string.
 		scan := bufio.NewScanner(stderr)
 		for scan.Scan() {
 			line := scan.Text()
-			if strings.Contains(line, "mcp http server listening") {
-				ready <- true
+			if _, after, ok := strings.Cut(line, "Gopls MCP server: listening on "); ok {
+				ready <- strings.TrimSpace(after)
 			}
 			fmt.Fprintln(os.Stderr, line)
 		}
@@ -252,7 +249,16 @@ func MyFun() {}
 		}
 	}()
 
-	<-ready
+	var addr string
+	select {
+	case addr = <-ready:
+		if addr == "" {
+			t.Fatalf("gopls mcp server exited without starting")
+		}
+	case <-time.After(60 * time.Second):
+		t.Fatalf("timed out waiting for gopls mcp server to start")
+	}
+
 	client := mcp.NewClient(&mcp.Implementation{Name: "client", Version: "v0.0.1"}, nil)
 	ctx := t.Context()
 	mcpSession, err := client.Connect(ctx, &mcp.SSEClientTransport{Endpoint: "http://" + addr}, nil)
@@ -419,18 +425,6 @@ func resultText(t *testing.T, res *mcp.CallToolResult) string {
 		}
 	}
 	return buf.String()
-}
-
-// getRandomPort returns the number of a random available port. Inherently racy:
-// nothing stops another process from listening on it - but this should be fine
-// for testing purposes.
-func getRandomPort() int {
-	listener, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		panic(err)
-	}
-	defer listener.Close()
-	return listener.Addr().(*net.TCPAddr).Port
 }
 
 // supportsFsnotify returns true if fsnotify supports the os.

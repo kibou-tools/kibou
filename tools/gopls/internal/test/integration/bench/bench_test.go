@@ -30,7 +30,6 @@ import (
 	"golang.org/x/tools/internal/jsonrpc2"
 	"golang.org/x/tools/internal/jsonrpc2/servertest"
 	"golang.org/x/tools/internal/pprof"
-	"golang.org/x/tools/internal/tool"
 )
 
 var (
@@ -57,7 +56,7 @@ const runAsGopls = "_GOPLS_BENCH_RUN_AS_GOPLS"
 func TestMain(m *testing.M) {
 	bug.PanicOnBugs = true
 	if os.Getenv(runAsGopls) == "true" {
-		tool.Main(context.Background(), cmd.New(), os.Args[1:])
+		cmd.Main()
 		os.Exit(0)
 	}
 	event.SetExporter(nil) // don't log to stderr

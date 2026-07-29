@@ -45,6 +45,7 @@ import (
 	"golang.org/x/tools/go/callgraph"
 	"golang.org/x/tools/go/ssa"
 	"golang.org/x/tools/go/types/typeutil"
+	"golang.org/x/tools/internal/typesinternal"
 )
 
 // A Result holds the results of Rapid Type Analysis, which includes the
@@ -72,6 +73,10 @@ type Result struct {
 	// 	fmt.Println(new(A))
 	// Types *A, A and B are accessible to reflection, but the unnamed
 	// type struct{B} is not.
+	//
+	// TODO(adonovan): populating this field is expensive yet it
+	// is never used in x/tools. Add a revised [Analyze] API that
+	// provides the option not to set it.
 	RuntimeTypes typeutil.Map
 }
 
@@ -114,15 +119,13 @@ type rta struct {
 
 type concreteTypeInfo struct {
 	C          types.Type
-	mset       *types.MethodSet
 	fprint     uint64             // fingerprint of method set
 	implements []*types.Interface // unordered set of implemented interfaces
 }
 
 type interfaceTypeInfo struct {
 	I               *types.Interface
-	mset            *types.MethodSet
-	fprint          uint64
+	fprint          uint64       // fingerprint of method set
 	implementations []types.Type // unordered set of concrete implementations
 }
 
@@ -281,7 +284,7 @@ func (r *rta) visitFunc(f *ssa.Function) {
 				// interface materializes its runtime
 				// type, allowing any of its exported
 				// methods to be called though reflection.
-				r.addRuntimeType(instr.X.Type(), false)
+				r.addRuntimeType(instr.X.Type())
 			}
 
 			// Process all address-taken functions.
@@ -361,11 +364,9 @@ func (r *rta) interfaces(C types.Type) []*types.Interface {
 	if v := r.concreteTypes.At(C); v != nil {
 		cinfo = v.(*concreteTypeInfo)
 	} else {
-		mset := r.prog.MethodSets.MethodSet(C)
 		cinfo = &concreteTypeInfo{
 			C:      C,
-			mset:   mset,
-			fprint: fingerprint(mset),
+			fprint: fingerprint(r.prog.MethodSets.MethodSet(C)),
 		}
 		r.concreteTypes.Set(C, cinfo)
 
@@ -390,11 +391,9 @@ func (r *rta) implementations(I *types.Interface) []types.Type {
 	if v := r.interfaceTypes.At(I); v != nil {
 		iinfo = v.(*interfaceTypeInfo)
 	} else {
-		mset := r.prog.MethodSets.MethodSet(I)
 		iinfo = &interfaceTypeInfo{
 			I:      I,
-			mset:   mset,
-			fprint: fingerprint(mset),
+			fprint: fingerprint(r.prog.MethodSets.MethodSet(I)),
 		}
 		r.interfaceTypes.Set(I, iinfo)
 
@@ -413,140 +412,46 @@ func (r *rta) implementations(I *types.Interface) []types.Type {
 
 // addRuntimeType is called for each concrete type that can be the
 // dynamic type of some interface or reflect.Value.
-// Adapted from needMethods in go/ssa/builder.go
-func (r *rta) addRuntimeType(T types.Type, skip bool) {
-	// Never record aliases.
-	T = types.Unalias(T)
-
-	if prev, ok := r.result.RuntimeTypes.At(T).(bool); ok {
-		if skip && !prev {
-			r.result.RuntimeTypes.Set(T, skip)
+func (r *rta) addRuntimeType(T types.Type) {
+	methodSetOf := r.prog.MethodSets.MethodSet
+	typesinternal.ForEachElement(methodSetOf, T, func(T types.Type, access bool) bool {
+		if prevInaccess, ok := r.result.RuntimeTypes.At(T).(bool); ok {
+			if prevInaccess && access {
+				// A type previously marked inaccessible (ok && prevInaccess)
+				// is now found to be accessible (access):
+				// record that it is no longer inaccessible (false).
+				// (The inverted sense of the map is regrettable.)
+				r.result.RuntimeTypes.Set(T, false)
+			}
+			return true // seen; prune traversal
 		}
-		return
-	}
-	r.result.RuntimeTypes.Set(T, skip)
+		r.result.RuntimeTypes.Set(T, !access) // record inaccessibility
 
-	mset := r.prog.MethodSets.MethodSet(T)
+		if !types.IsInterface(T) {
+			// T is a new concrete type.
 
-	if _, ok := T.Underlying().(*types.Interface); !ok {
-		// T is a new concrete type.
-		for i, n := 0, mset.Len(); i < n; i++ {
-			sel := mset.At(i)
-			m := sel.Obj()
-
-			if m.Exported() {
-				if m.Type().(*types.Signature).TypeParams().Len() > 0 {
-					// NOTE(kibou): Generic methods are not accessible via reflection
-					// based on https://github.com/golang/go/issues/77273, so they
-					// are not reflection-reachable. prog.MethodValue would also
-					// return nil for an uninstantiated generic method.
-					continue
+			// Exported methods are always potentially callable via reflection.
+			for sel := range methodSetOf(T).Methods() {
+				if m := sel.Obj(); m.Exported() {
+					if m.Type().(*types.Signature).TypeParams().Len() > 0 {
+						continue
+					}
+					r.addReachable(r.prog.MethodValue(sel), true)
 				}
-				// Exported methods are always potentially callable via reflection.
-				r.addReachable(r.prog.MethodValue(sel), true)
+			}
+
+			// Add callgraph edge for each existing dynamic
+			// "invoke"-mode call via that interface.
+			for _, I := range r.interfaces(T) {
+				sites, _ := r.invokeSites.At(I).([]ssa.CallInstruction)
+				for _, site := range sites {
+					r.addInvokeEdge(site, T)
+				}
 			}
 		}
 
-		// Add callgraph edge for each existing dynamic
-		// "invoke"-mode call via that interface.
-		for _, I := range r.interfaces(T) {
-			sites, _ := r.invokeSites.At(I).([]ssa.CallInstruction)
-			for _, site := range sites {
-				r.addInvokeEdge(site, T)
-			}
-		}
-	}
-
-	// Precondition: T is not a method signature (*Signature with Recv()!=nil).
-	// Recursive case: skip => don't call makeMethods(T).
-	// Each package maintains its own set of types it has visited.
-
-	var n *types.Named
-	switch T := types.Unalias(T).(type) {
-	case *types.Named:
-		n = T
-	case *types.Pointer:
-		n, _ = types.Unalias(T.Elem()).(*types.Named)
-	}
-	if n != nil {
-		owner := n.Obj().Pkg()
-		if owner == nil {
-			return // built-in error type
-		}
-	}
-
-	// Recursion over signatures of each exported method.
-	for method := range mset.Methods() {
-		if method.Obj().Exported() {
-			sig := method.Type().(*types.Signature)
-			if sig.TypeParams().Len() > 0 {
-				// NOTE(kibou): Generic methods are not accessible via reflection
-				// based on https://github.com/golang/go/issues/77273, so just
-				// skip them here.
-				continue
-			}
-			r.addRuntimeType(sig.Params(), true)  // skip the Tuple itself
-			r.addRuntimeType(sig.Results(), true) // skip the Tuple itself
-		}
-	}
-
-	switch t := T.(type) {
-	case *types.Alias:
-		panic("unreachable")
-
-	case *types.Basic:
-		// nop
-
-	case *types.Interface:
-		// nop---handled by recursion over method set.
-
-	case *types.Pointer:
-		r.addRuntimeType(t.Elem(), false)
-
-	case *types.Slice:
-		r.addRuntimeType(t.Elem(), false)
-
-	case *types.Chan:
-		r.addRuntimeType(t.Elem(), false)
-
-	case *types.Map:
-		r.addRuntimeType(t.Key(), false)
-		r.addRuntimeType(t.Elem(), false)
-
-	case *types.Signature:
-		if t.Recv() != nil {
-			panic(fmt.Sprintf("Signature %s has Recv %s", t, t.Recv()))
-		}
-		r.addRuntimeType(t.Params(), true)  // skip the Tuple itself
-		r.addRuntimeType(t.Results(), true) // skip the Tuple itself
-
-	case *types.Named:
-		// A pointer-to-named type can be derived from a named
-		// type via reflection.  It may have methods too.
-		r.addRuntimeType(types.NewPointer(T), false)
-
-		// Consider 'type T struct{S}' where S has methods.
-		// Reflection provides no way to get from T to struct{S},
-		// only to S, so the method set of struct{S} is unwanted,
-		// so set 'skip' flag during recursion.
-		r.addRuntimeType(t.Underlying(), true)
-
-	case *types.Array:
-		r.addRuntimeType(t.Elem(), false)
-
-	case *types.Struct:
-		for i, n := 0, t.NumFields(); i < n; i++ {
-			r.addRuntimeType(t.Field(i).Type(), false)
-		}
-
-	case *types.Tuple:
-		for i, n := 0, t.Len(); i < n; i++ {
-			r.addRuntimeType(t.At(i).Type(), false)
-		}
-
-	default:
-		panic(T)
-	}
+		return false
+	})
 }
 
 // fingerprint returns a bitmask with one bit set per method id,
@@ -557,6 +462,9 @@ func fingerprint(mset *types.MethodSet) uint64 {
 	for method := range mset.Methods() {
 		method := method.Obj()
 		sig := method.Type().(*types.Signature)
+		if sig.TypeParams() != nil {
+			continue // skip generic methods since interfaces don't have them
+		}
 		sum := crc32.ChecksumIEEE(fmt.Appendf(space[:], "%s/%d/%d",
 			method.Id(),
 			sig.Params().Len(),

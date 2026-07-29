@@ -88,8 +88,8 @@ func (index *Index) Encode() []byte {
 
 // NewIndex returns a new index of method-set information for all
 // package-level types in the specified package.
-func NewIndex(fset *token.FileSet, pkg *types.Package) *Index {
-	return new(indexBuilder).build(fset, pkg)
+func NewIndex(enc *objectpath.Encoder, fset *token.FileSet, pkg *types.Package) *Index {
+	return new(indexBuilder).build(enc, fset, pkg)
 }
 
 // A Location records the extent of an identifier in byte-offset form.
@@ -294,15 +294,13 @@ type indexBuilder struct {
 }
 
 // build adds to the index all package-level named types of the specified package.
-func (b *indexBuilder) build(fset *token.FileSet, pkg *types.Package) *Index {
+func (b *indexBuilder) build(enc *objectpath.Encoder, fset *token.FileSet, pkg *types.Package) *Index {
 	_ = b.string("") // 0 => ""
 
 	objectPos := func(obj types.Object) gobPosition {
 		posn := safetoken.StartPosition(fset, obj.Pos())
 		return gobPosition{b.string(posn.Filename), posn.Offset, len(obj.Name())}
 	}
-
-	objectpathFor := new(objectpath.Encoder).For
 
 	// setindexInfo sets the (Posn, PkgPath, ObjectPath) fields for each method declaration.
 	setIndexInfo := func(m *gobMethod, method *types.Func) {
@@ -313,7 +311,7 @@ func (b *indexBuilder) build(fset *token.FileSet, pkg *types.Package) *Index {
 
 		// Instantiations of generic methods don't have an
 		// object path, so we use the generic.
-		p, err := objectpathFor(method.Origin())
+		p, err := enc.For(method.Origin())
 		if err != nil {
 			// This should never happen for a method of a package-level type.
 			// (It used to: see go.dev/issue70418.)
@@ -392,7 +390,9 @@ func methodSetInfo(t types.Type, setIndexInfo func(*gobMethod, *types.Func)) *go
 	var mask uint64
 	tricky := false
 	var buf []byte
-	methods := make([]*gobMethod, mset.Len())
+	// Preallocate capacity, but grow by append so that skipped
+	// (generic) methods leave no nil holes in the slice.
+	methods := make([]*gobMethod, 0, mset.Len())
 	for i := 0; i < mset.Len(); i++ {
 		m := mset.At(i).Obj().(*types.Func)
 		// Generic methods do not participate in interface satisfaction.
@@ -406,9 +406,10 @@ func methodSetInfo(t types.Type, setIndexInfo func(*gobMethod, *types.Func)) *go
 		}
 		buf = append(append(buf[:0], id...), fp...)
 		sum := crc32.ChecksumIEEE(buf)
-		methods[i] = &gobMethod{ID: id, Fingerprint: fp, Sum: sum, Tricky: isTricky}
+		gm := &gobMethod{ID: id, Fingerprint: fp, Sum: sum, Tricky: isTricky}
+		methods = append(methods, gm)
 		if setIndexInfo != nil {
-			setIndexInfo(methods[i], m) // set Position, PkgPath, ObjectPath
+			setIndexInfo(gm, m) // set Position, PkgPath, ObjectPath
 		}
 		mask |= 1 << uint64(((sum>>24)^(sum>>16)^(sum>>8)^sum)&0x3f)
 	}

@@ -5,6 +5,7 @@
 package modernize_test
 
 import (
+	"path/filepath"
 	"testing"
 
 	. "golang.org/x/tools/go/analysis/analysistest"
@@ -86,14 +87,30 @@ func TestPlusBuild(t *testing.T) {
 	RunWithSuggestedFixes(t, TestData(), modernize.PlusBuildAnalyzer, "plusbuild")
 }
 
+func TestImportComment(t *testing.T) {
+	// Loaded in module mode (a go.mod at the testdata root) so that
+	// pass.Module is set, which the analyzer requires.
+	dir := filepath.Join(TestData(), "importcommentmod")
+	RunWithSuggestedFixes(t, dir, modernize.ImportCommentAnalyzer, "./...")
+}
+
 func TestReflectTypeFor(t *testing.T) {
 	testenv.NeedsGo1Point(t, 25) // requires go1.25 types.Var.Kind
 	RunWithSuggestedFixes(t, TestData(), modernize.ReflectTypeForAnalyzer, "reflecttypefor")
 }
 
+func TestReflectTypeAssert(t *testing.T) {
+	testenv.NeedsGo1Point(t, 25) // reflect.TypeAssert requires go1.25
+	RunWithSuggestedFixes(t, TestData(), modernize.ReflectTypeAssertAnalyzer, "reflecttypeassert")
+}
+
 func TestSlicesBackward(t *testing.T) {
 	testenv.NeedsGo1Point(t, 23)
 	RunWithSuggestedFixes(t, TestData(), modernize.SlicesBackwardAnalyzer, "slicesbackward")
+}
+
+func TestSlicesClip(t *testing.T) {
+	RunWithSuggestedFixes(t, TestData(), modernize.SlicesClipAnalyzer, "slicesclip")
 }
 
 func TestSlicesContains(t *testing.T) {
@@ -123,7 +140,7 @@ func TestStringsCutPrefix(t *testing.T) {
 }
 
 func TestStringsSeq(t *testing.T) {
-	RunWithSuggestedFixes(t, TestData(), modernize.StringsSeqAnalyzer, "splitseq", "fieldsseq")
+	RunWithSuggestedFixes(t, TestData(), modernize.StringsSeqAnalyzer, "splitseq/...", "fieldsseq")
 }
 
 func TestTestingContext(t *testing.T) {

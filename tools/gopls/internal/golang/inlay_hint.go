@@ -140,6 +140,13 @@ func parameterNames(info *types.Info, pgf *parsego.File, qual types.Qualifier, c
 }
 
 func ignoredError(info *types.Info, pgf *parsego.File, qual types.Qualifier, cur inspector.Cursor, add func(protocol.InlayHint)) {
+	ignoreSubstrings := []string{
+		"ignore error",
+		"discard error",
+		"can't fail",
+		"cannot fail",
+	}
+
 outer:
 	for curCall := range cur.Preorder((*ast.ExprStmt)(nil)) {
 		stmt := curCall.Node().(*ast.ExprStmt)
@@ -166,11 +173,12 @@ outer:
 		if typesinternal.IsFunctionNamed(obj, "fmt", "Print", "Printf", "Println", "Fprint", "Fprintf", "Fprintln") ||
 			typesinternal.IsMethodNamed(obj, "bytes", "Buffer", "Write", "WriteByte", "WriteRune", "WriteString") ||
 			typesinternal.IsMethodNamed(obj, "strings", "Builder", "Write", "WriteByte", "WriteRune", "WriteString") ||
-			typesinternal.IsFunctionNamed(obj, "io", "WriteString") {
+			typesinternal.IsFunctionNamed(obj, "io", "WriteString") ||
+			typesinternal.IsMethodNamed(obj, "hash/maphash", "Hash", "Write", "WriteByte", "WriteString") {
 			continue
 		}
 
-		// Suppress if comment on same line contains "// ignore error".
+		// Suppress if comment on same line contains "ignore error" (etc).
 		line := func(pos token.Pos) int { return safetoken.Line(pgf.Tok, pos) }
 		comments := pgf.File.Comments
 		compare := func(cg *ast.CommentGroup, pos token.Pos) int {
@@ -179,8 +187,12 @@ outer:
 		i, _ := slices.BinarySearchFunc(comments, stmt.End(), compare)
 		if i >= 0 && i < len(comments) {
 			cg := comments[i]
-			if line(cg.Pos()) == line(stmt.End()) && strings.Contains(cg.Text(), "ignore error") {
-				continue outer // suppress
+			if line(cg.Pos()) == line(stmt.End()) {
+				for _, sub := range ignoreSubstrings {
+					if strings.Contains(cg.Text(), sub) {
+						continue outer // suppress
+					}
+				}
 			}
 		}
 
@@ -199,8 +211,14 @@ outer:
 func funcTypeParams(info *types.Info, pgf *parsego.File, qual types.Qualifier, cur inspector.Cursor, add func(protocol.InlayHint)) {
 	for curCall := range cur.Preorder((*ast.CallExpr)(nil)) {
 		call := curCall.Node().(*ast.CallExpr)
-		id, ok := call.Fun.(*ast.Ident)
-		if !ok {
+		var id *ast.Ident
+		switch fun := call.Fun.(type) {
+		case *ast.Ident:
+			id = fun
+		case *ast.SelectorExpr: // imported function
+			id = fun.Sel
+		}
+		if id == nil {
 			continue
 		}
 		inst := info.Instances[id]
@@ -213,7 +231,7 @@ func funcTypeParams(info *types.Info, pgf *parsego.File, qual types.Qualifier, c
 		}
 		var args []string
 		for t := range inst.TypeArgs.Types() {
-			args = append(args, t.String())
+			args = append(args, types.TypeString(t, qual))
 		}
 		if len(args) == 0 {
 			continue

@@ -377,6 +377,12 @@ func _() {
 		env.RunGoCommand("mod", "tidy")
 		env.Await(env.DoneWithChangeWatchedFiles())
 
+		// assure that the module cache index exists
+		// (rather than hoping the background goroutine finishes)
+		if _, err := modindex.Update(filepath.Join(env.Sandbox.GOPATH(), "pkg", "mod")); err != nil {
+			t.Fatal(err)
+		}
+
 		// Trigger unimported completions for the example.com/blah package.
 		env.OpenFile("main.go")
 		env.Await(env.DoneWithOpen())
@@ -1457,6 +1463,7 @@ var _ = blah.
 			t.Fatal(err)
 		}
 	}
+	modindex.Update(modcache)
 
 	WithOptions(
 		EnvVars{"GOMODCACHE": modcache},
@@ -1636,5 +1643,70 @@ func _() {
 				t.Errorf("unexpected unimported completion for blah with empty IndexDir: %v", item)
 			}
 		}
+	})
+}
+
+// ensure that completion converts the array to a slice
+func TestIssue80268(t *testing.T) {
+	const src = `
+-- go.mod --
+module mod.com
+go 1.22
+-- main.go --
+package example
+
+func foo(p *[10]int) {}
+
+func Bar() {
+	var array [10]int
+	foo(arr)
+}
+`
+	Run(t, src, func(t *testing.T, env *Env) {
+		env.OpenFile("main.go")
+		env.Await(env.DoneWithOpen())
+		loc := env.RegexpSearch("main.go", `foo\(arr()\)`)
+		completions := env.Completion(loc)
+		if len(completions.Items) == 0 {
+			t.Fatal("no completions found")
+		}
+		env.AcceptCompletion(loc, completions.Items[0])
+		env.Await(env.DoneWithChange())
+
+		fmt.Printf("New main.go content:\n%s\n", env.BufferText("main.go"))
+
+		var diags protocol.PublishDiagnosticsParams
+		env.Await(ReadDiagnostics("main.go", &diags))
+		if len(diags.Diagnostics) != 0 {
+			t.Errorf("unexpected diagnostics:\n")
+			for _, d := range diags.Diagnostics {
+				t.Errorf("Diagnostic: %d:%d: %s\n", d.Range.Start.Line, d.Range.Start.Character, d.Message)
+			}
+			for _, item := range completions.Items {
+				t.Errorf("Completion: %s (Kind: %v, Detail: %q)\n", item.Label, item.Kind, item.Detail)
+			}
+		}
+	})
+}
+
+// Check that the completion code no longer panics.
+func TestIssue75192(t *testing.T) {
+	const src = `
+-- go.mod --
+module mod.com
+go 1.22
+-- main.go --
+package main
+
+func main() {
+	_ = notypeinfo.(type)
+}
+`
+	Run(t, src, func(t *testing.T, env *Env) {
+		env.OpenFile("main.go")
+		env.Await(env.DoneWithOpen())
+		loc := env.RegexpSearch("main.go", `notypeinfo\.\(ty()pe\)`)
+		// this used to panic.
+		env.Completion(loc)
 	})
 }

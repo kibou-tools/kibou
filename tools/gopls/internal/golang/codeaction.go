@@ -256,7 +256,8 @@ var codeActionProducers = [...]codeActionProducer{
 	{kind: settings.RefactorExtractVariableAll, fn: refactorExtractVariableAll, needPkg: true},
 	{kind: settings.RefactorInlineCall, fn: refactorInlineCall, needPkg: true},
 	{kind: settings.RefactorInlineVariable, fn: refactorInlineVariable, needPkg: true},
-	// {kind: settings.RefactorMoveType, fn: refactorMoveType, needPkg: true},
+	{kind: settings.RefactorMoveType, fn: refactorMoveType, needPkg: true},
+	{kind: settings.RefactorMoveDeclaration, fn: refactorMoveDeclaration, needPkg: true},
 	{kind: settings.RefactorRewriteChangeQuote, fn: refactorRewriteChangeQuote},
 	{kind: settings.RefactorRewriteFillStruct, fn: refactorRewriteFillStruct, needPkg: true},
 	{kind: settings.RefactorRewriteFillSwitch, fn: refactorRewriteFillSwitch, needPkg: true},
@@ -339,7 +340,7 @@ func quickFix(ctx context.Context, req *codeActionsRequest) error {
 			si := stubmethods.GetIfaceStubInfo(req.pkg.FileSet(), info, req.pgf, start, end)
 			if si != nil {
 				qual := typesinternal.FileQualifier(req.pgf.File, si.Concrete.Obj().Pkg())
-				iface := types.TypeString(si.Interface.Type(), qual)
+				iface := types.TypeString(si.Interface, qual)
 				msg := fmt.Sprintf("Declare missing methods of %s", iface)
 				req.addApplyFixAction(msg, fixMissingInterfaceMethods, req.loc)
 			}
@@ -403,30 +404,31 @@ func importFixTitle(fix *imports.ImportFix) string {
 func fixedByImportFix(fix *imports.ImportFix, diagnostics []protocol.Diagnostic) []protocol.Diagnostic {
 	var results []protocol.Diagnostic
 	for _, diagnostic := range diagnostics {
+		msg := diagnostic.MessageString()
 		switch {
 		// "undeclared name: X" may be an unresolved import.
-		case strings.HasPrefix(diagnostic.Message, "undeclared name: "):
-			ident := strings.TrimPrefix(diagnostic.Message, "undeclared name: ")
+		case strings.HasPrefix(msg, "undeclared name: "):
+			ident := strings.TrimPrefix(msg, "undeclared name: ")
 			if ident == fix.IdentName {
 				results = append(results, diagnostic)
 			}
 		// "undefined: X" may be an unresolved import at Go 1.20+.
-		case strings.HasPrefix(diagnostic.Message, "undefined: "):
-			ident := strings.TrimPrefix(diagnostic.Message, "undefined: ")
+		case strings.HasPrefix(msg, "undefined: "):
+			ident := strings.TrimPrefix(msg, "undefined: ")
 			if ident == fix.IdentName {
 				results = append(results, diagnostic)
 			}
 		// "could not import: X" may be an invalid import.
-		case strings.HasPrefix(diagnostic.Message, "could not import: "):
-			ident := strings.TrimPrefix(diagnostic.Message, "could not import: ")
+		case strings.HasPrefix(msg, "could not import: "):
+			ident := strings.TrimPrefix(msg, "could not import: ")
 			if ident == fix.IdentName {
 				results = append(results, diagnostic)
 			}
 		// "X imported but not used" is an unused import.
 		// "X imported but not used as Y" is an unused import.
-		case strings.Contains(diagnostic.Message, " imported but not used"):
-			idx := strings.Index(diagnostic.Message, " imported but not used")
-			importPath := diagnostic.Message[:idx]
+		case strings.Contains(msg, " imported but not used"):
+			idx := strings.Index(msg, " imported but not used")
+			importPath := msg[:idx]
 			if importPath == fmt.Sprintf("%q", fix.StmtInfo.ImportPath) {
 				results = append(results, diagnostic)
 			}
@@ -1246,12 +1248,28 @@ func toggleCompilerOptDetails(ctx context.Context, req *codeActionsRequest) erro
 	return nil
 }
 
-// (this function is unused)
 func refactorMoveType(_ context.Context, req *codeActionsRequest) error {
+	if !req.snapshot.Options().MoveType {
+		return nil
+	}
 	curSel, _ := req.pgf.Cursor().FindByPos(req.start, req.end)
-	if _, _, _, typeName, ok := selectionContainsType(curSel); ok {
-		cmd := command.NewMoveTypeCommand(fmt.Sprintf("Move type %s", typeName), command.MoveTypeArgs{Location: req.loc})
+	if specCur, ok := selectionContainsTypeSpec(curSel); ok {
+		spec := specCur.Node().(*ast.TypeSpec)
+		cmd := command.NewMoveTypeCommand(fmt.Sprintf("Move type %s", spec.Name.Name), command.MoveTypeArgs{Location: req.loc})
 		req.addCommandAction(cmd, false)
 	}
+	return nil
+}
+
+func refactorMoveDeclaration(_ context.Context, req *codeActionsRequest) error {
+	if !req.snapshot.Options().MoveDeclaration {
+		return nil
+	}
+	if !supportsDialog(req.snapshot.Options().ClientOptions, moveDeclarationFormFile, moveDeclarationFormString) {
+		return nil
+	}
+	curSel, _ := req.pgf.Cursor().FindByPos(req.start, req.end)
+	cmd := command.NewMoveDeclarationCommand(fmt.Sprintf("Move declaration %s", curSel.Node()), command.MoveDeclarationArgs{Location: req.loc})
+	req.addCommandAction(cmd, false)
 	return nil
 }
