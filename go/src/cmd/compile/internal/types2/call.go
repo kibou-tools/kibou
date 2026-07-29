@@ -208,7 +208,7 @@ func (check *Checker) callExpr(x *operand, call *syntax.CallExpr) exprKind {
 		case 0:
 			check.errorf(call, WrongArgCount, "missing argument in conversion to %s", T)
 		case 1:
-			check.expr(newTarget(T, "conversion"), x, call.ArgList[0])
+			check.expr(newTarget(T, "conversion"), T, x, call.ArgList[0])
 			if x.isValid() {
 				if t, _ := T.Underlying().(*Interface); t != nil && !isTypeParam(T) {
 					if !t.IsMethodSet() {
@@ -358,7 +358,7 @@ func (check *Checker) exprList(elist []syntax.Expr) (xlist []*operand) {
 		xlist = make([]*operand, n)
 		for i, e := range elist {
 			var x operand
-			check.expr(nil, &x, e)
+			check.expr(nil, nil, &x, e)
 			xlist[i] = &x
 		}
 	}
@@ -388,7 +388,7 @@ func (check *Checker) genericExprList(elist []syntax.Expr) (resList []*operand, 
 	}
 
 	// Before Go 1.21, uninstantiated or partially instantiated argument functions are
-	// nor permitted. Checker.funcInst must infer missing type arguments in that case.
+	// not permitted. Checker.funcInst must infer missing type arguments in that case.
 	infer := true // for -lang < go1.21
 	n := len(elist)
 	if n > 0 && check.allowVersion(go1_21) {
@@ -415,7 +415,7 @@ func (check *Checker) genericExprList(elist []syntax.Expr) (resList []*operand, 
 			resList = []*operand{&x}
 		} else {
 			// x is not a function instantiation (it may still be a generic function).
-			check.rawExpr(nil, &x, e, nil, true)
+			check.rawExpr(nil, nil, &x, e, nil, true)
 			check.exclude(&x, 1<<novalue|1<<builtin|1<<typexpr)
 			if t, ok := x.typ().(*Tuple); ok && x.isValid() {
 				// x is a function call returning multiple values; it cannot be generic.
@@ -449,7 +449,7 @@ func (check *Checker) genericExprList(elist []syntax.Expr) (resList []*operand, 
 				}
 			} else {
 				// x is exactly one value (possibly invalid or uninstantiated generic function).
-				check.genericExpr(&x, e, nil)
+				check.genericExpr(nil, &x, e, nil)
 			}
 			resList[i] = &x
 		}
@@ -911,6 +911,7 @@ func (check *Checker) selector(x *operand, e *syntax.SelectorExpr, wantType bool
 			x.mode_ = value
 			x.typ_ = &Signature{
 				tparams:  sig.tparams,
+				recvold:  methodExprSentinel,
 				params:   NewTuple(params...),
 				results:  sig.results,
 				variadic: sig.variadic,
@@ -924,8 +925,9 @@ func (check *Checker) selector(x *operand, e *syntax.SelectorExpr, wantType bool
 
 			x.mode_ = value
 
-			// remove receiver
+			// remove/stash receiver
 			sig := *obj.typ.(*Signature)
+			sig.recvold = sig.recv
 			sig.recv = nil
 			x.typ_ = &sig
 		}
@@ -1000,7 +1002,7 @@ func (check *Checker) use1(e syntax.Expr, lhs bool) bool {
 	case *syntax.ListExpr:
 		return check.useN(n.ElemList, lhs)
 	default:
-		check.rawExpr(nil, &x, e, nil, true)
+		check.rawExpr(nil, nil, &x, e, nil, true)
 	}
 	return x.isValid()
 }

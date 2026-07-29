@@ -7,12 +7,12 @@
 package simd
 
 import (
-	"fmt"
+	"internal/strconv"
 	"math"
 	"math/bits"
 )
 
-// VectorSize returns the bit length of the emulated vector (fixed to 128).
+// VectorBitSize returns the bit length of the emulated vector (fixed to 128).
 func VectorBitSize() int {
 	return 128
 }
@@ -32,14 +32,41 @@ func HasHardwareCarrylessMultiply() bool {
 	return false
 }
 
-type _simd struct {
-	_ [0]func(*_simd) *_simd
+type number interface {
+	~int8 | ~int16 | ~int32 | ~int64 | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~float32 | ~float64
 }
 
-// Int8s represents a 128-bit vector of 16 int8 elements.
-type Int8s struct {
-	_    _simd
-	a, b uint64
+func sliceToString[T number](x []T) string {
+	s := ""
+	pfx := "{"
+	for _, y := range x {
+		s += pfx
+		pfx = ","
+		switch e := any(y).(type) {
+		case int8:
+			s += strconv.Itoa(int(e))
+		case int16:
+			s += strconv.Itoa(int(e))
+		case int32:
+			s += strconv.Itoa(int(e))
+		case int64:
+			s += strconv.FormatInt(int64(e), 10)
+		case uint8:
+			s += strconv.FormatUint(uint64(e), 10)
+		case uint16:
+			s += strconv.FormatUint(uint64(e), 10)
+		case uint32:
+			s += strconv.FormatUint(uint64(e), 10)
+		case uint64:
+			s += strconv.FormatUint(uint64(e), 10)
+		case float32:
+			s += strconv.FormatFloat(float64(e), 'g', -1, 32)
+		case float64:
+			s += strconv.FormatFloat(e, 'g', -1, 64)
+		}
+	}
+	s += "}"
+	return s
 }
 
 // LoadInt8s loads a slice of int8 into an Int8s vector.
@@ -302,7 +329,7 @@ func (x Int8s) String() string {
 	for i := 0; i < 16; i++ {
 		parts[i] = x.get(i)
 	}
-	return fmt.Sprint(parts)
+	return sliceToString(parts[:])
 }
 
 // Sub returns the element-wise difference of x and y.
@@ -354,12 +381,6 @@ func (x Int8s) ConvertToUint8() Uint8s {
 // ToBits reinterprets the vector bits as a Uint8s vector.
 func (x Int8s) ToBits() Uint8s {
 	return Uint8s{a: x.a, b: x.b}
-}
-
-// Int16s represents a 128-bit vector of 8 int16 elements.
-type Int16s struct {
-	_    _simd
-	a, b uint64
 }
 
 // LoadInt16s loads a slice of int16 into an Int16s vector.
@@ -664,7 +685,7 @@ func (x Int16s) String() string {
 	for i := 0; i < 8; i++ {
 		parts[i] = x.get(i)
 	}
-	return fmt.Sprint(parts)
+	return sliceToString(parts[:])
 }
 
 // Sub returns the element-wise difference of x and y.
@@ -716,12 +737,6 @@ func (x Int16s) ConvertToUint16() Uint16s {
 // ToBits reinterprets the vector bits as a Uint16s vector.
 func (x Int16s) ToBits() Uint16s {
 	return Uint16s{a: x.a, b: x.b}
-}
-
-// Int32s represents a 128-bit vector of 4 int32 elements.
-type Int32s struct {
-	_    _simd
-	a, b uint64
 }
 
 // LoadInt32s loads a slice of int32 into an Int32s vector.
@@ -1019,7 +1034,7 @@ func (x Int32s) String() string {
 	for i := 0; i < 4; i++ {
 		parts[i] = x.get(i)
 	}
-	return fmt.Sprint(parts)
+	return sliceToString(parts[:])
 }
 
 // Sub returns the element-wise difference of x and y.
@@ -1055,12 +1070,6 @@ func (x Int32s) ConvertToUint32() Uint32s {
 // ToBits reinterprets the vector bits as a Uint32s vector.
 func (x Int32s) ToBits() Uint32s {
 	return Uint32s{a: x.a, b: x.b}
-}
-
-// Int64s represents a 128-bit vector of 2 int64 elements.
-type Int64s struct {
-	_    _simd
-	a, b uint64
 }
 
 // LoadInt64s loads a slice of int64 into an Int64s vector.
@@ -1259,7 +1268,7 @@ func (x Int64s) StorePart(s []int64) int {
 
 // String returns a string representation of the vector.
 func (x Int64s) String() string {
-	return fmt.Sprint([2]int64{int64(x.a), int64(x.b)})
+	return sliceToString([]int64{int64(x.a), int64(x.b)})
 }
 
 // Sub returns the element-wise difference of x and y.
@@ -1292,12 +1301,6 @@ func (x Int64s) ConvertToUint64() Uint64s {
 // ToBits reinterprets the vector bits as a Uint64s vector.
 func (x Int64s) ToBits() Uint64s {
 	return Uint64s{a: x.a, b: x.b}
-}
-
-// Uint8s represents a 128-bit vector of 16 uint8 elements.
-type Uint8s struct {
-	_    _simd
-	a, b uint64
 }
 
 // LoadUint8s loads a slice of uint8 into an Uint8s vector.
@@ -1500,7 +1503,7 @@ func (x Uint8s) String() string {
 	for i := 0; i < 16; i++ {
 		parts[i] = x.get(i)
 	}
-	return fmt.Sprint(parts)
+	return sliceToString(parts[:])
 }
 
 // Sub returns the element-wise difference of x and y.
@@ -1555,12 +1558,6 @@ func (x Uint8s) ReshapeToUint32s() Uint32s {
 // ReshapeToUint64s reinterprets the vector bits as a Uint64s vector.
 func (x Uint8s) ReshapeToUint64s() Uint64s {
 	return Uint64s{a: x.a, b: x.b}
-}
-
-// Uint16s represents a 128-bit vector of 8 uint16 elements.
-type Uint16s struct {
-	_    _simd
-	a, b uint64
 }
 
 // LoadUint16s loads a slice of uint16 into an Uint16s vector.
@@ -1849,7 +1846,7 @@ func (x Uint16s) String() string {
 	for i := 0; i < 8; i++ {
 		parts[i] = x.get(i)
 	}
-	return fmt.Sprint(parts)
+	return sliceToString(parts[:])
 }
 
 // Sub returns the element-wise difference of x and y.
@@ -1904,12 +1901,6 @@ func (x Uint16s) ReshapeToUint64s() Uint64s {
 // ReshapeToUint8s reinterprets the vector bits as a Uint8s vector.
 func (x Uint16s) ReshapeToUint8s() Uint8s {
 	return Uint8s{a: x.a, b: x.b}
-}
-
-// Uint32s represents a 128-bit vector of 4 uint32 elements.
-type Uint32s struct {
-	_    _simd
-	a, b uint64
 }
 
 // LoadUint32s loads a slice of uint32 into an Uint32s vector.
@@ -2175,7 +2166,7 @@ func (x Uint32s) String() string {
 	for i := 0; i < 4; i++ {
 		parts[i] = x.get(i)
 	}
-	return fmt.Sprint(parts)
+	return sliceToString(parts[:])
 }
 
 // Sub returns the element-wise difference of x and y.
@@ -2220,12 +2211,6 @@ func (x Uint32s) ReshapeToUint64s() Uint64s {
 // ReshapeToUint8s reinterprets the vector bits as a Uint8s vector.
 func (x Uint32s) ReshapeToUint8s() Uint8s {
 	return Uint8s{a: x.a, b: x.b}
-}
-
-// Uint64s represents a 128-bit vector of 2 uint64 elements.
-type Uint64s struct {
-	_    _simd
-	a, b uint64
 }
 
 // LoadUint64s loads a slice of uint64 into an Uint64s vector.
@@ -2421,7 +2406,7 @@ func (x Uint64s) StorePart(s []uint64) int {
 
 // String returns a string representation of the vector.
 func (x Uint64s) String() string {
-	return fmt.Sprint([2]uint64{x.a, x.b})
+	return sliceToString([]uint64{x.a, x.b})
 }
 
 // Sub returns the element-wise difference of x and y.
@@ -2462,12 +2447,6 @@ func (x Uint64s) ReshapeToUint32s() Uint32s {
 // ReshapeToUint8s reinterprets the vector bits as a Uint8s vector.
 func (x Uint64s) ReshapeToUint8s() Uint8s {
 	return Uint8s{a: x.a, b: x.b}
-}
-
-// Float32s represents a 128-bit vector of 4 float32 elements.
-type Float32s struct {
-	_    _simd
-	a, b uint64
 }
 
 // LoadFloat32s loads a slice of float32 into an Float32s vector.
@@ -2537,9 +2516,10 @@ func (x Float32s) Abs() Float32s {
 // Add returns the element-wise sum of x and y.
 func (x Float32s) Add(y Float32s) Float32s {
 	var res Float32s
-	for i := 0; i < 4; i++ {
-		res.set(i, x.get(i)+y.get(i))
-	}
+	res.set(0, x.get(0)+y.get(0))
+	res.set(1, x.get(1)+y.get(1))
+	res.set(2, x.get(2)+y.get(2))
+	res.set(3, x.get(3)+y.get(3))
 	return res
 }
 
@@ -2667,18 +2647,21 @@ func (x Float32s) Min(y Float32s) Float32s {
 // Mul returns the element-wise product of x and y.
 func (x Float32s) Mul(y Float32s) Float32s {
 	var res Float32s
-	for i := 0; i < 4; i++ {
-		res.set(i, x.get(i)*y.get(i))
-	}
+	res.set(0, x.get(0)*y.get(0))
+	res.set(1, x.get(1)*y.get(1))
+	res.set(2, x.get(2)*y.get(2))
+	res.set(3, x.get(3)*y.get(3))
 	return res
 }
 
 // MulAdd returns x * y + z element-wise.
 func (x Float32s) MulAdd(y, z Float32s) Float32s {
 	var res Float32s
-	for i := 0; i < 4; i++ {
-		res.set(i, x.get(i)+y.get(i)*z.get(i))
-	}
+
+	res.set(0, x.get(0)*y.get(0)+z.get(0))
+	res.set(1, x.get(1)*y.get(1)+z.get(1))
+	res.set(2, x.get(2)*y.get(2)+z.get(2))
+	res.set(3, x.get(3)*y.get(3)+z.get(3))
 	return res
 }
 
@@ -2730,7 +2713,7 @@ func (x Float32s) String() string {
 	for i := 0; i < 4; i++ {
 		parts[i] = x.get(i)
 	}
-	return fmt.Sprint(parts)
+	return sliceToString(parts[:])
 }
 
 // Sub returns the element-wise difference of x and y.
@@ -2745,12 +2728,6 @@ func (x Float32s) Sub(y Float32s) Float32s {
 // ToBits reinterprets the vector bits as a Uint32s vector.
 func (x Float32s) ToBits() Uint32s {
 	return Uint32s{a: x.a, b: x.b}
-}
-
-// Float64s represents a 128-bit vector of 2 float64 elements.
-type Float64s struct {
-	_    _simd
-	a, b uint64
 }
 
 // LoadFloat64s loads a slice of float64 into an Float64s vector.
@@ -2948,8 +2925,8 @@ func (x Float64s) Mul(y Float64s) Float64s {
 // MulAdd returns x * y + z element-wise.
 func (x Float64s) MulAdd(y, z Float64s) Float64s {
 	var res Float64s
-	res.set(0, x.get(0)+y.get(0)*z.get(0))
-	res.set(1, x.get(1)+y.get(1)*z.get(1))
+	res.set(0, x.get(0)*y.get(0)+z.get(0))
+	res.set(1, x.get(1)*y.get(1)+z.get(1))
 	return res
 }
 
@@ -3000,7 +2977,7 @@ func (x Float64s) StorePart(s []float64) int {
 
 // String returns a string representation of the vector.
 func (x Float64s) String() string {
-	return fmt.Sprint([2]float64{x.get(0), x.get(1)})
+	return sliceToString([]float64{x.get(0), x.get(1)})
 }
 
 // Sub returns the element-wise difference of x and y.
@@ -3014,12 +2991,6 @@ func (x Float64s) Sub(y Float64s) Float64s {
 // ToBits reinterprets the vector bits as a Uint64s vector.
 func (x Float64s) ToBits() Uint64s {
 	return Uint64s{a: x.a, b: x.b}
-}
-
-// Mask8s represents a 128-bit mask vector for 16 int8/uint8 elements.
-type Mask8s struct {
-	_    _simd
-	a, b uint64
 }
 
 func (x *Mask8s) set(i int, v bool) {
@@ -3046,18 +3017,14 @@ func (x Mask8s) Or(y Mask8s) Mask8s {
 
 // String returns a string representation of the vector.
 func (x Mask8s) String() string {
-	return fmt.Sprintf("{a:%#x, b:%#x}", x.a, x.b)
+	var s [16]int8
+	x.ToInt8s().Neg().Store(s[:])
+	return sliceToString(s[:])
 }
 
 // ToInt8s converts the mask to an Int8s vector.
 func (x Mask8s) ToInt8s() Int8s {
 	return Int8s{a: x.a, b: x.b}
-}
-
-// Mask16s represents a 128-bit mask vector for 8 int16/uint16 elements.
-type Mask16s struct {
-	_    _simd
-	a, b uint64
 }
 
 func (x *Mask16s) set(i int, v bool) {
@@ -3084,18 +3051,14 @@ func (x Mask16s) Or(y Mask16s) Mask16s {
 
 // String returns a string representation of the vector.
 func (x Mask16s) String() string {
-	return fmt.Sprintf("{a:%#x, b:%#x}", x.a, x.b)
+	var s [8]int16
+	x.ToInt16s().Neg().Store(s[:])
+	return sliceToString(s[:])
 }
 
 // ToInt16s converts the mask to an Int16s vector.
 func (x Mask16s) ToInt16s() Int16s {
 	return Int16s{a: x.a, b: x.b}
-}
-
-// Mask32s represents a 128-bit mask vector for 4 int32/uint32/float32 elements.
-type Mask32s struct {
-	_    _simd
-	a, b uint64
 }
 
 func (x *Mask32s) set(i int, v bool) {
@@ -3122,18 +3085,14 @@ func (x Mask32s) Or(y Mask32s) Mask32s {
 
 // String returns a string representation of the vector.
 func (x Mask32s) String() string {
-	return fmt.Sprintf("{a:%#x, b:%#x}", x.a, x.b)
+	var s [4]int32
+	x.ToInt32s().Neg().Store(s[:])
+	return sliceToString(s[:])
 }
 
 // ToInt32s converts the mask to an Int32s vector.
 func (x Mask32s) ToInt32s() Int32s {
 	return Int32s{a: x.a, b: x.b}
-}
-
-// Mask64s represents a 128-bit mask vector for 2 int64/uint64/float64 elements.
-type Mask64s struct {
-	_    _simd
-	a, b uint64
 }
 
 func (x *Mask64s) set(i int, v bool) {
@@ -3158,7 +3117,9 @@ func (x Mask64s) Or(y Mask64s) Mask64s {
 
 // String returns a string representation of the vector.
 func (x Mask64s) String() string {
-	return fmt.Sprintf("{a:%#x, b:%#x}", x.a, x.b)
+	var s [2]int64
+	x.ToInt64s().Neg().Store(s[:])
+	return sliceToString(s[:])
 }
 
 // ToInt64s converts the mask to an Int64s vector.
@@ -3249,65 +3210,65 @@ const (
 	by16 = 0x0001000100010001
 )
 
-// BroadcastInt8 fills the elements of a slice with its argument value.
+// BroadcastInt8s fills the elements of a slice with its argument value.
 func BroadcastInt8s(x int8) Int8s {
 	v := (255 & uint64(x)) * by8
 	return Int8s{a: v, b: v}
 }
 
-// BroadcastInt16 fills the elements of a slice with its argument value.
+// BroadcastInt16s fills the elements of a slice with its argument value.
 func BroadcastInt16s(x int16) Int16s {
 	v := (65535 & uint64(x)) * by16
 	return Int16s{a: v, b: v}
 }
 
-// BroadcastInt32 fills the elements of a slice with its argument value.
+// BroadcastInt32s fills the elements of a slice with its argument value.
 func BroadcastInt32s(x int32) Int32s {
 	v := uint64(x) & 0xffffffff
 	v = v<<32 | v
 	return Int32s{a: v, b: v}
 }
 
-// BroadcastInt64 fills the elements of a slice with its argument value.
+// BroadcastInt64s fills the elements of a slice with its argument value.
 func BroadcastInt64s(x int64) Int64s {
 	v := uint64(x)
 	return Int64s{a: v, b: v}
 }
 
-// BroadcastUint8 fills the elements of a slice with its argument value.
+// BroadcastUint8s fills the elements of a slice with its argument value.
 func BroadcastUint8s(x uint8) Uint8s {
 	v := uint64(x) * by8
 	return Uint8s{a: v, b: v}
 
 }
 
-// BroadcastUint16 fills the elements of a slice with its argument value.
+// BroadcastUint16s fills the elements of a slice with its argument value.
 func BroadcastUint16s(x uint16) Uint16s {
 	v := uint64(x) * by16
 	return Uint16s{a: v, b: v}
 
 }
 
-// BroadcastUint32 fills the elements of a slice with its argument value.
+// BroadcastUint32s fills the elements of a slice with its argument value.
 func BroadcastUint32s(x uint32) Uint32s {
 	v := uint64(x)
 	v = v<<32 | v
 	return Uint32s{a: v, b: v}
 }
 
-// BroadcastUint64 fills the elements of a slice with its argument value.
+// BroadcastUint64s fills the elements of a slice with its argument value.
 func BroadcastUint64s(x uint64) Uint64s {
 	return Uint64s{a: x, b: x}
 }
 
-// BroadcastFloat32 fills the elements of a slice with its argument value.
+// BroadcastFloat32s fills the elements of a slice with its argument value.
 func BroadcastFloat32s(x float32) Float32s {
 	v := uint64(math.Float32bits(x))
 	v = v<<32 | v
 	return Float32s{a: v, b: v}
 }
 
-// BroadcastFloat64 fills the elements of a slice with its argument value.
+// BroadcastFloat64s fills the elements of a slice with its argument value.
 func BroadcastFloat64s(x float64) Float64s {
 	v := math.Float64bits(x)
 	return Float64s{a: v, b: v}

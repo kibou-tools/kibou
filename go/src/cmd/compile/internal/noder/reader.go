@@ -19,6 +19,7 @@ import (
 	"cmd/compile/internal/inline/interleaved"
 	"cmd/compile/internal/ir"
 	"cmd/compile/internal/objw"
+	"cmd/compile/internal/pgoir"
 	"cmd/compile/internal/reflectdata"
 	"cmd/compile/internal/staticinit"
 	"cmd/compile/internal/typecheck"
@@ -2595,6 +2596,22 @@ func (r *reader) expr() (res ir.Node) {
 		identical := r.Bool()
 		x := r.expr()
 
+		// spec: "If the type is a type parameter, the constant is converted
+		// into a non-constant value of the type parameter."
+		if dstTypeParam && ir.IsConstNode(x) {
+			// ConvertVal only handles conversions to constant types.
+			if v := typecheck.ConvertVal(x.Val(), typ, false); v.Kind() != constant.Unknown {
+				x = ir.NewBasicLit(x.Pos(), typ, v)
+				// Wrap in an OCONVNOP node to ensure result is non-constant.
+				n := Implicit(ir.NewConvExpr(pos, ir.OCONVNOP, typ, x))
+				n.SetTypecheck(1)
+				return n
+			}
+			// A Go language constant could be converted to a non-constant value,
+			// like converting string to []byte/[]rune. In this case, just construct
+			// the conversion expression as usual, see #79960.
+		}
+
 		// TODO(mdempsky): Stop constructing expressions of untyped type.
 		x = typecheck.DefaultLit(x, typ)
 
@@ -2627,13 +2644,6 @@ func (r *reader) expr() (res ir.Node) {
 			}
 		}
 
-		// spec: "If the type is a type parameter, the constant is converted
-		// into a non-constant value of the type parameter."
-		if dstTypeParam && ir.IsConstNode(n) {
-			// Wrap in an OCONVNOP node to ensure result is non-constant.
-			n = Implicit(ir.NewConvExpr(pos, ir.OCONVNOP, n.Type(), n))
-			n.SetTypecheck(1)
-		}
 		return n
 
 	case exprRuntimeBuiltin:
@@ -3563,9 +3573,6 @@ func (r *reader) pkgInitOrder(target *ir.Package) {
 	// Outline (if legal/profitable) global map inits.
 	staticinit.OutlineMapInits(fn)
 
-	// Split large init function.
-	staticinit.SplitLargeInit(fn)
-
 	target.Inits = append(target.Inits, fn)
 }
 
@@ -3673,7 +3680,7 @@ var inlgen = 0
 
 // unifiedInlineCall implements inline.NewInline by re-reading the function
 // body from its Unified IR export data.
-func unifiedInlineCall(callerfn *ir.Func, call *ir.CallExpr, fn *ir.Func, inlIndex int) *ir.InlinedCallExpr {
+func unifiedInlineCall(callerfn *ir.Func, call *ir.CallExpr, fn *ir.Func, inlIndex int, profile *pgoir.Profile) *ir.InlinedCallExpr {
 	pri, ok := bodyReaderFor(fn)
 	if !ok {
 		base.FatalfAt(call.Pos(), "cannot inline call to %v: missing inline body", fn)
@@ -3787,7 +3794,7 @@ func unifiedInlineCall(callerfn *ir.Func, call *ir.CallExpr, fn *ir.Func, inlInd
 		// potentially be recursively inlined themselves; but we shouldn't
 		// need to read in the non-inlined bodies for the declarations
 		// themselves. But currently it's an easy fix to #50552.
-		readBodies(typecheck.Target, true)
+		readBodies(typecheck.Target, true, profile)
 
 		// Replace any "return" statements within the function body.
 		var edit func(ir.Node) ir.Node

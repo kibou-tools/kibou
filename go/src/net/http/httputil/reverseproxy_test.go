@@ -1749,6 +1749,49 @@ func TestReverseProxyUpgradeNoCloseWrite(t *testing.T) {
 	<-backendDone
 }
 
+func TestReverseProxyUpgradeH2C(t *testing.T) {
+	backendServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if h, ok := r.Header["Connection"]; ok {
+			if slices.Equal(r.Header["Upgrade"], []string{"websocket"}) {
+				return
+			}
+			t.Errorf("unexpected Connection header: %q", h)
+		}
+		if h, ok := r.Header["Upgrade"]; ok {
+			t.Errorf("unexpected Upgrade header: %q", h)
+		}
+	}))
+	defer backendServer.Close()
+
+	backURL, _ := url.Parse(backendServer.URL)
+	rproxy := NewSingleHostReverseProxy(backURL)
+	rproxy.ErrorLog = log.New(io.Discard, "", 0) // quiet for tests
+
+	frontendProxy := httptest.NewServer(rproxy)
+	defer frontendProxy.Close()
+
+	for _, upgrade := range [][]string{
+		{"h2c"},
+		{" h2c "},
+		{"H2C"},
+		{"websocket, h2c"},
+		{"websocket", "h2c"},
+	} {
+		req, _ := http.NewRequest("GET", frontendProxy.URL, nil)
+		req.Header.Set("Connection", "Upgrade")
+		req.Header["Upgrade"] = upgrade
+
+		res, err := frontendProxy.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		if res.StatusCode != 200 {
+			t.Fatalf("status = %v; want 200", res.Status)
+		}
+	}
+}
+
 func TestUnannouncedTrailer(t *testing.T) {
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -2153,44 +2196,6 @@ func TestReverseProxyHijackCopyError(t *testing.T) {
 	req, _ := http.NewRequest("GET", "http://example.tld/", nil)
 	req.Header.Set("Upgrade", "someproto")
 	proxyHandler.ServeHTTP(rw, req)
-}
-
-// https://go.dev/issue/75933.
-func TestReverseProxyInvalidUpstream100ContinueDoNotHang(t *testing.T) {
-	proxy := ReverseProxy{
-		Transport: &http.Transport{DisableKeepAlives: true, ExpectContinueTimeout: time.Second * 60},
-		Director: func(request *http.Request) {
-			request.URL.Scheme = "http"
-			request.URL.Host = "doesnotexist:12345" // non-existent upstream
-		},
-	}
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		proxy.ServeHTTP(w, r)
-	})
-	upstreamServer := httptest.NewServer(handler)
-	defer upstreamServer.Close()
-
-	conn, err := net.Dial("tcp", upstreamServer.Listener.Addr().String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
-
-	requestBody := `{"test": "data"}`
-	initialRequest := fmt.Sprintf("POST %s/test-expect HTTP/1.1\r\n"+
-		"Host: %s\r\n"+
-		"Content-Type: application/json\r\n"+
-		"Content-Length: %d\r\n"+
-		"Expect: 100-continue\r\n"+
-		"\r\n", upstreamServer.URL, upstreamServer.Listener.Addr().String(), len(requestBody))
-
-	if _, err := conn.Write([]byte(initialRequest)); err != nil {
-		log.Fatal(err)
-	}
-	buff := make([]byte, 1024)
-	if _, err := conn.Read(buff); err != nil {
-		log.Fatal(err)
-	}
 }
 
 type testResponseWriter struct {

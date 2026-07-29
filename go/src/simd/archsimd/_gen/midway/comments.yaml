@@ -28,8 +28,8 @@
   ShiftAllLeft: "ShiftAllLeft shifts all elements left by y bits."
   ShiftAllRight: "ShiftAllRight shifts all elements right by y bits."
   Sqrt: "Sqrt returns the element-wise square root of x."
-  Store: "StoreSlice stores the vector elements into the slice s."
-  StorePart: "StoreSlicePart stores a partial vector into the slice s."
+  Store: "Store stores the vector elements into the slice s."
+  StorePart: "StorePart stores a partial vector into the slice s and returns the number actually stored."
   String: "String returns a string representation of the vector."
   Sub: "Sub returns the element-wise difference of x and y."
   SubSaturated: "SubSaturated returns the element-wise saturated difference of x and y."
@@ -116,9 +116,9 @@ types:
 functions:
   VectorSize: "VectorSize returns the size of the largest SIMD vector supported by the current CPU."
   # Templates for Load functions
-  default_LoadSlice: "Load%s loads a slice of %s into an %ss vector."
-  default_LoadPart: "Load%sPart loads a partial slice of %s into an %ss vector, returning the vector and the number of elements loaded."
-  default_Broadcast: "Broadcast%s fills the elements of a slice with its argument value."
+  default_LoadSlice: "Load%ss loads a slice of %s into an %ss vector."
+  default_LoadPart: "Load%ssPart loads a partial slice of %s into an %ss vector, returning the vector and the number of elements loaded."
+  default_Broadcast: "Broadcast%ss fills the elements of a slice with its argument value."
 
 methods:
   Int8s:

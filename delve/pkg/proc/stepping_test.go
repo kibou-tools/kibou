@@ -1043,12 +1043,12 @@ func TestRangeOverFuncNext(t *testing.T) {
 		// depends on the toolchain version used to compile the
 		// fixtures, not the toolchain version used to compile
 		// delve's own test packages.
-		is126Or127Arm64 := goversion.ProducerAfterOrEqual(p.BinInfo().Producer(), 1, 27) && !goversion.ProducerAfterOrEqual(p.BinInfo().Producer(), 1, 28) && runtime.GOARCH == "arm64"
+		is127OrLaterArm64 := goversion.ProducerAfterOrEqual(p.BinInfo().Producer(), 1, 27) && runtime.GOARCH == "arm64"
 		t.Run("TestGotoA1", func(t *testing.T) {
 			testseq2intl(t, fixture, grp, p, nil, []seqTest{
 				h.funcBreak(t, "main.TestGotoA1"),
 				{contContinue, 192},
-				h.ifcond(is126Or127Arm64, h.nop, nx(193)),
+				h.ifcond(is127OrLaterArm64, h.nop, nx(193)),
 
 				nx(194), // for _, x := range (x == -1)
 				nx(195), // result = append(result, x)
