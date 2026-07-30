@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"golang.org/x/tools/go/types/typeutil"
+	"golang.org/x/tools/internal/testenv"
 	"golang.org/x/tools/internal/typesinternal"
 )
 
@@ -42,13 +43,26 @@ type G = struct { U }
 type U struct{}
 func (U) method() uint32
 
-type H struct{}
-func (H) generic[X any](x X) X { return x }
-func (H) plain() bool
-
 `
 
 func TestForEachElement(t *testing.T) {
+	// Add generic method, if go1.27.
+	// It doesn't change the outcome:
+	// complex64 is not expected in the result.
+	elementSrc := elementSrc
+	if testenv.Go1Point() >= 27 {
+		elementSrc += `
+// generic method: T.generic[U] is not explored.
+func (T) generic[U any](complex64) {}
+
+// method of generic type
+type H[T any] uintptr
+func (H[T]) m(T) uint16
+type Hf64 = H[float64]
+`
+		// (still available: uint8 uint64 float32)
+	}
+
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "a.go", elementSrc, 0)
 	if err != nil {
@@ -60,10 +74,11 @@ func TestForEachElement(t *testing.T) {
 		t.Fatal(err) // type error
 	}
 
-	tests := []struct {
+	type testcase struct {
 		name string   // name of a type alias whose RHS type's elements to compute
 		want []string // strings of types that are/are not elements (! => not)
-	}{
+	}
+	tests := []testcase{
 		// simple type
 		{"A", []string{"int"}},
 
@@ -84,7 +99,7 @@ func TestForEachElement(t *testing.T) {
 		// the result does not include the struct type itself.
 		// (This follows the Go toolchain behavior, and finesses the need
 		// to create wrapper methods for that struct type.)
-		{"C", []string{"T", "*T", "int", "uint", "complex128", "!struct{x int}"}},
+		{"C", []string{"T", "*T", "int", "uint", "complex128", "!complex64", "!struct{x int}"}},
 
 		// alias type
 		{"D", []string{"int"}},
@@ -99,13 +114,12 @@ func TestForEachElement(t *testing.T) {
 
 		// struct with embedded field that has methods
 		{"G", []string{"*U", "struct{U}", "uint32", "U"}},
-
-		// type with both a generic and a plain method. Generic methods
-		// are not reflection-reachable (go.dev/issue/77273) and must be
-		// skipped without panicking on the type-parameter operand in the
-		// generic method's signature. Plain method's results must still
-		// be visited.
-		{"H", []string{"H", "*H", "bool"}},
+	}
+	if testenv.Go1Point() >= 27 {
+		tests = append(tests, []testcase{
+			// H[float64].m is a ground type, so it is visited, giving us uint16.
+			{"Hf64", []string{"*H[float64]", "H[float64]", "float64", "uint16"}},
+		}...)
 	}
 	var msets typeutil.MethodSetCache
 	for _, test := range tests {
@@ -121,25 +135,17 @@ func TestForEachElement(t *testing.T) {
 		}
 
 		got := make(map[string]bool)
-		set := new(typeutil.Map)  // for de-duping
-		set2 := new(typeutil.Map) // for consistency check
-		typesinternal.ForEachElement(set, &msets, T, func(elem types.Type) {
-			got[toStr(elem)] = true
-			set2.Set(elem, true)
+		set := new(typeutil.Map) // for de-duping
+		typesinternal.ForEachElement(msets.MethodSet, T, func(T types.Type, access bool) bool {
+			if !access {
+				return false // inaccessible to reflection
+			}
+			seen, _ := set.Set(T, true).(bool)
+			if !seen {
+				got[toStr(T)] = true
+			}
+			return seen
 		})
-
-		// Assert that set==set2, meaning f(x) was
-		// called for each x in the de-duping map.
-		if set.Len() != set2.Len() {
-			t.Errorf("ForEachElement called f %d times yet de-dup set has %d elements",
-				set2.Len(), set.Len())
-		} else {
-			set.Iterate(func(key types.Type, _ any) {
-				if set2.At(key) == nil {
-					t.Errorf("ForEachElement did not call f(%v)", key)
-				}
-			})
-		}
 
 		// Assert than all expected (and no unexpected) elements were found.
 		fail := false

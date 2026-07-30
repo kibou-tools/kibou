@@ -1705,7 +1705,7 @@ func testDriver(t *testing.T, exporter packagestest.Exporter) {
 			onpath:           true,
 			gopackagesdriver: gopackagesdriver + "nonesuch",
 			entrypoint:       "driver1",
-			want:             "error: no such file|file does not exist",
+			want:             "error: no such file|file does not exist|does not exist",
 		},
 		// -- tests of driver response payload --
 		{
@@ -3019,6 +3019,9 @@ func main() {
 	}
 }
 
+// TestConfigEnvDoesNotInheritProcessEnv tests that when Config.Env is non-nil
+// and doesn't contain os.Environ(), packages.Load doesn't inherit the process
+// environment.
 func TestConfigEnvDoesNotInheritProcessEnv(t *testing.T) {
 	testenv.NeedsGoPackages(t)
 
@@ -3044,6 +3047,7 @@ package p
 		Dir:  dir,
 		Mode: packages.NeedFiles,
 		Env: []string{
+			"PATH=" + os.Getenv("PATH"),
 			"GOCACHE=" + t.TempDir(),
 			"GOPACKAGESDRIVER=off",
 			"GOWORK=off",
@@ -3489,7 +3493,7 @@ func Foo() int { return a.Foo() }
 	type result struct{ Dir, ForTest string }
 	got := make(map[string]result)
 	for pkg := range packages.Postorder(pkgs) {
-		if !packagepath.IsStdPackage(pkg.PkgPath) {
+		if !packagepath.MaybeStdPackage(pkg.PkgPath) {
 			rel, err := filepath.Rel(dir, pkg.Dir)
 			if err != nil {
 				t.Errorf("Rel(%q, %q) failed: %v", dir, pkg.Dir, err)
@@ -3569,6 +3573,7 @@ func main() {
 // See golang/go#78083.
 func TestCompiledGoFilesIncludesDepsErrors(t *testing.T) {
 	testenv.NeedsGoPackages(t)
+	testenv.NeedsTool(t, "cgo")
 
 	dir := writeTree(t, `
 -- go.mod --

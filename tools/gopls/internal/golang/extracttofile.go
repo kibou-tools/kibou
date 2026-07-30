@@ -98,8 +98,6 @@ func ExtractToNewFile(ctx context.Context, snapshot *cache.Snapshot, fh file.Han
 	if !ok {
 		return nil, fmt.Errorf("invalid selection")
 	}
-	pgf.CheckPos(start) // #70553
-	// Inv: start is valid wrt pgf.Tok.
 
 	// select trailing empty lines
 	offset, err := safetoken.Offset(pgf.Tok, end)
@@ -109,21 +107,10 @@ func ExtractToNewFile(ctx context.Context, snapshot *cache.Snapshot, fh file.Han
 	rest := pgf.Src[offset:]
 	spaces := len(rest) - len(bytes.TrimLeft(rest, " \t\n"))
 	end += token.Pos(spaces)
-	pgf.CheckPos(end) // #70553
-	if !(start <= end) {
-		bug.Reportf("start: not before end")
+	src, err := pgf.PosText(start, end)
+	if err != nil {
+		return nil, err
 	}
-	// Inv: end is valid wrt pgf.Tok; env >= start.
-	fileStart := pgf.File.FileStart
-	pgf.CheckPos(fileStart) // #70553
-	if !(0 <= start-fileStart) {
-		bug.Reportf("start: out of bounds")
-	}
-	if !(int(end-fileStart) <= len(pgf.Src)) {
-		bug.Reportf("end: out of bounds")
-	}
-	// Inv: 0 <= start-fileStart <= end-fileStart <= len(Src).
-	src := pgf.Src[start-fileStart : end-fileStart]
 
 	replaceRange, err := pgf.PosRange(start, end)
 	if err != nil {
@@ -135,21 +122,7 @@ func ExtractToNewFile(ctx context.Context, snapshot *cache.Snapshot, fh file.Han
 		return nil, err
 	}
 
-	var importDeletes []protocol.TextEdit
-	// For unparenthesised declarations like `import "fmt"` we remove
-	// the whole declaration because simply removing importSpec leaves
-	// `import \n`, which does not compile.
-	// For parenthesised declarations like `import ("fmt"\n "log")`
-	// we only remove the ImportSpec, because removing the whole declaration
-	// might remove other ImportsSpecs we don't want to touch.
-	unparenthesizedImports := unparenthesizedImports(pgf)
-	for _, importSpec := range deletes {
-		if decl := unparenthesizedImports[importSpec]; decl != nil {
-			importDeletes = append(importDeletes, removeNode(pgf, decl))
-		} else {
-			importDeletes = append(importDeletes, removeNode(pgf, importSpec))
-		}
-	}
+	importDeletes := importDeletesEdits(pgf, deletes)
 
 	var buf bytes.Buffer
 	if c := CopyrightComment(pgf.File); c != nil {
@@ -194,7 +167,7 @@ func ExtractToNewFile(ctx context.Context, snapshot *cache.Snapshot, fh file.Han
 
 	newFileContent, err := format.Source(buf.Bytes())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to format extracted source: %w", err)
 	}
 
 	return []protocol.DocumentChange{
@@ -206,6 +179,25 @@ func ExtractToNewFile(ctx context.Context, snapshot *cache.Snapshot, fh file.Han
 		protocol.DocumentChangeEdit(newFile, []protocol.TextEdit{
 			{Range: protocol.Range{}, NewText: string(newFileContent)},
 		})}, nil
+}
+
+// importDeletesEdits returns a list of [protocol.TextEdit] for each import deletion.
+func importDeletesEdits(pgf *parsego.File, deletes []*ast.ImportSpec) (edits []protocol.TextEdit) {
+	// For unparenthesised declarations like `import "fmt"` we remove
+	// the whole declaration because simply removing importSpec leaves
+	// `import \n`, which does not compile.
+	// For parenthesised declarations like `import ("fmt"\n "log")`
+	// we only remove the ImportSpec, because removing the whole declaration
+	// might remove other ImportsSpecs we don't want to touch.
+	unparenthesizedImports := unparenthesizedImports(pgf)
+	for _, importSpec := range deletes {
+		var n ast.Node = importSpec
+		if decl := unparenthesizedImports[importSpec]; decl != nil {
+			n = decl
+		}
+		edits = append(edits, removeNode(pgf, n))
+	}
+	return edits
 }
 
 // chooseNewFile chooses a new filename in dir, based on the name of the
