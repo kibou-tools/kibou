@@ -1,9 +1,13 @@
 module github.com/go-delve/build-tools
 
-go 1.24.2
+go 1.25.0
 
 require (
-	golang.org/x/mod v0.24.0 // indirect
-	golang.org/x/sync v0.13.0 // indirect
-	golang.org/x/tools v0.32.0 // indirect
+	github.com/google/go-dap v0.12.0
+	golang.org/x/tools v0.47.0
+)
+
+require (
+	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/sync v0.21.0 // indirect
 )
