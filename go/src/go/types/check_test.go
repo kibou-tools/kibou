@@ -178,16 +178,18 @@ func testFiles(t *testing.T, filenames []string, srcs [][]byte, manual bool, opt
 
 	// apply flag setting (overrides custom configuration)
 	var goexperiment string
+	var kibouExpts string
 	flags := flag.NewFlagSet("", flag.PanicOnError)
 	flags.StringVar(&conf.GoVersion, "lang", "", "")
 	flags.StringVar(&goexperiment, "goexperiment", "", "")
+	flags.StringVar(&kibouExpts, "kibou-experiments", "", "")
 	flags.BoolVar(&conf.FakeImportC, "fakeImportC", false, "")
 	if err := parseFlags(srcs[0], flags); err != nil {
 		t.Fatal(err)
 	}
 
-	if goexperiment != "" {
-		revert := setGOEXPERIMENT(goexperiment)
+	if goexperiment != "" || kibouExpts != "" {
+		revert := setExperiments(goexperiment, kibouExpts)
 		defer revert()
 	}
 
@@ -332,12 +334,12 @@ func stringFieldAddr(conf *Config, name string) *string {
 	return (*string)(v.FieldByName(name).Addr().UnsafePointer())
 }
 
-// setGOEXPERIMENT overwrites the existing buildcfg.Experiment with a new one
-// based on the provided goexperiment string. Calling the result function
+// setExperiments overwrites the existing buildcfg.Experiment with a new one
+// based on the provided goexperiment and kibouExpts strings. Calling the result function
 // (typically via defer), reverts buildcfg.Experiment to the prior value.
 // For testing use, only.
-func setGOEXPERIMENT(goexperiment string) func() {
-	exp, err := buildcfg.ParseGOEXPERIMENT(runtime.GOOS, runtime.GOARCH, goexperiment)
+func setExperiments(goexperiment, kibouExpts string) func() {
+	exp, err := buildcfg.ParseExperimentFlags(runtime.GOOS, runtime.GOARCH, goexperiment, kibouExpts)
 	if err != nil {
 		panic(err)
 	}

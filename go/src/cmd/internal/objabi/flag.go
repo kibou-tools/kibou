@@ -219,8 +219,11 @@ func (versionFlag) Set(s string) error {
 
 	// If the enabled experiments differ from the baseline,
 	// include that difference.
-	if goexperiment := buildcfg.Experiment.String(); goexperiment != "" {
+	if goexperiment := buildcfg.Experiment.GoExptString(); goexperiment != "" {
 		p = " X:" + goexperiment
+	}
+	if kibouExpts := buildcfg.Experiment.KibouExptString(); kibouExpts != "" {
+		p += " KX:" + kibouExpts
 	}
 
 	// The go command invokes -V=full to get a unique identifier

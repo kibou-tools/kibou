@@ -119,12 +119,15 @@ func Check(t *testing.T) {
 		c.Compiler = build.Default.Compiler
 
 		// Include baseline goexperiment.* tool tags.
-		baseline, err := buildcfg.ParseGOEXPERIMENT(c.GOOS, c.GOARCH, "")
+		baseline, err := buildcfg.ParseExperimentFlags(c.GOOS, c.GOARCH, "", "")
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, exp := range baseline.Enabled() {
+		for _, exp := range baseline.GoExptEnabled() {
 			c.ToolTags = append(c.ToolTags, "goexperiment."+exp)
+		}
+		for _, exp := range baseline.KibouExptEnabled() {
+			c.ToolTags = append(c.ToolTags, "kibou_expt."+exp)
 		}
 	}
 

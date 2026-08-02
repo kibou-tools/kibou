@@ -459,7 +459,7 @@ func MustHaveModules(t *testing.T) {
 }
 
 func RegabiSupported() bool {
-	// Tracks regabiSupported variable in ParseGOEXPERIMENT internal/buildcfg/exp.go
+	// Tracks regabiSupported variable in ParseExperimentFlags internal/buildcfg/exp.go
 	switch {
 	case goversion.VersionAfterOrEqual(runtime.Version(), 1, 18):
 		return runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64" || runtime.GOARCH == "ppc64le" || runtime.GOARCH == "ppc64" || runtime.GOARCH == "riscv64" || runtime.GOARCH == "loong64"

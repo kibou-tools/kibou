@@ -85,8 +85,11 @@ func main() {
 	// Set macros for GOEXPERIMENTs so we can easily switch
 	// runtime assembly code based on them.
 	if objabi.LookupPkgSpecial(ctxt.Pkgpath).AllowAsmABI {
-		for _, exp := range buildcfg.Experiment.Enabled() {
+		for _, exp := range buildcfg.Experiment.GoExptEnabled() {
 			flags.D = append(flags.D, "GOEXPERIMENT_"+exp)
+		}
+		for _, exp := range buildcfg.Experiment.KibouExptEnabled() {
+			flags.D = append(flags.D, "KIBOU_EXPERIMENTS_"+exp)
 		}
 	}
 

@@ -316,6 +316,9 @@ func (b *Builder) buildActionID(a *Action) cache.ActionID {
 		if cfg.CleanGOEXPERIMENT != "" {
 			fmt.Fprintf(h, "GOEXPERIMENT=%q\n", cfg.CleanGOEXPERIMENT)
 		}
+		if cfg.CleanKibouExperiments != "" {
+			fmt.Fprintf(h, "KIBOU_EXPERIMENTS=%q\n", cfg.CleanKibouExperiments)
+		}
 
 		// TODO(rsc): Convince compiler team not to add more magic environment variables,
 		// or perhaps restrict the environment variables passed to subprocesses.
@@ -1847,6 +1850,9 @@ func (b *Builder) printLinkerConfig(h io.Writer, p *load.Package) {
 
 		if cfg.CleanGOEXPERIMENT != "" {
 			fmt.Fprintf(h, "GOEXPERIMENT=%q\n", cfg.CleanGOEXPERIMENT)
+		}
+		if cfg.CleanKibouExperiments != "" {
+			fmt.Fprintf(h, "KIBOU_EXPERIMENTS=%q\n", cfg.CleanKibouExperiments)
 		}
 
 		// The linker writes source file paths that refer to GOROOT,

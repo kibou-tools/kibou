@@ -10,13 +10,16 @@ import (
 	"strings"
 
 	"internal/goexperiment"
+	"internal/kibou_expt"
 )
 
 // ExperimentFlags represents a set of GOEXPERIMENT flags relative to a baseline
 // (platform-default) experiment configuration.
 type ExperimentFlags struct {
 	goexperiment.Flags
-	baseline goexperiment.Flags
+	Kibou         kibou_expt.Flags
+	baseline      goexperiment.Flags
+	baselineKibou kibou_expt.Flags
 }
 
 // Experiment contains the toolchain experiments enabled for the
@@ -29,7 +32,9 @@ type ExperimentFlags struct {
 // default in the current toolchain. This is, in effect, the "control"
 // configuration and any variation from this is an experiment.
 var Experiment ExperimentFlags = func() ExperimentFlags {
-	flags, err := ParseGOEXPERIMENT(GOOS, GOARCH, envOr("GOEXPERIMENT", defaultGOEXPERIMENT))
+	flags, err := ParseExperimentFlags(GOOS, GOARCH,
+		envOr("GOEXPERIMENT", defaultGOEXPERIMENT),
+		envOr("KIBOU_EXPERIMENTS", DefaultKIBOU_EXPERIMENTS))
 	if err != nil {
 		Error = err
 		return ExperimentFlags{}
@@ -41,6 +46,8 @@ var Experiment ExperimentFlags = func() ExperimentFlags {
 // It is not guaranteed to be canonical.
 const DefaultGOEXPERIMENT = defaultGOEXPERIMENT
 
+const DefaultKIBOU_EXPERIMENTS = defaultKIBOU_EXPERIMENTS
+
 // FramePointerEnabled enables the use of platform conventions for
 // saving frame pointers.
 //
@@ -50,12 +57,12 @@ const DefaultGOEXPERIMENT = defaultGOEXPERIMENT
 // Note: must agree with runtime.framepointer_enabled.
 var FramePointerEnabled = GOARCH == "amd64" || GOARCH == "arm64"
 
-// ParseGOEXPERIMENT parses a (GOOS, GOARCH, GOEXPERIMENT)
+// ParseExperimentFlags parses a (GOOS, GOARCH, GOEXPERIMENT, KIBOU_EXPERIMENTS)
 // configuration tuple and returns the enabled and baseline experiment
 // flag sets.
 //
 // TODO(mdempsky): Move to [internal/goexperiment].
-func ParseGOEXPERIMENT(goos, goarch, goexp string) (*ExperimentFlags, error) {
+func ParseExperimentFlags(goos, goarch, goexp, kibouExpts string) (*ExperimentFlags, error) {
 	// regabiSupported is set to true on platforms where register ABI is
 	// supported and enabled by default.
 	// regabiAlwaysOn is set to true on platforms where register ABI is
@@ -86,9 +93,20 @@ func ParseGOEXPERIMENT(goos, goarch, goexp string) (*ExperimentFlags, error) {
 		GreenTeaGC:            true,
 		JSONv2:                true,
 	}
+	baselineKibou := kibou_expt.Flags{
+		Enums: false,
+	}
 	flags := &ExperimentFlags{
-		Flags:    baseline,
-		baseline: baseline,
+		Flags:         baseline,
+		Kibou:         baselineKibou,
+		baseline:      baseline,
+		baselineKibou: baselineKibou,
+	}
+
+	if kibouExpts != "" {
+		if err := parseKibouExperiments(flags, kibouExpts); err != nil {
+			return nil, err
+		}
 	}
 
 	// Pick up any changes to the baseline configuration from the
@@ -153,10 +171,21 @@ func ParseGOEXPERIMENT(goos, goarch, goexp string) (*ExperimentFlags, error) {
 	return flags, nil
 }
 
-// String returns the canonical GOEXPERIMENT string to enable this experiment
+// GoExptString returns the canonical GOEXPERIMENT string to enable this experiment
 // configuration. (Experiments in the same state as in the baseline are elided.)
-func (exp *ExperimentFlags) String() string {
+func (exp *ExperimentFlags) GoExptString() string {
 	return strings.Join(expList(&exp.Flags, &exp.baseline, false), ",")
+}
+
+// KibouExptString returns the normalized KIBOU_EXPERIMENTS string equivalent
+// to [ExperimentFlags.Kibou].
+//
+// This subtracts the baseline experiments from the enabled ones. See also:
+// [ExperimentFlags.KibouExptEnabled].
+func (exp *ExperimentFlags) KibouExptString() string {
+	var tmp []string
+	kibouExpList(&exp.Kibou, &exp.baselineKibou, false, &tmp)
+	return strings.Join(tmp, ",")
 }
 
 // expList returns the list of lower-cased experiment names for
@@ -189,14 +218,34 @@ func expList(exp, base *goexperiment.Flags, all bool) []string {
 	return list
 }
 
-// Enabled returns a list of enabled experiments, as
+// GoExptEnabled returns a list of enabled experiments, as
 // lower-cased experiment names.
-func (exp *ExperimentFlags) Enabled() []string {
+func (exp *ExperimentFlags) GoExptEnabled() []string {
 	return expList(&exp.Flags, nil, false)
 }
 
-// All returns a list of all experiment settings.
+// KibouExptEnabled returns a list of enabled Kibou experiments, in
+// PascalCase.
+//
+// Unlike KibouExptString, this also includes any experiments
+// enabled by default (i.e. baseline).
+func (exp *ExperimentFlags) KibouExptEnabled() []string {
+	var tmp []string
+	kibouExpList(&exp.Kibou, nil, false, &tmp)
+	return tmp
+}
+
+// GoExptAll returns a list of all experiment settings.
 // Disabled experiments appear in the list prefixed by "no".
-func (exp *ExperimentFlags) All() []string {
+func (exp *ExperimentFlags) GoExptAll() []string {
 	return expList(&exp.Flags, nil, true)
+}
+
+// KibouExptAll returns a list of all Kibou experiment settings.
+//
+// Disabled experiments appear in the list prefixed by "No".
+func (exp *ExperimentFlags) KibouExptAll() []string {
+	var tmp []string
+	kibouExpList(&exp.Kibou, nil, true, &tmp)
+	return tmp
 }
