@@ -23,6 +23,9 @@ func TestRepeatBootstrap(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test that rebuilds the entire toolchain")
 	}
+	if os.Getenv("GITHUB_ACTIONS") != "" {
+		t.Skip("skipping as test takes 10+ mins on GHA runners")
+	}
 	switch runtime.GOOS {
 	case "android", "ios", "js", "wasip1":
 		t.Skipf("skipping because the toolchain does not have to bootstrap on GOOS=%s", runtime.GOOS)

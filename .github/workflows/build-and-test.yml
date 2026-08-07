@@ -51,14 +51,24 @@ jobs:
           os: ${{ inputs.os }}
       - name: Test
         shell: bash
+        env:
+          GO_TEST_SHORT: "0"
         run: |
           export GOROOT="$PWD/go"
           export PATH="$GOROOT/bin:$PATH"
           # GHA Windows runners are slower than LUCI; without extra
           # headroom, TestGdbAutotmpTypes alone takes 48s+ and the
-          # runtime package hits the 3m timeout.
+          # runtime package hits the 10m timeout.
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             export GO_TEST_TIMEOUT_SCALE=2
+          fi
+          # GHA macOS runners' DNS proxy (192.168.64.1) drops NXDOMAIN
+          # reponse for invalid.invalid. on MX/NS/TXT, so lookups in
+          # tests hit the 10s UDP timeout. This leads to retries
+          # with backoff (1s, 5s, 30s), which ends up causing the test
+          # to timeout.
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            export GO_BUILDER_FLAKY_NET=1
           fi
           go tool dist test -run='!^cmd'
 
@@ -74,6 +84,8 @@ jobs:
           os: ${{ inputs.os }}
       - name: Test
         shell: bash
+        env:
+          GO_TEST_SHORT: "0"
         run: |
           export GOROOT="$PWD/go"
           export PATH="$GOROOT/bin:$PATH"
