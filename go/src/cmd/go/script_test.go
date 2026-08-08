@@ -255,6 +255,7 @@ func scriptEnv(srv *vcstest.Server, srvCertFile string) ([]string, error) {
 		"goversion=" + gover.Local(),
 		"CMDGO_TEST_RUN_MAIN=true",
 		"HGRCPATH=",
+		"GIT_CONFIG_NOSYSTEM=1", // https://git-scm.com/docs/git-config#Documentation/git-config.txt-GITCONFIGNOSYSTEM
 		"GOTOOLCHAIN=auto",
 		"newline=\n",
 	}
