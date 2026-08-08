@@ -1,0 +1,150 @@
+load("@prelude//toolchains:no_toolchain.bzl", "no_toolchain")
+load("@prelude//toolchains:python.bzl", "remote_python_toolchain")
+load(
+    "@prelude//toolchains/go:go_bootstrap_toolchain.bzl",
+    "go_bootstrap_distr",
+    "go_bootstrap_toolchain",
+)
+load("@prelude//toolchains/go:go_toolchain.bzl", "go_distr", "go_toolchain")
+load("@root//build_defs/rules:staged_go_toolchain.bzl", "staged_go_toolchain")
+
+remote_python_toolchain(
+    name = "python",
+    visibility = ["PUBLIC"],
+)
+
+no_toolchain(
+    name = "cxx",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "go1.26.5.darwin-arm64",
+    sha256 = "efb87ff28af9a188d0536ef5d42e63dd52ba8263cd7344a993cc48dd11dedb6a",
+    strip_prefix = "go",
+    urls = ["https://go.dev/dl/go1.26.5.darwin-arm64.tar.gz"],
+)
+
+http_archive(
+    name = "go1.26.5.linux-amd64",
+    sha256 = "5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053",
+    strip_prefix = "go",
+    urls = ["https://go.dev/dl/go1.26.5.linux-amd64.tar.gz"],
+)
+
+http_archive(
+    name = "go1.26.5.windows-amd64",
+    sha256 = "97e6b2a833b6d89f9ff17d25419ac0a7e3b482a044e9ab18cdef834bd834fd38",
+    strip_prefix = "go",
+    type = "zip",
+    urls = ["https://go.dev/dl/go1.26.5.windows-amd64.zip"],
+)
+
+_GO_OS_ARCH = select({
+    "config//os:linux": select({"config//cpu:x86_64": ("linux", "amd64")}),
+    "config//os:macos": select({"config//cpu:arm64": ("darwin", "arm64")}),
+    "config//os:windows": select({"config//cpu:x86_64": ("windows", "amd64")}),
+})
+
+_GO_ROOT = select({
+    "config//os:linux": select({"config//cpu:x86_64": ":go1.26.5.linux-amd64"}),
+    "config//os:macos": select({"config//cpu:arm64": ":go1.26.5.darwin-arm64"}),
+    "config//os:windows": select({"config//cpu:x86_64": ":go1.26.5.windows-amd64"}),
+})
+
+_GO_ARCH = select({
+    "config//cpu:arm64": "arm64",
+    "config//cpu:x86_64": "amd64",
+})
+
+_GO_OS = select({
+    "config//os:linux": "linux",
+    "config//os:macos": "darwin",
+    "config//os:windows": "windows",
+})
+
+go_bootstrap_distr(
+    name = "go_bootstrap_distr",
+    go_os_arch = _GO_OS_ARCH,
+    go_root = _GO_ROOT,
+)
+
+go_bootstrap_toolchain(
+    name = "go_bootstrap",
+    env_go_arch = _GO_ARCH,
+    env_go_os = _GO_OS,
+    go_bootstrap_distr = ":go_bootstrap_distr",
+    visibility = ["PUBLIC"],
+)
+
+go_distr(
+    name = "go_distr",
+    go_os_arch = _GO_OS_ARCH,
+    go_root = _GO_ROOT,
+    version = "1.26.5",
+)
+
+go_toolchain(
+    name = "go",
+    allow_cache_upload = True,
+    build_tags = [
+        "compiler_bootstrap",
+        "math_big_pure_go",
+        "purego",
+    ],
+    env_go_arch = _GO_ARCH,
+    env_go_os = _GO_OS,
+    go_distr = ":go_distr",
+    visibility = ["PUBLIC"],
+)
+
+staged_go_toolchain(
+    name = "stage1_go",
+    assembler = "root//go/src/cmd/asm:stage1",
+    base = ":go",
+    cgo = "root//go/src/cmd/cgo:stage1",
+    compiler = "root//go/src/cmd/compile:stage1",
+    go_root = "root//:stage1_goroot",
+    linker = "root//go/src/cmd/link:stage1",
+    visibility = ["PUBLIC"],
+)
+
+staged_go_toolchain(
+    name = "stage2_go",
+    assembler = "root//go/src/cmd/asm:stage2",
+    base = ":go",
+    cgo = "root//go/src/cmd/cgo:stage2",
+    compiler = "root//go/src/cmd/compile:stage2",
+    go_root = "root//:stage1_goroot",
+    linker = "root//go/src/cmd/link:stage2",
+    visibility = ["PUBLIC"],
+)
+
+staged_go_toolchain(
+    name = "stage2_stdlib_go",
+    assembler = "root//go/src/cmd/asm:stage2",
+    base = ":go",
+    build_tags = [],
+    cgo = "root//go/src/cmd/cgo:stage2",
+    compiler = "root//go/src/cmd/compile:stage2",
+    go_root = "root//:stage1_goroot",
+    linker = "root//go/src/cmd/link:stage2",
+    visibility = ["PUBLIC"],
+)
+
+# Project packages use the current-source stage-2 tools, but a stable pinned
+# GOROOT. The tools are invoked directly with explicit importcfg files, so the
+# whole mutable current-source GOROOT must not poison every application action
+# key.
+staged_go_toolchain(
+    name = "final_go",
+    assembler = "root//go/src/cmd/asm:stage2",
+    base = ":go",
+    build_tags = [],
+    cgo = "root//go/src/cmd/cgo:stage2",
+    compiler = "root//go/src/cmd/compile:stage2",
+    compiler_identity_inputs = ["root//build_defs/generated:compiler_identity"],
+    go_root = _GO_ROOT,
+    linker = "root//go/src/cmd/link:stage2",
+    visibility = ["PUBLIC"],
+)

@@ -1,0 +1,13 @@
+load("//build_defs/rules:kibou_go.bzl", "kibou_go_test")
+
+kibou_go_test(
+    name = "mixed_test",
+    package_name = "code.kibou.tools/build_defs/testdata/mixed",
+    srcs = ["mixed.go"],
+    internal_test_srcs = ["mixed_test.go"],
+    internal_tests = ["TestInternal"],
+    external_test_srcs = ["mixed_external_test.go"],
+    external_tests = ["TestExternal"],
+    resources = {"testdata/message.txt": "testdata/message.txt"},
+    supports_test_execution_caching = True,
+)

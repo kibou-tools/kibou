@@ -1,0 +1,2 @@
+# Tests are added only after their complete runtime input closure has been audited.
+code.kibou.tools/base/core/result

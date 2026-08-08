@@ -1,0 +1,7 @@
+load("//build_defs/rules:kibou_go.bzl", "kibou_go_binary")
+
+kibou_go_binary(
+    name = "plain",
+    package_name = "code.kibou.tools/build_defs/testdata/release_plain",
+    srcs = ["main.go"],
+)

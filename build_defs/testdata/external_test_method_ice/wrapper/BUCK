@@ -1,0 +1,9 @@
+load("//build_defs/rules:kibou_go.bzl", "kibou_go_library")
+
+kibou_go_library(
+    name = "lib",
+    package_name = "code.kibou.tools/build_defs/testdata/external_test_method_ice/wrapper",
+    srcs = ["wrapper.go"],
+    deps = ["//build_defs/testdata/external_test_method_ice/helper:lib"],
+    visibility = ["PUBLIC"],
+)

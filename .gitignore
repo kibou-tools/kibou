@@ -19,6 +19,7 @@ go.work.sum
 node_modules/
 
 # Build outputs
+/buck-out/
 
 ## Accidentally built binaries
 ## Related: TODO(issue: https://github.com/kibou-tools/kibou/issues/162)

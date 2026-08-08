@@ -1,0 +1,50 @@
+load("//build_defs/rules:kibou_go.bzl", "kibou_go_library", "kibou_go_test")
+
+kibou_go_library(
+    name = "lib",
+    package_name = "code.kibou.tools/build_defs/testdata/external_test_method_ice",
+    srcs = ["fixture.go"],
+    visibility = ["PUBLIC"],
+)
+
+kibou_go_test(
+    name = "direct_test",
+    package_name = "code.kibou.tools/build_defs/testdata/external_test_method_ice",
+    srcs = ["fixture.go"],
+    internal_test_srcs = ["export_test.go"],
+    external_test_srcs = ["external_direct_test.go"],
+    external_tests = ["TestExternalMethodDirect"],
+)
+
+kibou_go_test(
+    name = "test",
+    package_name = "code.kibou.tools/build_defs/testdata/external_test_method_ice",
+    srcs = ["fixture.go"],
+    internal_test_srcs = ["export_test.go"],
+    external_test_srcs = ["external_test.go"],
+    external_tests = ["TestExternalMethod"],
+    deps = ["//build_defs/testdata/external_test_method_ice/helper:lib"],
+)
+
+kibou_go_test(
+    name = "transitive_test",
+    package_name = "code.kibou.tools/build_defs/testdata/external_test_method_ice",
+    srcs = ["fixture.go"],
+    internal_test_srcs = ["export_test.go"],
+    external_test_srcs = ["external_transitive_test.go"],
+    external_tests = ["TestExternalMethodThroughTransitiveDependency"],
+    deps = ["//build_defs/testdata/external_test_method_ice/wrapper:lib"],
+)
+
+kibou_go_test(
+    name = "basename_collision_test",
+    package_name = "code.kibou.tools/build_defs/testdata/external_test_method_ice",
+    srcs = ["fixture.go"],
+    internal_test_srcs = ["export_test.go"],
+    external_test_srcs = ["external_collision_test.go"],
+    external_tests = ["TestExternalMethodThroughSameBasenames"],
+    deps = [
+        "//build_defs/testdata/external_test_method_ice/left/same:lib",
+        "//build_defs/testdata/external_test_method_ice/right/same:lib",
+    ],
+)

@@ -1,0 +1,33 @@
+load(":audit_actions.bzl", "audit_action", "network_audit_test")
+
+audit_action(
+    name = "undeclared_file_read",
+    mode = "file",
+    probe = "action_probe.sh",
+)
+
+audit_action(
+    name = "inherited_environment",
+    mode = "environment",
+    probe = "action_probe.sh",
+)
+
+audit_action(
+    name = "undeclared_write",
+    mode = "write",
+    probe = "action_probe.sh",
+)
+
+network_audit_test(
+    name = "network_all",
+    expected = "success",
+    network_access = "all",
+    test = "network_probe.sh",
+)
+
+network_audit_test(
+    name = "network_none",
+    expected = "blocked",
+    network_access = "none",
+    test = "network_probe.sh",
+)

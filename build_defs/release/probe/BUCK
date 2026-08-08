@@ -1,0 +1,30 @@
+load(
+    "@root//build_defs/rules:kibou_go.bzl",
+    "kibou_go_release_binary",
+    "kibou_go_test",
+)
+
+kibou_go_release_binary(
+    name = "stamped",
+    package_name = "code.kibou.tools/build_defs/release/probe/version_probe",
+    srcs = ["version_probe.go"],
+)
+
+kibou_go_test(
+    name = "release_stamp_test",
+    package_name = "code.kibou.tools/build_defs/release/probe",
+    srcs = ["release_probe.go"],
+    internal_test_srcs = ["release_probe_test.go"],
+    internal_tests = ["TestStampedVersionProbe"],
+    env = {
+        "KIBOU_EXPECTED_GO_VERSION": read_config("kibou", "release_version", ""),
+    },
+    resources = select({
+        "config//os:windows": {
+            "testdata/version-probe.exe": ":stamped",
+        },
+        "DEFAULT": {
+            "testdata/version-probe": ":stamped",
+        },
+    }),
+)

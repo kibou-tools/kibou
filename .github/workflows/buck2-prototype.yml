@@ -1,0 +1,86 @@
+name: buck2-prototype
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - debug/buck2-prototype
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUCK2_RELEASE_TAG: kibou-2026-08-09-02.51.53
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            buck2: buck2
+          - os: macos-26
+            buck2: buck2
+          - os: windows-2025
+            buck2: buck2.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          cache: false
+          go-version: 1.26.5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Install Python test dependencies
+        run: python -m pip install pytest==8.4.2 zstandard==0.25.0
+      - name: Download Buck2
+        env:
+          KIBOU_BUCK2: ${{ runner.temp }}/${{ matrix.buck2 }}
+        run: |
+          python build_defs/ci/fetch_buck2.py \
+            --tag "$BUCK2_RELEASE_TAG" \
+            --output "$KIBOU_BUCK2"
+          "$KIBOU_BUCK2" --version
+        shell: bash
+      - name: Configure Linux audit support
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes strace util-linux
+          sudo sysctl -w kernel.unprivileged_userns_clone=1
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Run Linux cache and hermeticity proofs
+        if: runner.os == 'Linux'
+        env:
+          KIBOU_BUCK2: ${{ runner.temp }}/${{ matrix.buck2 }}
+          KIBOU_CACHE_PROTOTYPE_RUNTIME: ${{ runner.temp }}/cache-proof
+          KIBOU_HERMETICITY_RUNTIME: ${{ runner.temp }}/hermeticity-proof
+        run: |
+          python -m pytest -q \
+            build_defs/prototype_tests/test_cache_incrementality.py \
+            build_defs/hermeticity/test_hermeticity.py
+      - name: Build and test prototype
+        env:
+          KIBOU_BUCK2: ${{ runner.temp }}/${{ matrix.buck2 }}
+        run: |
+          python build_defs/ci/run_prototype.py \
+            --buck2 "$KIBOU_BUCK2" \
+            --runtime "$RUNNER_TEMP/prototype-runtime" \
+            --artifacts "$RUNNER_TEMP/prototype-artifacts"
+        shell: bash
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kibou-buck-prototype-${{ matrix.os }}
+          path: ${{ runner.temp }}/prototype-artifacts/*.tar.gz
+          if-no-files-found: error

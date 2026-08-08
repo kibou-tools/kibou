@@ -1,0 +1,45 @@
+[cells]
+root = .
+prelude = build_defs/prelude
+release = build_defs/release
+toolchains = build_defs/toolchains
+none = build_defs/none
+
+[cell_aliases]
+config = prelude
+ovr_config = prelude
+buck = none
+fbcode = none
+fbcode_macros = none
+fbsource = none
+
+[external_cells]
+prelude = bundled
+
+[parser]
+target_platform_detector_spec = target:root//...->prelude//platforms:default \
+  target:release//...->prelude//platforms:default \
+  target:prelude//...->prelude//platforms:default \
+  target:toolchains//...->prelude//platforms:default
+
+[project]
+ignore = .cache,.git,.jj,buck-out
+
+[build]
+execution_platforms = root//build_defs/platforms:default
+
+[buck2]
+file_watcher = notify
+
+[buck2_re_client]
+digest_algorithms = SHA256
+action_cache_address = grpc://127.0.0.1:50051
+engine_address = grpc://127.0.0.1:50051
+cas_address = grpc://127.0.0.1:50051
+capabilities = false
+tls = false
+instance_name = main
+
+[kibou]
+remote_cache_enabled = false
+allow_cache_uploads = false
