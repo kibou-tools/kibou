@@ -1,0 +1,144 @@
+# Throwaway measurement workflow: establishes the Windows pack/unpack floor for
+# a realistic GOCACHE, and measures R2 round-trip throughput from a GHA runner.
+#
+# Manual dispatch only, single Windows job, so it never competes with ci.yml.
+# Delete along with .github/r2probe/ once the numbers are recorded in
+# .cache/2026-08-07-ci-cache-sizing/.
+name: r2probe
+
+on:
+  # workflow_dispatch alone would not work here: GitHub only offers it for
+  # workflows that exist on the default branch. The push trigger lets the
+  # scratch branch run it without merging to main first.
+  push:
+    branches:
+      - debug/r2probe
+  workflow_dispatch:
+    inputs:
+      bucket:
+        description: Throwaway R2 bucket name (defaults to vars.R2_TEST_BUCKET)
+        required: false
+        type: string
+      skip_r2:
+        description: Only measure pack/unpack, no R2 transfer
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  probe:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      # The GOCACHE under test, relative to the workspace: github.workspace is
+      # backslash-separated on Windows, which bash mangles. Scratch space uses
+      # forward-slash Windows paths, which both bash and Go accept.
+      CACHE_DIR: .cache/go-build
+      SCRATCH: D:/probe
+      BUCKET: ${{ inputs.bucket || vars.R2_TEST_BUCKET }}
+      AWS_DEFAULT_REGION: auto
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_READ_WRITE_ACCESS_ID_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_READ_WRITE_SECRET_ACCESS_KEY }}
+      # aws-cli v2.23+ sends CRC32 checksums by default, which some
+      # S3-compatible stores reject. Only send them when the API requires it.
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          sparse-checkout: .github
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: 1.26.x
+          cache: false
+
+      # The real artifact: ~1.1 GB compressed, ~44k entries, built by
+      # build-toolchain on a previous main push. No make.bash needed.
+      - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        id: restore
+        with:
+          path: .cache/go-build
+          key: go-cache-head-windows-latest
+          fail-on-cache-miss: true
+
+      - name: Build probe
+        shell: bash
+        env:
+          GOWORK: off
+        working-directory: .github/r2probe
+        run: go build -o "$RUNNER_TEMP/r2probe.exe" .
+
+      - name: Environment
+        shell: bash
+        run: |
+          echo "cores: $NUMBER_OF_PROCESSORS"
+          mkdir -p "$SCRATCH"
+          # Which volume the scratch and cache dirs live on, and free space.
+          powershell -Command "Get-Volume | Select-Object DriveLetter,FileSystem,SizeRemaining | Format-Table"
+          # Defender is disabled on GHA runners; record it rather than assume.
+          # Format-List, not the default table, whose value row got truncated.
+          powershell -Command "Get-MpComputerStatus | Format-List RealTimeProtectionEnabled,AntivirusEnabled,DisableRealtimeMonitoring" || echo "Defender status unavailable"
+          which tar; tar --version | head -1
+          ls "C:/Windows/system32/tar.exe" && "C:/Windows/system32/tar.exe" --version | head -1 || echo "no bsdtar"
+          which zstd && zstd --version || echo "no zstd on PATH"
+
+      - name: Shape of the cache
+        shell: bash
+        run: |
+          "$RUNNER_TEMP/r2probe.exe" stat -dir "$CACHE_DIR"
+
+      # The floor. Nothing that reads an archive can beat pure file creation,
+      # so if this is slow the answer is fewer files, not a faster extractor.
+      #
+      # The sweep runs well past core count: NTFS file creation is
+      # latency-bound rather than CPU-bound, and the first run showed no
+      # improvement at all between 1 and 16 workers while sharded unpack (128
+      # concurrent writers) was 2x faster. So the interesting range is high.
+      # The pack/unpack floor is already established; see
+      # .cache/2026-08-07-ci-cache-sizing/NOTES-windows-floor.md. This run only
+      # produces the archive the R2 leg needs, at the winning configuration.
+      - name: Pack (Go, 4 shards)
+        shell: bash
+        run: |
+          "$RUNNER_TEMP/r2probe.exe" pack -dir "$CACHE_DIR" -out "$SCRATCH/sh4" -shards 4 -level 3
+          du -sh "$SCRATCH/sh4"
+
+      - name: R2 round trip
+        if: ${{ env.BUCKET != '' && !inputs.skip_r2 }}
+        shell: bash
+        env:
+          ENDPOINT: ${{ vars.R2_ACCOUNT_ENDPOINT }}
+        run: |
+          aws --version
+          aws configure set default.s3.max_concurrent_requests 32
+          aws configure set default.s3.multipart_chunksize 16MB
+          key="probe/${GITHUB_RUN_ID}"
+          bytes=$(du -sk "$SCRATCH/sh4" | cut -f1)
+          echo "payload: $((bytes / 1024)) MB across $(ls "$SCRATCH/sh4" | wc -l) objects"
+
+          # Two reps each: these runners vary enough that one sample is noise.
+          for rep in 1 2; do
+            echo "--- upload rep $rep ---"
+            time aws s3 cp "$SCRATCH/sh4" "s3://$BUCKET/$key-$rep/" \
+              --recursive --endpoint-url "$ENDPOINT" --only-show-errors
+            echo "--- download rep $rep ---"
+            rm -rf "$SCRATCH/dl"
+            time aws s3 cp "s3://$BUCKET/$key-$rep/" "$SCRATCH/dl" \
+              --recursive --endpoint-url "$ENDPOINT" --only-show-errors
+          done
+
+          # Integrity: the downloaded archive must unpack to the same tree.
+          "$RUNNER_TEMP/r2probe.exe" unpack -in "$SCRATCH/dl" -out "$SCRATCH/verify" -workers 16
+          echo "restored entries: $(find "$SCRATCH/verify" -mindepth 2 -maxdepth 2 \( -name '*-a' -o -name '*-d' \) | wc -l)"
+          echo "source entries:   $(find "$CACHE_DIR" -mindepth 2 -maxdepth 2 \( -name '*-a' -o -name '*-d' \) | wc -l)"
+          rm -rf "$SCRATCH/verify" "$SCRATCH/dl"
+
+          for rep in 1 2; do
+            aws s3 rm "s3://$BUCKET/$key-$rep/" --recursive --endpoint-url "$ENDPOINT" --only-show-errors
+          done
