@@ -51,6 +51,11 @@ The following usages of LLMs are permitted:
 - Investigating and debugging issues.
 - Using autocomplete for code, comments,
   or simple vector art
+- Refactoring existing code without functional
+  changes (all folders)
+- Adding more tests/increasing coverage (all folders)
+- Writing production code (i.e. non-test code):
+  Only allowed for the top-level `misc/` folder
 
 When citing LLM-generated text in an issue description
 or PR, specify the model used, and clearly identify
@@ -59,7 +64,8 @@ said text using blockquotes or annotated code blocks.
 All other usages are forbidden in shared contexts.
 For example, LLMs must not be used for:
 
-- Authoring code for merging.
+- Authoring code for merging for folders like `base/`,
+  `go/` etc. (apart from `misc/`).
 - Authoring code comments for merging.
 - Authoring commit messages or PR descriptions.
 - Creating illustrations/bitmap images
@@ -72,7 +78,7 @@ Responsibility and judgment lie with people, not with LLMs.
 
 ## Q&A
 
-### Why is agentic LLM usage forbidden for shared code?
+### Why is agentic LLM usage forbidden for most production code?
 
 Over the period of December 2025 to June 2026,
 I've used LLMs for generating a fair bit of code.
@@ -139,9 +145,14 @@ This guidance may be revised in the future as LLM capabilities change.
 
 ## History of LLM usage
 
-Jun 2026 - Present: The policy is in the current version,
-which restricts LLM usage for code that is submitted in PRs.
-LLMs continue to be used for experiments and debugging.
+Aug 16 2026 - Present: The policy is in the current version,
+which allows LLM usage for tests and support code in `misc/`
+but not for the base libraries, the compiler, standard library
+or debugger.
+
+Jun 2026 - Aug 15 2026: The policy forbade LLM usage
+for any code that went into PRs.
+LLMs continued to be used for experiments and debugging.
 The website design has been privately prototyped using LLMs.
 (Not merged into the repo as of the time of writing on Aug 2 2026.)
 

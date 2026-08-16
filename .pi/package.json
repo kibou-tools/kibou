@@ -3,7 +3,6 @@
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "^0.80.2",
     "@earendil-works/pi-tui": "^0.80.2",
-    "@sinclair/typebox": "^0.34.49",
     "typescript": "^5.8"
   }
 }
