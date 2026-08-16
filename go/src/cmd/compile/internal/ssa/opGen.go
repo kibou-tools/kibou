@@ -785,6 +785,14 @@ const (
 	OpAMD64XADDQlock
 	OpAMD64AddTupleFirst32
 	OpAMD64AddTupleFirst64
+	OpAMD64ADDLlock
+	OpAMD64ADDQlock
+	OpAMD64SUBLlock
+	OpAMD64SUBQlock
+	OpAMD64INCLlock
+	OpAMD64INCQlock
+	OpAMD64DECLlock
+	OpAMD64DECQlock
 	OpAMD64CMPXCHGLlock
 	OpAMD64CMPXCHGQlock
 	OpAMD64ANDBlock
@@ -20539,6 +20547,130 @@ var opcodeTable = [...]opInfo{
 		name:   "AddTupleFirst64",
 		argLen: 2,
 		reg:    regInfo{},
+	},
+	{
+		name:           "ADDLlock",
+		auxType:        auxSymOff,
+		argLen:         3,
+		clobberFlags:   true,
+		faultOnNilArg0: true,
+		hasSideEffects: true,
+		symEffect:      SymRdWr,
+		asm:            x86.AADDL,
+		reg: regInfo{
+			inputs: []inputInfo{
+				{1, regMask{v1: 49151, v2: 0}},             // AX CX DX BX SP BP SI DI R8 R9 R10 R11 R12 R13 R15
+				{0, regMask{v1: 72057594037993471, v2: 0}}, // AX CX DX BX SP BP SI DI R8 R9 R10 R11 R12 R13 g R15 SB
+			},
+		},
+	},
+	{
+		name:           "ADDQlock",
+		auxType:        auxSymOff,
+		argLen:         3,
+		clobberFlags:   true,
+		faultOnNilArg0: true,
+		hasSideEffects: true,
+		symEffect:      SymRdWr,
+		asm:            x86.AADDQ,
+		reg: regInfo{
+			inputs: []inputInfo{
+				{1, regMask{v1: 49151, v2: 0}},             // AX CX DX BX SP BP SI DI R8 R9 R10 R11 R12 R13 R15
+				{0, regMask{v1: 72057594037993471, v2: 0}}, // AX CX DX BX SP BP SI DI R8 R9 R10 R11 R12 R13 g R15 SB
+			},
+		},
+	},
+	{
+		name:           "SUBLlock",
+		auxType:        auxSymOff,
+		argLen:         3,
+		clobberFlags:   true,
+		faultOnNilArg0: true,
+		hasSideEffects: true,
+		symEffect:      SymRdWr,
+		asm:            x86.ASUBL,
+		reg: regInfo{
+			inputs: []inputInfo{
+				{1, regMask{v1: 49151, v2: 0}},             // AX CX DX BX SP BP SI DI R8 R9 R10 R11 R12 R13 R15
+				{0, regMask{v1: 72057594037993471, v2: 0}}, // AX CX DX BX SP BP SI DI R8 R9 R10 R11 R12 R13 g R15 SB
+			},
+		},
+	},
+	{
+		name:           "SUBQlock",
+		auxType:        auxSymOff,
+		argLen:         3,
+		clobberFlags:   true,
+		faultOnNilArg0: true,
+		hasSideEffects: true,
+		symEffect:      SymRdWr,
+		asm:            x86.ASUBQ,
+		reg: regInfo{
+			inputs: []inputInfo{
+				{1, regMask{v1: 49151, v2: 0}},             // AX CX DX BX SP BP SI DI R8 R9 R10 R11 R12 R13 R15
+				{0, regMask{v1: 72057594037993471, v2: 0}}, // AX CX DX BX SP BP SI DI R8 R9 R10 R11 R12 R13 g R15 SB
+			},
+		},
+	},
+	{
+		name:           "INCLlock",
+		auxType:        auxSymOff,
+		argLen:         2,
+		clobberFlags:   true,
+		faultOnNilArg0: true,
+		hasSideEffects: true,
+		symEffect:      SymRdWr,
+		asm:            x86.AINCL,
+		reg: regInfo{
+			inputs: []inputInfo{
+				{0, regMask{v1: 72057594037993471, v2: 0}}, // AX CX DX BX SP BP SI DI R8 R9 R10 R11 R12 R13 g R15 SB
+			},
+		},
+	},
+	{
+		name:           "INCQlock",
+		auxType:        auxSymOff,
+		argLen:         2,
+		clobberFlags:   true,
+		faultOnNilArg0: true,
+		hasSideEffects: true,
+		symEffect:      SymRdWr,
+		asm:            x86.AINCQ,
+		reg: regInfo{
+			inputs: []inputInfo{
+				{0, regMask{v1: 72057594037993471, v2: 0}}, // AX CX DX BX SP BP SI DI R8 R9 R10 R11 R12 R13 g R15 SB
+			},
+		},
+	},
+	{
+		name:           "DECLlock",
+		auxType:        auxSymOff,
+		argLen:         2,
+		clobberFlags:   true,
+		faultOnNilArg0: true,
+		hasSideEffects: true,
+		symEffect:      SymRdWr,
+		asm:            x86.ADECL,
+		reg: regInfo{
+			inputs: []inputInfo{
+				{0, regMask{v1: 72057594037993471, v2: 0}}, // AX CX DX BX SP BP SI DI R8 R9 R10 R11 R12 R13 g R15 SB
+			},
+		},
+	},
+	{
+		name:           "DECQlock",
+		auxType:        auxSymOff,
+		argLen:         2,
+		clobberFlags:   true,
+		faultOnNilArg0: true,
+		hasSideEffects: true,
+		symEffect:      SymRdWr,
+		asm:            x86.ADECQ,
+		reg: regInfo{
+			inputs: []inputInfo{
+				{0, regMask{v1: 72057594037993471, v2: 0}}, // AX CX DX BX SP BP SI DI R8 R9 R10 R11 R12 R13 g R15 SB
+			},
+		},
 	},
 	{
 		name:           "CMPXCHGLlock",
