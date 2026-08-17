@@ -2511,6 +2511,9 @@ func (p *Package) setBuildInfo(ctx context.Context, f *modfetch.Fetcher, autoVCS
 	if cfg.RawGOEXPERIMENT != "" {
 		appendSetting("GOEXPERIMENT", cfg.RawGOEXPERIMENT)
 	}
+	if cfg.RawKibouExperiments != "" {
+		appendSetting("KIBOU_EXPERIMENTS", cfg.RawKibouExperiments)
+	}
 	if fips140.Enabled() {
 		appendSetting("GOFIPS140", fips140.Version())
 	}

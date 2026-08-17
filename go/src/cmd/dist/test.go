@@ -780,6 +780,8 @@ func (t *tester) registerTests() {
 		}
 	}
 
+	// TODO: Add special test registration for KIBOU_EXPERIMENTS?
+
 	// Test ios/amd64 for the iOS simulator.
 	if goos == "darwin" && goarch == "amd64" && t.cgoEnabled {
 		t.registerTest("GOOS=ios on darwin/amd64",

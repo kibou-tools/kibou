@@ -52,6 +52,7 @@ var depsRules = `
 	  internal/goarch,
 	  internal/godebugs,
 	  internal/goexperiment,
+	  internal/kibou_expt,
 	  internal/goos,
 	  internal/goversion,
 	  internal/nettrace,
@@ -82,6 +83,7 @@ var depsRules = `
 	internal/goarch,
 	internal/godebugs,
 	internal/goexperiment,
+	internal/kibou_expt,
 	internal/goos,
 	internal/profilerecord,
 	internal/runtime/pprof/label,
@@ -365,7 +367,7 @@ var depsRules = `
 	math/big, go/token
 	< go/constant;
 
-	FMT, internal/goexperiment
+	FMT, internal/goexperiment, internal/kibou_expt
 	< internal/buildcfg;
 
 	# The vast majority of standard library packages should not be resorting to regexp.

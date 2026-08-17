@@ -95,6 +95,7 @@ func MkEnv() []cfg.EnvVar {
 		// with the current toolchain might actually be relevant with
 		// a different version (for example, when bisecting a regression).
 		{Name: "GOEXPERIMENT", Value: cfg.RawGOEXPERIMENT},
+		{Name: "KIBOU_EXPERIMENTS", Value: cfg.RawKibouExperiments},
 
 		{Name: "GOFIPS140", Value: cfg.GOFIPS140, Changed: cfg.GOFIPS140Changed},
 		{Name: "GOFLAGS", Value: cfg.Getenv("GOFLAGS")},
@@ -133,6 +134,10 @@ func MkEnv() []cfg.EnvVar {
 				env[i].Changed = true
 			}
 		case "GOEXPERIMENT", "GOFLAGS", "GOINSECURE", "GOPACKAGESDRIVER", "GOPRIVATE", "GOTMPDIR", "GOVCS":
+			if env[i].Value != "" {
+				env[i].Changed = true
+			}
+		case "KIBOU_EXPERIMENTS": // same as above
 			if env[i].Value != "" {
 				env[i].Changed = true
 			}
@@ -501,8 +506,9 @@ func checkBuildConfig(add map[string]string, del map[string]bool) error {
 	}
 
 	goexperiment, okGOEXPERIMENT := get("GOEXPERIMENT", cfg.RawGOEXPERIMENT, buildcfg.DefaultGOEXPERIMENT)
-	if okGOEXPERIMENT {
-		if _, err := buildcfg.ParseGOEXPERIMENT(goos, goarch, goexperiment); err != nil {
+	kibouExpts, okKibouExperiments := get("KIBOU_EXPERIMENTS", cfg.RawKibouExperiments, buildcfg.DefaultKIBOU_EXPERIMENTS)
+	if okGOEXPERIMENT || okKibouExperiments {
+		if _, err := buildcfg.ParseExperimentFlags(goos, goarch, goexperiment, kibouExpts); err != nil {
 			return err
 		}
 	}

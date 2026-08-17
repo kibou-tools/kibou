@@ -59,15 +59,22 @@ func incrementConfig() {
 		counter.Inc("go/platform/target/gowasm:" + cfg.GOWASM)
 	}
 
-	// Use cfg.Experiment.String instead of cfg.Experiment.Enabled
+	// Use cfg.Experiment.GoExptString instead of cfg.Experiment.GoExptEnabled
 	// because we only want to count the experiments that differ
 	// from the baseline.
 	if cfg.Experiment != nil {
-		for exp := range strings.SplitSeq(cfg.Experiment.String(), ",") {
+		for exp := range strings.SplitSeq(cfg.Experiment.GoExptString(), ",") {
 			if exp == "" {
 				continue
 			}
 			counter.Inc("go/goexperiment:" + exp)
+		}
+		// NOTE: Same reasoning as above to not use KibouExptEnabled
+		for exp := range strings.SplitSeq(cfg.Experiment.KibouExptString(), ",") {
+			if exp == "" {
+				continue
+			}
+			counter.Inc("kibou/kibou_experiments:" + exp)
 		}
 	}
 }

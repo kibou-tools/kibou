@@ -245,6 +245,8 @@ The available conditions are:
 	GOEXPERIMENT <suffix> is enabled
 [GOOS:*]
 	runtime.GOOS == <suffix>
+[KIBOU_EXPERIMENTS:*]
+	KIBOU_EXPERIMENTS <suffix> is enabled
 [asan]
 	GOOS/GOARCH supports -asan
 [buildmode:*]

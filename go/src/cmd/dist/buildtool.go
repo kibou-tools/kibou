@@ -79,6 +79,7 @@ var bootstrapDirs = []string{
 	"internal/goarch",
 	"internal/godebugs",
 	"internal/goexperiment",
+	"internal/kibou_expt",
 	"internal/goroot",
 	"internal/gover",
 	"internal/goversion",

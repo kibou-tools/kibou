@@ -26,8 +26,9 @@ func HeaderString() string {
 	if k, v := buildcfg.GOGOARCH(); k != "" && v != "" {
 		archExtra = " " + k + "=" + v
 	}
-	return fmt.Sprintf("go object %s %s %s%s X:%s\n",
+	return fmt.Sprintf("go object %s %s %s%s X:%s KX:%s\n",
 		buildcfg.GOOS, buildcfg.GOARCH,
 		buildcfg.Version, archExtra,
-		strings.Join(buildcfg.Experiment.Enabled(), ","))
+		strings.Join(buildcfg.Experiment.GoExptEnabled(), ","),
+		strings.Join(buildcfg.Experiment.KibouExptEnabled(), ","))
 }

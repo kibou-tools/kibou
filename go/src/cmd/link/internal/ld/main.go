@@ -189,12 +189,19 @@ func Main(arch *sys.Arch, theArch Arch) {
 	}
 
 	buildVersion := buildcfg.Version
-	if goexperiment := buildcfg.Experiment.String(); goexperiment != "" {
+	if goexperiment := buildcfg.Experiment.GoExptString(); goexperiment != "" {
 		sep := " "
 		if !strings.Contains(buildVersion, "-") { // See go.dev/issue/75953.
 			sep = "-"
 		}
 		buildVersion += sep + "X:" + goexperiment
+	}
+	if kibouExpts := buildcfg.Experiment.KibouExptString(); kibouExpts != "" {
+		sep := " "
+		if !strings.Contains(buildVersion, "-") { // Same as above.
+			sep = "-"
+		}
+		buildVersion += sep + "KX:" + kibouExpts
 	}
 	addstrdata1(ctxt, "runtime.buildVersion="+buildVersion)
 

@@ -133,6 +133,7 @@ func scriptEnviron(homeDir string) []string {
 		"HGRCPATH=" + filepath.Join(homeDir, ".hgrc"),
 		"HGENCODING=utf-8",
 	}
+	// NOTE(id: script-preserve-env-vars)
 	// Preserve additional environment variables that may be needed by VCS tools.
 	for _, k := range []string{
 		pathEnvName(),

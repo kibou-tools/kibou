@@ -127,6 +127,9 @@ func defaultContext() build.Context {
 	// Clear the GOEXPERIMENT-based tool tags, which we will recompute later.
 	var save []string
 	for _, tag := range ctxt.ToolTags {
+		if strings.HasPrefix(tag, "kibou_expt.") {
+			continue
+		}
 		if !strings.HasPrefix(tag, "goexperiment.") {
 			save = append(save, tag)
 		}
@@ -297,6 +300,9 @@ var (
 	// experiments enabled by RawGOEXPERIMENT.
 	CleanGOEXPERIMENT = RawGOEXPERIMENT
 
+	RawKibouExperiments   = envOr("KIBOU_EXPERIMENTS", buildcfg.DefaultKIBOU_EXPERIMENTS)
+	CleanKibouExperiments = RawKibouExperiments
+
 	Experiment    *buildcfg.ExperimentFlags
 	ExperimentErr error
 )
@@ -306,19 +312,24 @@ func init() {
 }
 
 func computeExperiment() {
-	Experiment, ExperimentErr = buildcfg.ParseGOEXPERIMENT(Goos, Goarch, RawGOEXPERIMENT)
+	Experiment, ExperimentErr = buildcfg.ParseExperimentFlags(Goos, Goarch, RawGOEXPERIMENT, RawKibouExperiments)
 	if ExperimentErr != nil {
 		return
 	}
 
 	// GOEXPERIMENT is valid, so convert it to canonical form.
-	CleanGOEXPERIMENT = Experiment.String()
+	CleanGOEXPERIMENT = Experiment.GoExptString()
+	CleanKibouExperiments = Experiment.KibouExptString()
 
 	// Add build tags based on the experiments in effect.
-	exps := Experiment.Enabled()
-	expTags := make([]string, 0, len(exps)+len(BuildContext.ToolTags))
+	exps := Experiment.GoExptEnabled()
+	expsKibou := Experiment.KibouExptEnabled()
+	expTags := make([]string, 0, len(exps)+len(expsKibou)+len(BuildContext.ToolTags))
 	for _, exp := range exps {
 		expTags = append(expTags, "goexperiment."+exp)
+	}
+	for _, exp := range expsKibou {
+		expTags = append(expTags, "kibou_expt."+exp)
 	}
 	BuildContext.ToolTags = append(expTags, BuildContext.ToolTags...)
 }

@@ -374,8 +374,11 @@ func experimentTags() []string {
 	// used for compiling alternative files for the experiment. This allows
 	// changes for the experiment, like extra struct fields in the runtime,
 	// without affecting the base non-experiment code at all.
-	for _, exp := range Experiment.Enabled() {
+	for _, exp := range Experiment.GoExptEnabled() {
 		list = append(list, "goexperiment."+exp)
+	}
+	for _, exp := range Experiment.KibouExptEnabled() {
+		list = append(list, "kibou_expt."+exp)
 	}
 	return list
 }

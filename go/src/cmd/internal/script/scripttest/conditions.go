@@ -42,6 +42,7 @@ func AddToolChainScriptConditions(t *testing.T, conds map[string]script.Cond, go
 	add("fuzz-instrumented", sysCondition("-fuzz with instrumentation", platform.FuzzInstrumented, false, goHostOS, goHostArch))
 	add("GODEBUG", script.PrefixCondition("GODEBUG contains <suffix>", hasGodebug))
 	add("GOEXPERIMENT", script.PrefixCondition("GOEXPERIMENT <suffix> is enabled", hasGoexperiment))
+	add("KIBOU_EXPERIMENTS", script.PrefixCondition("KIBOU_EXPERIMENTS <suffix> is enabled", hasKibouExperiment))
 	add("go-builder", script.BoolCondition("GO_BUILDER_NAME is non-empty", testenv.Builder() != ""))
 	add("link", lazyBool("testenv.HasLink()", testenv.HasLink))
 	add("msan", sysCondition("-msan", platform.MSanSupported, true, goHostOS, goHostArch))
@@ -100,11 +101,11 @@ func hasGoexperiment(s *script.State, value string) (bool, error) {
 	GOOS, _ := s.LookupEnv("GOOS")
 	GOARCH, _ := s.LookupEnv("GOARCH")
 	goexp, _ := s.LookupEnv("GOEXPERIMENT")
-	flags, err := buildcfg.ParseGOEXPERIMENT(GOOS, GOARCH, goexp)
+	flags, err := buildcfg.ParseExperimentFlags(GOOS, GOARCH, goexp, "")
 	if err != nil {
 		return false, err
 	}
-	for _, exp := range flags.All() {
+	for _, exp := range flags.GoExptAll() {
 		if value == exp {
 			return true, nil
 		}
@@ -113,4 +114,23 @@ func hasGoexperiment(s *script.State, value string) (bool, error) {
 		}
 	}
 	return false, fmt.Errorf("unrecognized GOEXPERIMENT %q", value)
+}
+
+func hasKibouExperiment(s *script.State, value string) (bool, error) {
+	GOOS, _ := s.LookupEnv("GOOS")
+	GOARCH, _ := s.LookupEnv("GOARCH")
+	kibouExpt, _ := s.LookupEnv("KIBOU_EXPERIMENTS")
+	flags, err := buildcfg.ParseExperimentFlags(GOOS, GOARCH, "", kibouExpt)
+	if err != nil {
+		return false, err
+	}
+	for _, exp := range flags.KibouExptAll() {
+		if value == exp {
+			return true, nil
+		}
+		if strings.TrimPrefix(value, "No") == strings.TrimPrefix(exp, "No") {
+			return false, nil
+		}
+	}
+	return false, fmt.Errorf("unrecognized KIBOU_EXPERIMENTS %q", value)
 }

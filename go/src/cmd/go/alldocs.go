@@ -2626,6 +2626,15 @@
 //		Because the variable is defined by Git, the default value cannot
 //		be set using 'go env -w'.
 //
+// Kibou-specific environment variables:
+//
+//	KIBOU_EXPERIMENTS
+//		Comma-separated list of Kibou-specific experiments to enable or disable.
+//		The list of available experiments will change over time.
+//		See GOROOT/src/internal/kibou_expt/flags.go for currently valid values.
+//		Warning: This variable is provided for the development and testing
+//		of the Kibou toolchain. Use beyond that purpose is unsupported.
+//
 // Additional information available from 'go env' but not read from the environment:
 //
 //	GOEXE

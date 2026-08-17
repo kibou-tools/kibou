@@ -48,6 +48,7 @@ var (
 	gogcflags        string // For running built compiler
 	goldflags        string
 	goexperiment     string
+	kibouExperiments string
 	gofips140        string
 	workdir          string
 	// The directory GOROOT/pkg/tool/GOOS_GOARCH
@@ -216,6 +217,7 @@ func xinit() {
 	}
 
 	goexperiment = os.Getenv("GOEXPERIMENT")
+	kibouExperiments = os.Getenv("KIBOU_EXPERIMENTS")
 	// TODO(mdempsky): Validate known experiments?
 
 	gogcflags = os.Getenv("BOOT_GO_GCFLAGS")
@@ -1481,6 +1483,7 @@ func cmdbootstrap() {
 	// over the build process, we'll set this back to the original
 	// GOEXPERIMENT.
 	os.Setenv("GOEXPERIMENT", "none")
+	os.Setenv("KIBOU_EXPERIMENTS", "none")
 
 	if isdir(pathf("%s/src/pkg", goroot)) {
 		fatalf("\n\n"+
@@ -1560,6 +1563,7 @@ func cmdbootstrap() {
 	os.Setenv("CC", compilerEnvLookup("CC", defaultcc, goos, goarch))
 	// Now that cmd/go is in charge of the build process, enable GOEXPERIMENT.
 	os.Setenv("GOEXPERIMENT", goexperiment)
+	os.Setenv("KIBOU_EXPERIMENTS", kibouExperiments)
 	// NOTE(kibou): Upstream disables PGO here using -pgo=off. We keep PGO turned
 	// on, because:
 	//
