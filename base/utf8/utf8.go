@@ -10,6 +10,7 @@ import (
 
 	"code.kibou.tools/base/assert"
 	. "code.kibou.tools/base/core/option"
+	"code.kibou.tools/base/internal/unicode_impl"
 	"code.kibou.tools/base/ranges"
 )
 
@@ -122,7 +123,7 @@ func invalidUTF8SpanAt(text string, start int) ranges.Span[int] {
 	if len(text) <= start+2 {
 		return ranges.NewSpan(start, len(text))
 	}
-	if !isContinuationByte(text[start+2]) {
+	if !unicode_impl.IsContinuationByte(text[start+2]) {
 		return ranges.NewSpan(start, start+3)
 	}
 	if width == 3 {
@@ -132,7 +133,7 @@ func invalidUTF8SpanAt(text string, start int) ranges.Span[int] {
 	if len(text) <= start+3 {
 		return ranges.NewSpan(start, len(text))
 	}
-	if !isContinuationByte(text[start+3]) {
+	if !unicode_impl.IsContinuationByte(text[start+3]) {
 		return ranges.NewSpan(start, start+4)
 	}
 	assert.Invariant(false, "DecodeRuneInString reported invalid UTF-8 for a complete four-byte encoding")
@@ -176,10 +177,4 @@ func utf8LeadByteInfo(b byte) (width int, secondMin byte, secondMax byte, ok boo
 	default:
 		return 0, 0, 0, false
 	}
-}
-
-// isContinuationByte implements the UTF8-tail check described in
-// the doc comment for utf8LeadByteInfo.
-func isContinuationByte(b byte) bool {
-	return 0x80 <= b && b <= 0xbf
 }
