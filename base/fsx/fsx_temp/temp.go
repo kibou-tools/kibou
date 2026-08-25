@@ -107,6 +107,10 @@ func (e *CreateFileError) Unwrap() error {
 	return e.err
 }
 
+// Preconditions:
+//
+// 1. prefix and suffix do not contain [filepath.Separator].
+// 2. fragments does not yield []byte which contain [filepath.Separator].
 func Names(prefix []byte, fragments iter.Seq[[]byte], suffix []byte) iter.Seq[fsx.Name] {
 	return func(yield func(fsx.Name) bool) {
 		var builder strings.Builder

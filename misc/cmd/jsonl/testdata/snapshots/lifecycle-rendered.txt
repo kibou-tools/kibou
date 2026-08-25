@@ -1,0 +1,12 @@
+    fixture_test.go:N: fail log
+--- FAIL: TestLifecycle/fail (Xs)
+--- FAIL: TestLifecycle (Xs)
+FAIL
+FAIL	example.test/jsonlfixture/lifecycle	Xs
+
+# go test summary
+FAIL example.test/jsonlfixture/lifecycle TestLifecycle/fail (0.69s)
+FAIL example.test/jsonlfixture/lifecycle TestLifecycle (0.69s)
+FAIL example.test/jsonlfixture/lifecycle (0.690s)
+(1 passed)
+(1 skipped)

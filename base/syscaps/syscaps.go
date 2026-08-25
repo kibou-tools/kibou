@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	stdlib_time "time"
 
@@ -46,6 +47,21 @@ func WorkingDirectory() (pathx.AbsPath, error) {
 		return pathx.AbsPath{}, err
 	}
 	return pathx.MustParseAbsPath(wd), nil
+}
+
+// ResolvePath returns the absolute form of path.
+//
+//   - A relative path is resolved against the process working directory
+//   - On Windows a drive-relative path (such as "C:abc") is resolved
+//     against that drive's current directory.
+//
+// Does not evaluate symlinks or require the path to exist/be accessible.
+func ResolvePath(path string) (pathx.AbsPath, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return pathx.AbsPath{}, err
+	}
+	return pathx.MustParseAbsPath(abs), nil
 }
 
 // FS returns a rooted filesystem backed by the host operating system.

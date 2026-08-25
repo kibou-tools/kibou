@@ -1,0 +1,23 @@
+{"Action":"start","Package":"example.test/jsonlfixture/lifecycle","Time":"2026-01-02T03:04:05Z"}
+{"Action":"run","Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle","Time":"2026-01-02T03:04:06Z"}
+{"Action":"output","Output":"=== RUN   TestLifecycle\n","Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle","Time":"2026-01-02T03:04:07Z"}
+{"Action":"run","Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle/pass","Time":"2026-01-02T03:04:08Z"}
+{"Action":"output","Output":"=== RUN   TestLifecycle/pass\n","Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle/pass","Time":"2026-01-02T03:04:09Z"}
+{"Action":"output","Output":"    fixture_test.go:N: pass log\n","Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle/pass","Time":"2026-01-02T03:04:10Z"}
+{"Action":"output","Output":"--- PASS: TestLifecycle/pass (Xs)\n","Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle/pass","Time":"2026-01-02T03:04:11Z"}
+{"Action":"pass","Elapsed":0.69,"Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle/pass","Time":"2026-01-02T03:04:12Z"}
+{"Action":"run","Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle/skip","Time":"2026-01-02T03:04:13Z"}
+{"Action":"output","Output":"=== RUN   TestLifecycle/skip\n","Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle/skip","Time":"2026-01-02T03:04:14Z"}
+{"Action":"output","Output":"    fixture_test.go:N: skip log\n","Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle/skip","Time":"2026-01-02T03:04:15Z"}
+{"Action":"output","Output":"--- SKIP: TestLifecycle/skip (Xs)\n","Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle/skip","Time":"2026-01-02T03:04:16Z"}
+{"Action":"skip","Elapsed":0.69,"Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle/skip","Time":"2026-01-02T03:04:17Z"}
+{"Action":"run","Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle/fail","Time":"2026-01-02T03:04:18Z"}
+{"Action":"output","Output":"=== RUN   TestLifecycle/fail\n","Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle/fail","Time":"2026-01-02T03:04:19Z"}
+{"Action":"output","Output":"    fixture_test.go:N: fail log\n","Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle/fail","Time":"2026-01-02T03:04:20Z"}
+{"Action":"output","Output":"--- FAIL: TestLifecycle/fail (Xs)\n","Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle/fail","Time":"2026-01-02T03:04:21Z"}
+{"Action":"fail","Elapsed":0.69,"Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle/fail","Time":"2026-01-02T03:04:22Z"}
+{"Action":"output","Output":"--- FAIL: TestLifecycle (Xs)\n","Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle","Time":"2026-01-02T03:04:23Z"}
+{"Action":"fail","Elapsed":0.69,"Package":"example.test/jsonlfixture/lifecycle","Test":"TestLifecycle","Time":"2026-01-02T03:04:24Z"}
+{"Action":"output","Output":"FAIL\n","Package":"example.test/jsonlfixture/lifecycle","Time":"2026-01-02T03:04:25Z"}
+{"Action":"output","Output":"FAIL\texample.test/jsonlfixture/lifecycle\tXs\n","Package":"example.test/jsonlfixture/lifecycle","Time":"2026-01-02T03:04:26Z"}
+{"Action":"fail","Elapsed":0.69,"Package":"example.test/jsonlfixture/lifecycle","Time":"2026-01-02T03:04:27Z"}

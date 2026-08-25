@@ -108,6 +108,7 @@ type FS interface {
 	MkdirAll(rel pathx.RelPath, perm os.FileMode) error
 	MkdirTemp(dir pathx.RelPath, pattern string) (pathx.RelPath, error)
 	RemoveAll(rel pathx.RelPath) error
+	Rename(oldRel, newRel pathx.RelPath) error
 	Stat(rel pathx.RelPath, opts StatOptions) (os.FileInfo, error)
 }
 
@@ -242,4 +243,10 @@ func (fs rootedFS) MkdirTemp(dir pathx.RelPath, pattern string) (pathx.RelPath, 
 // along with any children it contains.
 func (fs rootedFS) RemoveAll(rel pathx.RelPath) error {
 	return fs.base.RemoveAll(rel.String())
+}
+
+// Rename moves the file or directory at oldRel to newRel, replacing newRel if
+// it already exists. Both paths are interpreted relative to Root().
+func (fs rootedFS) Rename(oldRel, newRel pathx.RelPath) error {
+	return fs.base.Rename(oldRel.String(), newRel.String())
 }

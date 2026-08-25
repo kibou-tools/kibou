@@ -222,6 +222,11 @@ func MustParseRelPath(path string) RelPath {
 	return relPath
 }
 
+// NewRelPathFromName returns name as a single-component relative path.
+func NewRelPathFromName(name fsx_name.Name) RelPath {
+	return RelPath{name.String()}
+}
+
 // String is guaranteed to be "." if a relative path for the current directory.
 func (p RelPath) String() string {
 	return p.value
@@ -264,6 +269,11 @@ func (p RelPath) RelativeTo(base RelPath) RelPath {
 func (p RelPath) JoinOne(name fsx_name.Name) RelPath {
 	// TODO: Use an unchecked code path here, because we know the invariant can't be violated.
 	return MustParseRelPath(filepath.Join(p.value, name.String()))
+}
+
+// BaseName returns the final path component of p.
+func (p RelPath) BaseName() fsx_name.Name {
+	return fsx_name.New(filepath.Base(p.value))
 }
 
 // JoinComponents joins individual path components onto p.

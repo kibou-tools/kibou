@@ -1,0 +1,6 @@
+# example.test/jsonlfixture/buildfail [example.test/jsonlfixture/buildfail.test]
+fixture_test.go:N: undefined: thisSymbolDoesNotExist
+FAIL	example.test/jsonlfixture/buildfail [build failed]
+
+# go test summary
+FAIL example.test/jsonlfixture/buildfail (0.690s) [build failed: example.test/jsonlfixture/buildfail [example.test/jsonlfixture/buildfail.test]]
