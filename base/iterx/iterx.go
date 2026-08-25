@@ -17,6 +17,13 @@ func Empty[T any]() iter.Seq[T] {
 	return func(func(T) bool) {}
 }
 
+// Once returns an iterator which yields value once.
+func Once[T any](value T) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		_ = yield(value)
+	}
+}
+
 // FromSlice yields the elements of slice in order.
 func FromSlice[S ~[]T, T any](slice S) iter.Seq[T] {
 	return func(yield func(T) bool) {
