@@ -60,7 +60,27 @@ jobs:
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             export GO_TEST_TIMEOUT_SCALE=2
           fi
-          go tool dist test -run='!^cmd'
+
+          mkdir -p .cache/ci-spans
+          jsonl="$PWD/.cache/ci-spans/dist-test-std.jsonl"
+          timelog="$PWD/.cache/ci-spans/dist-test-std.timelog"
+          printf '%s start ci-test-std\n' "$(date '+%a %b %e %H:%M:%S %Z %Y')" > "$timelog"
+          export GOBUILDTIMELOGFILE="$timelog"
+
+          set +e
+          go tool dist test -json -run='!^cmd' > "$jsonl"
+          status=$?
+          set -e
+          gzip -f9 "$jsonl" "$timelog"
+          exit "$status"
+      - name: Upload test spans
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: test-spans-${{ inputs.os }}-std
+          path: .cache/ci-spans/
+          retention-days: 7
+          if-no-files-found: ignore
 
   test-cmd:
     runs-on: ${{ inputs.os }}
@@ -77,7 +97,27 @@ jobs:
         run: |
           export GOROOT="$PWD/go"
           export PATH="$GOROOT/bin:$PATH"
-          go tool dist test -run='^cmd'
+
+          mkdir -p .cache/ci-spans
+          jsonl="$PWD/.cache/ci-spans/dist-test-cmd.jsonl"
+          timelog="$PWD/.cache/ci-spans/dist-test-cmd.timelog"
+          printf '%s start ci-test-cmd\n' "$(date '+%a %b %e %H:%M:%S %Z %Y')" > "$timelog"
+          export GOBUILDTIMELOGFILE="$timelog"
+
+          set +e
+          go tool dist test -json -run='^cmd' > "$jsonl"
+          status=$?
+          set -e
+          gzip -f9 "$jsonl" "$timelog"
+          exit "$status"
+      - name: Upload test spans
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: test-spans-${{ inputs.os }}-cmd
+          path: .cache/ci-spans/
+          retention-days: 7
+          if-no-files-found: ignore
 
   test-tools:
     runs-on: ${{ inputs.os }}
@@ -94,7 +134,24 @@ jobs:
         run: |
           export GOROOT="$PWD/go"
           export PATH="$GOROOT/bin:$PATH"
-          go test -C tools ./...
+
+          mkdir -p .cache/ci-spans
+          jsonl="$PWD/.cache/ci-spans/tools-test.jsonl"
+
+          set +e
+          go -C tools test -json ./... > "$jsonl"
+          status=$?
+          set -e
+          gzip -f9 "$jsonl"
+          exit "$status"
+      - name: Upload test spans
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: test-spans-${{ inputs.os }}-tools
+          path: .cache/ci-spans/
+          retention-days: 7
+          if-no-files-found: ignore
 
   test-first-party:
     name: go test (first-party)
