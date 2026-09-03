@@ -294,6 +294,15 @@ func (c *RPCClient) CreateBreakpoint(breakPoint *api.Breakpoint) (*api.Breakpoin
 	return &out.Breakpoint, err
 }
 
+// SetExecutionPoint sets the next instruction to be executed by the current
+// thread to the instruction at addr, without executing any of the
+// instructions in between (also known as "set next statement" or "jump").
+func (c *RPCClient) SetExecutionPoint(addr uint64) (*api.DebuggerState, error) {
+	var out SetExecutionPointOut
+	err := c.call("SetExecutionPoint", SetExecutionPointIn{Addr: addr}, &out)
+	return &out.State, err
+}
+
 // CreateBreakpointWithExpr is like CreateBreakpoint but will also set a
 // location expression to be used to restore the breakpoint after it is
 // disabled.

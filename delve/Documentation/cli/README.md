@@ -12,6 +12,7 @@ Command | Description
 --------|------------
 [call](#call) | Resumes process, injecting a function call (EXPERIMENTAL!!!)
 [continue](#continue) | Run until breakpoint or program termination.
+[jump](#jump) | Set the next instruction to be executed (EXPERIMENTAL!!!).
 [next](#next) | Step over to next source line.
 [next-instruction](#next-instruction) | Single step a single cpu instruction, skipping function calls.
 [rebuild](#rebuild) | Rebuild the target executable and restarts it. It does not work if the executable was not built by delve.
@@ -492,6 +493,23 @@ Prints the help message.
 Type "help" followed by the name of a command for more information about it.
 
 Aliases: h
+
+## jump
+Set the next instruction to be executed (EXPERIMENTAL!!!).
+
+	jump <linespec>
+
+Sets the next instruction to be executed to the location given by &lt;linespec>,
+without executing any of the instructions in between (also known as "set next
+statement"). The target must be inside the current function.
+
+WARNING: this is unsafe. Even with optimizations disabled the compiler
+reorders instructions and inserts hidden initialization, so skipping over code
+can skip setup that later instructions rely on.
+
+See also: "help locspec".
+
+Aliases: j
 
 ## libraries
 List loaded dynamic libraries.

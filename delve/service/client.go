@@ -72,6 +72,9 @@ type Client interface {
 	GetBreakpointByName(name string) (*api.Breakpoint, error)
 	// CreateBreakpoint creates a new breakpoint.
 	CreateBreakpoint(*api.Breakpoint) (*api.Breakpoint, error)
+	// SetExecutionPoint sets the next instruction to be executed by the current
+	// thread to the instruction at the given address ("set next statement").
+	SetExecutionPoint(addr uint64) (*api.DebuggerState, error)
 	// CreateBreakpointWithExpr creates a new breakpoint and sets an expression to restore it after it is disabled.
 	CreateBreakpointWithExpr(*api.Breakpoint, string, [][2]string, bool) (*api.Breakpoint, error)
 	// CreateWatchpoint creates a new watchpoint.

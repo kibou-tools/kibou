@@ -59,6 +59,7 @@ func suitableMethods2(s *rpc2.RPCServer, methods map[string]*methodType) {
 	methods["RPCServer.Recorded"] = &methodType{method: reflect.ValueOf(s.Recorded)}
 	methods["RPCServer.Restart"] = &methodType{method: reflect.ValueOf(s.Restart)}
 	methods["RPCServer.Set"] = &methodType{method: reflect.ValueOf(s.Set)}
+	methods["RPCServer.SetExecutionPoint"] = &methodType{method: reflect.ValueOf(s.SetExecutionPoint)}
 	methods["RPCServer.Stacktrace"] = &methodType{method: reflect.ValueOf(s.Stacktrace)}
 	methods["RPCServer.State"] = &methodType{method: reflect.ValueOf(s.State)}
 	methods["RPCServer.StopRecording"] = &methodType{method: reflect.ValueOf(s.StopRecording)}

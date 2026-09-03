@@ -322,6 +322,53 @@ func TestClientServer_step(t *testing.T) {
 	})
 }
 
+func TestClientServer_setNextStatement(t *testing.T) {
+	// Setting the execution point writes to the PC register, which is not
+	// possible on an immutable recording, so this test does not allow
+	// recording and is skipped on the rr backend.
+	withTestClient2Extended("setnextstatement", t, 0, [3]string{}, nil, func(c service.Client, fixture protest.Fixture) {
+		scope := api.EvalScope{GoroutineID: -1}
+
+		findPC := func(line int) uint64 {
+			locs, _, err := c.FindLocation(scope, fmt.Sprintf("%s:%d", fixture.Source, line), false, nil)
+			assertNoError(err, t, fmt.Sprintf("FindLocation(:%d)", line))
+			if len(locs) != 1 {
+				t.Fatalf("FindLocation(:%d) returned %d locations", line, len(locs))
+			}
+			return locs[0].PC
+		}
+
+		// Stop on the second increment (line 8) inside main.demo.
+		_, err := c.CreateBreakpoint(&api.Breakpoint{Addr: findPC(8)})
+		assertNoError(err, t, "CreateBreakpoint()")
+		state := <-c.Continue()
+		assertNoError(state.Err, t, "Continue()")
+		if state.CurrentThread.Line != 8 {
+			t.Fatalf("expected to stop at line 8, stopped at %d", state.CurrentThread.Line)
+		}
+
+		// Jumping backwards within the same function is allowed.
+		line6PC := findPC(6)
+		state, err = c.SetExecutionPoint(line6PC)
+		assertNoError(err, t, "SetExecutionPoint(:6)")
+		if state.CurrentThread.Line != 6 {
+			t.Fatalf("expected execution point at line 6, got line %d", state.CurrentThread.Line)
+		}
+		if state.CurrentThread.PC != line6PC {
+			t.Fatalf("expected PC %#x, got %#x", line6PC, state.CurrentThread.PC)
+		}
+
+		// Jumping into a different function (main.other) must be rejected.
+		_, err = c.SetExecutionPoint(findPC(13))
+		if err == nil {
+			t.Fatal("expected SetExecutionPoint into a different function to fail")
+		}
+		if !strings.Contains(err.Error(), "outside of the current function") {
+			t.Fatalf("unexpected error jumping across functions: %v", err)
+		}
+	})
+}
+
 func TestClientServer_stepout(t *testing.T) {
 	protest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
@@ -3420,28 +3467,37 @@ func TestCancelDownload(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("linux only")
 	}
+	if runtime.GOARCH == "ppc64le" {
+		t.Skip("cgo support broken")
+	}
 	fakedebuginfodDir, _ := filepath.Abs(filepath.Join(protest.FindFixturesDir(), "fake-debuginfod-find"))
 	t.Setenv("PATH", os.ExpandEnv(fakedebuginfodDir+":$PATH"))
-	withTestClient2("cgotest", t, func(c service.Client) {
-		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main"})
-		assertNoError(err, t, "CreateBreakpoint")
-		eventReceived := false
+	withTestClient2Extended("cgotest", t, 0, [3]string{}, []string{"sleep"}, func(c service.Client, fixture protest.Fixture) {
+		eventReceivedCount := 0
+		const eventReceivedCountCancelThreshold = 3
 		c.SetEventsFn(func(ev *api.Event) {
 			switch ev.Kind {
 			case api.EventBinaryInfoDownload:
-				eventReceived = true
+				eventReceivedCount++
 				t.Logf("download event: %q %q", ev.BinaryInfoDownloadEventDetails.ImagePath, ev.BinaryInfoDownloadEventDetails.Progress)
-				assertNoError(c.CancelDownloads(), t, "CancelDownloads")
+				if eventReceivedCount >= eventReceivedCountCancelThreshold {
+					t.Logf("stop download\n")
+					assertNoError(c.CancelDownloads(), t, "CancelDownloads")
+				}
 			}
 		})
+		go func() {
+			time.Sleep(500 * time.Millisecond)
+			c.Halt()
+		}()
 		t0 := time.Now()
 		state := <-c.Continue()
 		assertNoError(state.Err, t, "Continue")
-		if !eventReceived {
-			t.Errorf("Download event was not received")
+		if eventReceivedCount < eventReceivedCountCancelThreshold {
+			t.Errorf("Too few download events received %d", eventReceivedCount)
 		}
 		if time.Since(t0) > 3*time.Second {
-			t.Errorf("Continue took to long, we probably couldn't cancel the download")
+			t.Errorf("Continue took to long, we probably couldn't cancel the download (%v)", time.Since(t0))
 		}
 	})
 }

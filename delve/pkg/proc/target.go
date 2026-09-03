@@ -352,6 +352,40 @@ func (t *Target) SwitchThread(tid int) error {
 	return fmt.Errorf("thread %d does not exist", tid)
 }
 
+// SetNextExecutionPoint sets the program counter of the current thread to
+// addr without executing any of the instructions in between, also known as
+// "set next statement" or "jump". addr must be inside the function the
+// current thread is stopped in: jumping to a different function would leave
+// the stack frame set up for the old function and corrupt execution.
+//
+// Even with optimizations disabled the compiler reorders instructions and
+// inserts hidden initialization, so skipping over code can skip setup that
+// later instructions rely on.
+func (t *Target) SetNextExecutionPoint(addr uint64) error {
+	if ok, err := t.Valid(); !ok {
+		return err
+	}
+
+	thread := t.CurrentThread()
+	regs, err := thread.Registers()
+	if err != nil {
+		return err
+	}
+
+	currentFn := t.BinInfo().PCToFunc(regs.PC())
+	destFn := t.BinInfo().PCToFunc(addr)
+	if currentFn == nil || destFn == nil || currentFn != destFn {
+		return errors.New("can not set the next execution point outside of the current function")
+	}
+
+	if err := setPC(thread, addr); err != nil {
+		return err
+	}
+
+	t.selectedGoroutine, _ = GetG(t.CurrentThread())
+	return nil
+}
+
 // setAsyncPreemptOff enables or disables async goroutine preemption by
 // writing the value 'v' to runtime.debug.asyncpreemptoff.
 // A value of '1' means off, a value of '0' means on.

@@ -80,6 +80,12 @@ Type "help" followed by the name of a command for more information about it.`
 
 If regex is specified only the source files matching it will be returned.`
 
+	msgTypes = `Print list of types.
+
+	dlv types [<regex>]
+
+If regex is specified only the types matching it will be returned.`
+
 	msgTarget = `Manages child process debugging.
 
         target follow-exec [-on [regex]] [-off]
@@ -120,6 +126,7 @@ func debugCommands(s *Session) []command {
 		{aliases: []string{"help", "h"}, cmdFn: s.helpMessage, helpMsg: msgHelp},
 		{aliases: []string{"config"}, cmdFn: s.evaluateConfig, helpMsg: msgConfig},
 		{aliases: []string{"sources", "s"}, cmdFn: s.sources, helpMsg: msgSources},
+		{aliases: []string{"types"}, cmdFn: s.types, helpMsg: msgTypes},
 		{aliases: []string{"target"}, cmdFn: s.targetCmd, helpMsg: msgTarget},
 		{aliases: []string{"examinemem", "x"}, cmdFn: s.examineMemory, helpMsg: msgExamineMemory},
 	}
@@ -250,6 +257,15 @@ func (s *Session) sources(_, _ int, filter string) (string, error) {
 	}
 	sort.Strings(sources)
 	return strings.Join(sources, "\n"), nil
+}
+
+func (s *Session) types(_, _ int, filter string) (string, error) {
+	types, err := s.debugger.Types(filter)
+	if err != nil {
+		return "", err
+	}
+	// Debugger.Types already sorts and deduplicates its result.
+	return strings.Join(types, "\n"), nil
 }
 
 func (s *Session) targetCmd(_, _ int, argstr string) (string, error) {

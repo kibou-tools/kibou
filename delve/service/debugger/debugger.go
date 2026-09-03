@@ -822,6 +822,17 @@ func (d *Debugger) CreateBreakpoint(requestedBp *api.Breakpoint, locExpr string,
 	return createdBp, nil
 }
 
+// SetExecutionPoint sets the next instruction to be executed by the current
+// thread to addr, without executing any of the instructions in between (also
+// known as "set next statement" or "jump"). The target address must be inside
+// the function the current thread is stopped in.
+func (d *Debugger) SetExecutionPoint(addr uint64) error {
+	d.targetMutex.Lock()
+	defer d.targetMutex.Unlock()
+
+	return d.target.Selected.SetNextExecutionPoint(addr)
+}
+
 func (d *Debugger) convertBreakpoint(lbp *proc.LogicalBreakpoint) *api.Breakpoint {
 	abp := api.ConvertLogicalBreakpoint(lbp)
 	bps := []*proc.Breakpoint{}
@@ -1101,6 +1112,11 @@ func (d *Debugger) Command(command *api.DebuggerCommand, resumeNotify chan struc
 			}
 		}
 		d.recordMutex.Unlock()
+
+		if resumeNotify != nil {
+			close(resumeNotify)
+			resumeNotify = nil
+		}
 	}
 
 	withBreakpointInfo := true

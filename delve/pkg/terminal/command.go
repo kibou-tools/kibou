@@ -227,6 +227,19 @@ Current limitations:
 - calling a function will resume execution of all goroutines.
 - only supported on linux's native backend.
 `},
+		{aliases: []string{"jump", "j"}, group: runCmds, cmdFn: setNextStatement, helpMsg: `Set the next instruction to be executed (EXPERIMENTAL!!!).
+
+	jump <linespec>
+
+Sets the next instruction to be executed to the location given by <linespec>,
+without executing any of the instructions in between (also known as "set next
+statement"). The target must be inside the current function.
+
+WARNING: this is unsafe. Even with optimizations disabled the compiler
+reorders instructions and inserts hidden initialization, so skipping over code
+can skip setup that later instructions rely on.
+
+See also: "help locspec".`},
 		{aliases: []string{"threads"}, group: goroutineCmds, cmdFn: threads, helpMsg: "Print out info for every traced thread."},
 		{aliases: []string{"thread", "tr"}, group: goroutineCmds, cmdFn: thread, helpMsg: `Switch to the specified thread.
 
@@ -1512,6 +1525,29 @@ func stepInstruction(t *Term, ctx callContext, frame int, skipCalls bool) error 
 	}
 	printcontext(t, state)
 	printPos(t, state.CurrentThread, printPosShowArrow|printPosStepInstruction)
+	return nil
+}
+
+func setNextStatement(t *Term, ctx callContext, args string) error {
+	if args == "" {
+		return errors.New("jump requires a location")
+	}
+
+	locs, _, err := t.client.FindLocation(ctx.Scope, args, false, t.substitutePathRules())
+	if err != nil {
+		return err
+	}
+	if len(locs) != 1 {
+		return errors.New("can not jump to a location that resolves to multiple addresses")
+	}
+
+	state, err := t.client.SetExecutionPoint(locs[0].PC)
+	if err != nil {
+		return err
+	}
+
+	printcontext(t, state)
+	printPos(t, state.CurrentThread, printPosShowArrow)
 	return nil
 }
 
